@@ -1,0 +1,11 @@
+{
+  "name": "lyrics_view",
+  "version": "1.0.0",
+  "description": "Please describe the basic information.",
+  "main": "Index.ets",
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "liblyrics_view.so": "file:./src/main/cpp/types/liblyrics_view"
+  }
+}
