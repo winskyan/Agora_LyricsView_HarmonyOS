@@ -8,5 +8,5 @@ export { IScoringAlgorithm, OnScoringListener, ScoringMachine } from './src/main
 export { LyricModel } from './src/main/ets/model/LyricModel';
 export { Lang, LyricsLineModel, Monolog, Tone } from './src/main/ets/model/LyricsLineModel';
 export { PitchData, createPitchData } from './src/main/ets/model/PitchData';
-export { LogUtils } from './src/main/ets/utils/LogUtils';
+export { ILogger, LogUtils } from './src/main/ets/utils/LogUtils';
 

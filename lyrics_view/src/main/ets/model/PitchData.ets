@@ -4,12 +4,14 @@
  * Interface representing pitch data for karaoke scoring
  */
 export interface PitchData {
-    /** 开始时间 */
-    startTime: number;
-    /** 持续时间 */
-    duration: number;
-    /** 音调值 */
-    pitch: number;
+  /** 开始时间 */
+  startTime: number;
+
+  /** 持续时间 */
+  duration: number;
+
+  /** 音调值 */
+  pitch: number;
 }
 
 /**
@@ -20,9 +22,9 @@ export interface PitchData {
  * @returns PitchData对象
  */
 export function createPitchData(
-    startTime: number = 0,
-    duration: number = 0,
-    pitch: number = 0
+  startTime: number = 0,
+  duration: number = 0,
+  pitch: number = 0
 ): PitchData {
-    return { startTime, duration, pitch };
+  return { startTime, duration, pitch };
 }
