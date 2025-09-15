@@ -39,7 +39,7 @@ export struct LyricsView {
   /** 是否启用拖拽 */
   @Prop enableDragging: boolean = false;
   /** 拖拽监听器 */
-  @Prop seekListener ?: OnLyricsSeekListener;
+  @Prop seekListener: OnLyricsSeekListener | null = null;
   // 样式配置
   @Prop currentLineTextSize: number = 20;
   @Prop normalLineTextSize: number = 16;

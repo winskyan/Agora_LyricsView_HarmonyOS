@@ -2,8 +2,8 @@ import Context from '@ohos.app.ability.common';
 import { IKaraokeEvent } from './IKaraokeEvent';
 import { LyricsView, OnLyricsSeekListener } from './components/LyricsView';
 import { ScoringView } from './components/ScoringView';
-import { LyricMachine } from './internal/LyricMachine';
-import { IScoringAlgorithm, ScoringMachine } from './internal/ScoringMachine';
+import { LyricMachine, OnLyricListener } from './internal/LyricMachine';
+import { IScoringAlgorithm, OnScoringListener, ScoringMachine } from './internal/ScoringMachine';
 import { LyricsParser } from './internal/parser/LyricsParser';
 import { LyricModel } from './model/LyricModel';
 import { LyricsLineModel } from './model/LyricsLineModel';
@@ -84,58 +84,85 @@ export class KaraokeView {
     LogUtils.d('initialize');
 
     // 创建歌词机器
-    this.mLyricMachine = new LyricMachine({
-      resetUi: () => {
-        if (this.mLyricsView) {
-          this.mLyricsView.requestRefreshUi();
+    class LyricListenerImpl implements OnLyricListener {
+      private lyricsView?: LyricsView;
+      private scoringView?: ScoringView;
+
+      constructor(lyricsView?: LyricsView, scoringView?: ScoringView) {
+        this.lyricsView = lyricsView;
+        this.scoringView = scoringView;
+      }
+
+      resetUi(): void {
+        if (this.lyricsView) {
+          this.lyricsView.requestRefreshUi();
         }
-        if (this.mScoringView) {
-          this.mScoringView.resetPitchIndicatorAndAnimation();
-          this.mScoringView.requestRefreshUi();
-        }
-      },
-      requestRefreshUi: () => {
-        if (this.mLyricsView) {
-          this.mLyricsView.requestRefreshUi();
-        }
-        if (this.mScoringView) {
-          this.mScoringView.requestRefreshUi();
+        if (this.scoringView) {
+          this.scoringView.resetPitchIndicatorAndAnimation();
+          this.scoringView.requestRefreshUi();
         }
       }
-    });
+
+      requestRefreshUi(): void {
+        if (this.lyricsView) {
+          this.lyricsView.requestRefreshUi();
+        }
+        if (this.scoringView) {
+          this.scoringView.requestRefreshUi();
+        }
+      }
+    }
+
+    const lyricListener = new LyricListenerImpl(this.mLyricsView, this.mScoringView);
+    this.mLyricMachine = new LyricMachine(lyricListener);
 
     // 创建评分机器
-    this.mScoringMachine = new ScoringMachine({
-      onLineFinished: (line: LyricsLineModel, score: number, cumulativeScore: number, index: number,
-        lineCount: number) => {
+    class ScoringListenerImpl implements OnScoringListener {
+      private lyricsView?: LyricsView;
+      private scoringView?: ScoringView;
+      private karaokeEvent?: IKaraokeEvent;
+
+      constructor(lyricsView?: LyricsView, scoringView?: ScoringView, karaokeEvent?: IKaraokeEvent) {
+        this.lyricsView = lyricsView;
+        this.scoringView = scoringView;
+        this.karaokeEvent = karaokeEvent;
+      }
+
+      onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number,
+        lineCount: number): void {
         LogUtils.d(`onLineFinished line startTime:${line.getStartTime()}, line endTime:${line.getEndTime()}, score:${score}, cumulativeScore:${cumulativeScore}, index:${index}, lineCount:${lineCount}`);
 
-        if (this.mScoringView) {
-          this.mScoringView.resetPitchIndicatorAndAnimationWhenFullLineFinished(score);
+        if (this.scoringView) {
+          this.scoringView.resetPitchIndicatorAndAnimationWhenFullLineFinished(score);
         }
 
-        if (this.mKaraokeEvent) {
-          this.mKaraokeEvent.onLineFinished(line, score, cumulativeScore, index, lineCount);
-        }
-      },
-      resetUi: () => {
-        if (this.mLyricsView) {
-          this.mLyricsView.requestRefreshUi();
-        }
-        if (this.mScoringView) {
-          this.mScoringView.resetPitchIndicatorAndAnimation();
-          this.mScoringView.requestRefreshUi();
-        }
-      },
-      requestRefreshUi: () => {
-        if (this.mLyricsView) {
-          this.mLyricsView.requestRefreshUi();
-        }
-        if (this.mScoringView) {
-          this.mScoringView.requestRefreshUi();
+        if (this.karaokeEvent) {
+          this.karaokeEvent.onLineFinished(line, score, cumulativeScore, index, lineCount);
         }
       }
-    });
+
+      resetUi(): void {
+        if (this.lyricsView) {
+          this.lyricsView.requestRefreshUi();
+        }
+        if (this.scoringView) {
+          this.scoringView.resetPitchIndicatorAndAnimation();
+          this.scoringView.requestRefreshUi();
+        }
+      }
+
+      requestRefreshUi(): void {
+        if (this.lyricsView) {
+          this.lyricsView.requestRefreshUi();
+        }
+        if (this.scoringView) {
+          this.scoringView.requestRefreshUi();
+        }
+      }
+    }
+
+    const scoringListener = new ScoringListenerImpl(this.mLyricsView, this.mScoringView, this.mKaraokeEvent);
+    this.mScoringMachine = new ScoringMachine(scoringListener);
 
     // 启用日志功能（如果有上下文）
     if (this.mContext) {
@@ -329,21 +356,37 @@ export class KaraokeView {
     this.mKaraokeEvent = event;
 
     if (this.mLyricsView) {
-      const seekListener: OnLyricsSeekListener = {
-        onProgressChanged: (progress: number) => {
-          if (this.mKaraokeEvent) {
-            this.mKaraokeEvent.onDragTo(progress);
+
+      // 创建拖拽监听器实现
+      class SeekListenerImpl implements OnLyricsSeekListener {
+        private karaokeEvent?: IKaraokeEvent;
+        private lyricMachine?: LyricMachine;
+        private scoringMachine?: ScoringMachine;
+
+        constructor(karaokeEvent?: IKaraokeEvent, lyricMachine?: LyricMachine, scoringMachine?: ScoringMachine) {
+          this.karaokeEvent = karaokeEvent;
+          this.lyricMachine = lyricMachine;
+          this.scoringMachine = scoringMachine;
+        }
+
+        onProgressChanged(progress: number): void {
+          if (this.karaokeEvent) {
+            this.karaokeEvent.onDragTo(progress);
           }
-          this.mLyricMachine?.whenDraggingHappen(progress);
-          this.mScoringMachine?.whenDraggingHappen(progress);
-        },
-        onStartTrackingTouch: () => {
+          this.lyricMachine?.whenDraggingHappen(progress);
+          this.scoringMachine?.whenDraggingHappen(progress);
+        }
+
+        onStartTrackingTouch(): void {
           // 开始拖拽
-        },
-        onStopTrackingTouch: () => {
+        }
+
+        onStopTrackingTouch(): void {
           // 停止拖拽
         }
-      };
+      }
+
+      const seekListener = new SeekListenerImpl(this.mKaraokeEvent, this.mLyricMachine, this.mScoringMachine);
       this.mLyricsView.setSeekListener(seekListener);
     }
   }
