@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song>
+  <general>
+    <name>不是因为寂寞才想你(Invalid Content)</name>
+    <singer>AI</singer>
+    <duration>invalid</duration>
+    <preludeEndPosition>invalid</preludeEndPosition>
+  </general>
+  <paragraphs>
+    <paragraph>
+      <monolog>
+        <line>
+          <tone begin="invalid" end="invalid" pitch="invalid" word="测" />
+        </line>
+      </monolog>
+    </paragraph>
+  </paragraphs>
+</song>
