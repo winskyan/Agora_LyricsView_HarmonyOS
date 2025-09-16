@@ -1,93 +1,172 @@
+import { LyricType } from '../constants/LyricType';
 import { LyricModel } from '../model/LyricModel';
+import { LogUtils } from '../utils/LogUtils';
 
 /**
- * 歌词机器监听器接口
+ * Interface for handling lyric-related events
  */
 export interface OnLyricListener {
   /**
-   * 重置UI
+   * Called when UI needs to be reset
    */
   resetUi(): void;
 
   /**
-   * 请求刷新UI
+   * Called when UI refresh is requested
    */
   requestRefreshUi(): void;
 }
 
 /**
- * 歌词机器 - HarmonyOS版本
- * 对应Android项目中的LyricMachine
- * 负责管理歌词的播放状态和进度
+ * State/Information manager for playing/rendering/on-going lyrics.
+ * This class handles the non-UI related logic and is shared by all components.
+ * It manages the lyrics model, progress tracking, and UI update notifications.
  */
 export class LyricMachine {
-  private lyricModel: LyricModel | null = null;
-  private currentProgress: number = 0;
-  private isReady: boolean = false;
-  private listener?: OnLyricListener;
-
-  constructor(listener?: OnLyricListener) {
-    this.listener = listener;
-  }
-
   /**
-   * 准备歌词数据
-   * @param model 歌词模型
+   * The current lyrics model being processed
    */
-  prepare(model: LyricModel): void {
-    this.lyricModel = model;
-    this.isReady = true;
-    this.currentProgress = 0;
+  private mLyricsModel: LyricModel | null = null;
+  /**
+   * Listener for lyric-related events
+   */
+  private readonly mListener: OnLyricListener;
+  /**
+   * Current progress of lyrics playback in milliseconds
+   */
+  private mCurrentLyricProgress: number = 0;
+  /**
+   * Empty lyrics model used as a fallback
+   */
+  private static readonly EMPTY_LYRICS_MODEL: LyricModel = new LyricModel(LyricType.LRC);
+
+  /**
+   * Constructs a new LyricMachine instance
+   *
+   * @param listener The listener to handle lyric-related events
+   */
+  constructor(listener: OnLyricListener) {
+    this.reset();
+    this.mListener = listener;
   }
 
   /**
-   * 设置进度
-   * @param progress 当前进度（毫秒）
+   * Sets the lyrics data and prepares for rendering
+   *
+   * @param model The lyrics model to be processed
+   */
+  prepare(model: LyricModel | null): void {
+    this.reset();
+
+    if (!model || !model.lines || model.lines.length === 0) {
+      LogUtils.e("Invalid lyrics model, use built-in EMPTY_LYRICS_MODEL");
+      this.mLyricsModel = LyricMachine.EMPTY_LYRICS_MODEL;
+      return;
+    }
+
+    this.mLyricsModel = model;
+  }
+
+  /**
+   * Checks if the lyrics machine is ready for operation
+   *
+   * @return true if lyrics model is set, false otherwise
+   */
+  isReady(): boolean {
+    return this.mLyricsModel !== null;
+  }
+
+  /**
+   * Updates the lyrics progress
+   *
+   * @param progress Current playback time in milliseconds.
+   *                 Note: progress must be greater than the lyrics end time to trigger the callback for the last line
    */
   setProgress(progress: number): void {
-    this.currentProgress = progress;
-    // TODO: 实现进度更新逻辑
+    if (progress <= 0) {
+      this.resetStats();
+      if (this.mListener) {
+        this.mListener.resetUi();
+      }
+    }
+    this.mCurrentLyricProgress = progress;
+
+    if (!this.mLyricsModel) {
+      if (this.mListener) {
+        this.mListener.resetUi();
+      }
+      return;
+    }
+
+    // 关键修复：通知UI刷新
+    if (this.mListener) {
+      this.mListener.requestRefreshUi();
+    }
   }
 
   /**
-   * 获取当前歌词进度
-   * @returns 当前进度（毫秒）
-   */
-  getCurrentLyricProgress(): number {
-    return this.currentProgress;
-  }
-
-  /**
-   * 获取歌词模型
-   * @returns 歌词模型
-   */
-  getLyricsModel(): LyricModel | null {
-    return this.lyricModel;
-  }
-
-  /**
-   * 重置状态
-   */
-  reset(): void {
-    this.lyricModel = null;
-    this.currentProgress = 0;
-    this.isReady = false;
-    this.listener?.resetUi();
-  }
-
-  /**
-   * 处理拖拽事件
-   * @param progress 拖拽到的进度
+   * Handles progress updates when dragging occurs
+   *
+   * @param progress The new progress position in milliseconds
    */
   whenDraggingHappen(progress: number): void {
-    this.currentProgress = progress;
-    // TODO: 实现拖拽处理逻辑
+    this.minorReset();
+    this.mCurrentLyricProgress = progress;
   }
 
   /**
-   * 准备UI
+   * Resets all states and properties
+   */
+  reset(): void {
+    this.resetProperties();
+    this.resetStats();
+  }
+
+  /**
+   * Resets properties when song changes
+   */
+  private resetProperties(): void {
+    this.mLyricsModel = null;
+  }
+
+  /**
+   * Resets statistics and progress
+   */
+  private resetStats(): void {
+    this.minorReset();
+  }
+
+  /**
+   * Performs a minor reset that will recover immediately
+   */
+  private minorReset(): void {
+    this.mCurrentLyricProgress = 0;
+  }
+
+  /**
+   * Prepares the UI for lyrics display
    */
   prepareUi(): void {
-    this.listener?.requestRefreshUi();
+    if (this.mListener) {
+      this.mListener.resetUi();
+    }
+  }
+
+  /**
+   * Gets the current lyrics model
+   *
+   * @return The current lyrics model
+   */
+  getLyricsModel(): LyricModel | null {
+    return this.mLyricsModel;
+  }
+
+  /**
+   * Gets the current lyrics progress
+   *
+   * @return Current progress in milliseconds
+   */
+  getCurrentLyricProgress(): number {
+    return this.mCurrentLyricProgress;
   }
 }

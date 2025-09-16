@@ -3,9 +3,9 @@ import { LyricType } from '../../constants/LyricType';
 import { KrcParser } from '../../internal/parser/KrcParser';
 import { LrcParser } from '../../internal/parser/LrcParser';
 import { XmlParser } from '../../internal/parser/XmlParser';
-import { Utils } from '../../internal/utils/Utils';
 import { LyricModel } from '../../model/LyricModel';
 import { LogUtils } from '../../utils/LogUtils';
+import { Utils } from '../../utils/Utils';
 
 /**
  * 歌词解析器分发器 - HarmonyOS版本

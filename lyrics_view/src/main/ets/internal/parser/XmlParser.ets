@@ -1,9 +1,9 @@
 import { LyricType } from '../../constants/LyricType';
-import { Utils } from '../../internal/utils/Utils';
 import { LyricModel } from '../../model/LyricModel';
 import { Lang, LyricsLineModel, Monolog, Tone } from '../../model/LyricsLineModel';
 import { PitchData } from '../../model/PitchData';
 import { LogUtils } from '../../utils/LogUtils';
+import { Utils } from '../../utils/Utils';
 
 
 /**

@@ -2,10 +2,8 @@ import abilityDelegatorRegistry from '@ohos.app.ability.abilityDelegatorRegistry
 import common from '@ohos.app.ability.common';
 import hilog from '@ohos.hilog';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from '@ohos/hypium';
-import { TestUtils } from '../utils/TestUtils';
-
 // 导入lyrics_view模块的相关类
-import { KaraokeView, LogUtils, LyricModel, LyricType, LyricsParser } from 'lyrics_view';
+import { KaraokeView, LogUtils, LyricModel, LyricType, LyricsParser, Utils } from 'lyrics_view';
 
 /**
  * 测试用例接口
@@ -58,7 +56,7 @@ async function parseLyricData(context: common.UIAbilityContext, fileName: string
   const DOMAIN = 0x0000;
 
   try {
-    const lyricsContent = await TestUtils.loadAsString(context, fileName);
+    const lyricsContent = await Utils.loadAsString(context, fileName);
     if (!lyricsContent) {
       hilog.error(DOMAIN, TAG, 'parseLyricData: lyricsContent is empty');
       return null;
@@ -191,14 +189,14 @@ export default function lyricsInstrumentedTest() {
 
       try {
         // 从rawfile读取文件内容
-        const xmlFileContent = await TestUtils.loadAsString(context, fileNameOfSong);
+        const xmlFileContent = await Utils.loadAsString(context, fileNameOfSong);
 
         expect(xmlFileContent).not().assertUndefined();
         expect(xmlFileContent).not().assertNull();
         expect(xmlFileContent!.includes(songArtist)).assertTrue();
 
         // 读取文件字节数据用于解析
-        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const xmlFileData = await Utils.loadAsBytes(context, fileNameOfSong);
 
         if (xmlFileData) {
           hilog.info(DOMAIN, TAG, `xmlFileData length: ${xmlFileData.length}`);
@@ -282,13 +280,13 @@ export default function lyricsInstrumentedTest() {
 
       try {
         // 从rawfile读取文件内容
-        const xmlFileContent = await TestUtils.loadAsString(context, fileNameOfSong);
+        const xmlFileContent = await Utils.loadAsString(context, fileNameOfSong);
         expect(xmlFileContent).not().assertUndefined();
         expect(xmlFileContent!.includes(songArtist)).assertTrue();
         expect(xmlFileContent!.includes(songTitle)).assertTrue();
 
         // 读取文件字节数据用于解析
-        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const xmlFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         expect(xmlFileData).not().assertUndefined();
 
         // 使用字节数组解析
@@ -331,14 +329,14 @@ export default function lyricsInstrumentedTest() {
         hilog.info(DOMAIN, TAG, `Testing file: ${fileNameOfSong}`);
 
         // 从rawfile读取文件内容
-        const lyricsContentInString = await TestUtils.loadAsString(context, fileNameOfSong);
+        const lyricsContentInString = await Utils.loadAsString(context, fileNameOfSong);
         if (lyricsContentInString) {
           expect(lyricsContentInString.includes(songArtist)).assertTrue();
           expect(lyricsContentInString.includes(songTitle)).assertTrue();
         }
 
         // 读取文件字节数据用于解析
-        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const xmlFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         if (xmlFileData) {
           // 解析歌词文件，期望返回null（空内容）
           const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
@@ -357,13 +355,13 @@ export default function lyricsInstrumentedTest() {
 
         hilog.info(DOMAIN, TAG, `Testing file: ${fileNameOfSong}`);
 
-        const lyricsContentInString = await TestUtils.loadAsString(context, fileNameOfSong);
+        const lyricsContentInString = await Utils.loadAsString(context, fileNameOfSong);
         if (lyricsContentInString) {
           expect(lyricsContentInString.includes(songArtist)).assertTrue();
           expect(lyricsContentInString.includes(songTitle)).assertTrue();
         }
 
-        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const xmlFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         if (xmlFileData) {
           const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
           expect(parsedLyrics).assertNull();
@@ -381,13 +379,13 @@ export default function lyricsInstrumentedTest() {
 
         hilog.info(DOMAIN, TAG, `Testing file: ${fileNameOfSong}`);
 
-        const lyricsContentInString = await TestUtils.loadAsString(context, fileNameOfSong);
+        const lyricsContentInString = await Utils.loadAsString(context, fileNameOfSong);
         if (lyricsContentInString) {
           expect(lyricsContentInString.includes(songArtist)).assertTrue();
           expect(lyricsContentInString.includes(songTitle)).assertTrue();
         }
 
-        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const xmlFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         if (xmlFileData) {
           const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
           expect(parsedLyrics).assertNull();
@@ -405,13 +403,13 @@ export default function lyricsInstrumentedTest() {
 
         hilog.info(DOMAIN, TAG, `Testing file: ${fileNameOfSong}`);
 
-        const lyricsContentInString = await TestUtils.loadAsString(context, fileNameOfSong);
+        const lyricsContentInString = await Utils.loadAsString(context, fileNameOfSong);
         if (lyricsContentInString) {
           expect(lyricsContentInString.includes(songArtist)).assertTrue();
           expect(lyricsContentInString.includes(songTitle)).assertTrue();
         }
 
-        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const xmlFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         if (xmlFileData) {
           const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
           expect(parsedLyrics).assertNull();
@@ -442,12 +440,12 @@ export default function lyricsInstrumentedTest() {
         hilog.info(DOMAIN, TAG, `Testing LRC and Pitch file parsing: ${fileNameOfSong}, ${fileNameOfPitch}`);
 
         // 读取歌词文件
-        const lrcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const lrcFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         expect(lrcFileData).not().assertUndefined();
         expect(lrcFileData).not().assertNull();
 
         // 读取音高文件
-        const pitchFileData = await TestUtils.loadAsBytes(context, fileNameOfPitch);
+        const pitchFileData = await Utils.loadAsBytes(context, fileNameOfPitch);
         expect(pitchFileData).not().assertUndefined();
         expect(pitchFileData).not().assertNull();
 
@@ -494,7 +492,7 @@ export default function lyricsInstrumentedTest() {
         hilog.info(DOMAIN, TAG, `Testing KRC file parsing: ${fileNameOfSong}`);
 
         // 读取KRC文件
-        const krcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const krcFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         expect(krcFileData).not().assertUndefined();
         expect(krcFileData).not().assertNull();
 
@@ -637,12 +635,12 @@ export default function lyricsInstrumentedTest() {
         hilog.info(DOMAIN, TAG, `Testing pitch file parsing: ${fileNameOfSong} + ${fileNameOfPitch}`);
 
         // 读取歌词文件
-        const krcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const krcFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         expect(krcFileData).not().assertUndefined();
         expect(krcFileData).not().assertNull();
 
         // 读取音高文件
-        const pitchFileData = await TestUtils.loadAsBytes(context, fileNameOfPitch);
+        const pitchFileData = await Utils.loadAsBytes(context, fileNameOfPitch);
         expect(pitchFileData).not().assertUndefined();
         expect(pitchFileData).not().assertNull();
 
@@ -690,12 +688,12 @@ export default function lyricsInstrumentedTest() {
         hilog.info(DOMAIN, TAG, `Testing KRC and pitch parsing: ${fileNameOfSong} + ${fileNameOfPitch}`);
 
         // 读取歌词文件
-        const krcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const krcFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         expect(krcFileData).not().assertUndefined();
         expect(krcFileData).not().assertNull();
 
         // 读取音高文件
-        const pitchFileData = await TestUtils.loadAsBytes(context, fileNameOfPitch);
+        const pitchFileData = await Utils.loadAsBytes(context, fileNameOfPitch);
         expect(pitchFileData).not().assertUndefined();
         expect(pitchFileData).not().assertNull();
 
@@ -755,7 +753,7 @@ export default function lyricsInstrumentedTest() {
         hilog.info(DOMAIN, TAG, `Testing enhanced LRC file: ${fileNameOfSong}`);
 
         // 读取LRC文件
-        const lrcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const lrcFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         expect(lrcFileData).not().assertUndefined();
         expect(lrcFileData).not().assertNull();
 
@@ -816,7 +814,7 @@ export default function lyricsInstrumentedTest() {
           hilog.info(DOMAIN, TAG, `Testing lyric file parsing: ${fileName}`);
 
           // 读取文件
-          const fileData = await TestUtils.loadAsBytes(context, fileName);
+          const fileData = await Utils.loadAsBytes(context, fileName);
           expect(fileData).not().assertUndefined();
           expect(fileData).not().assertNull();
 
@@ -859,7 +857,7 @@ export default function lyricsInstrumentedTest() {
         hilog.info(DOMAIN, TAG, `Testing XML file parsing: ${fileNameOfSong}`);
 
         // 读取XML文件
-        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        const xmlFileData = await Utils.loadAsBytes(context, fileNameOfSong);
         expect(xmlFileData).not().assertUndefined();
         expect(xmlFileData).not().assertNull();
 

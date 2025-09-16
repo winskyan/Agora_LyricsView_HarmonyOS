@@ -1,8 +1,8 @@
 import { LyricType } from '../../constants/LyricType';
-import { Utils } from '../../internal/utils/Utils';
 import { LyricModel } from '../../model/LyricModel';
 import { Lang, LyricsLineModel, Tone } from '../../model/LyricsLineModel';
 import { LogUtils } from '../../utils/LogUtils';
+import { Utils } from '../../utils/Utils';
 
 /**
  * LRC格式歌词解析器 - HarmonyOS版本
