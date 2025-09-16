@@ -39,8 +39,9 @@ export class LyricsParser {
         if (firstLine) {
           // 移除BOM标记
           firstLine = Utils.removeStringBom(firstLine);
+          LogUtils.i(`firstLine : ${firstLine}`)
 
-          if (firstLine.includes(`.${Constants.FILE_EXTENSION_XML}`) || firstLine.includes('<song>')) {
+          if (firstLine.includes(`${Constants.FILE_EXTENSION_XML}`) || firstLine.includes('<song>')) {
             type = LyricType.XML;
           } else if (LyricsParser.LRC_PATTERN_LINE.test(firstLine)) {
             type = LyricType.LRC;

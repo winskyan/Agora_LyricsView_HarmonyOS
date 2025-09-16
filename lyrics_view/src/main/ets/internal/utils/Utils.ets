@@ -106,28 +106,75 @@ export class Utils {
    */
   static uint8ArrayToString(uint8Array: Uint8Array, encoding: string = 'utf-8'): string {
     try {
-      // 方法1：使用 String.fromCharCode（适用于较小的数据）
-      if (uint8Array.length < 65536) {
-        return String.fromCharCode(...Array.from(uint8Array));
-      }
-
-      // 方法2：分块处理大数据
-      let result = '';
-      const chunkSize = 8192; // 8KB 块大小
-      for (let i = 0; i < uint8Array.length; i += chunkSize) {
-        const chunk = uint8Array.slice(i, i + chunkSize);
-        result += String.fromCharCode(...Array.from(chunk));
-      }
-      return result;
+      // 使用正确的UTF-8解码方法
+      return Utils.decodeUTF8(uint8Array);
     } catch (error) {
       LogUtils.e(`uint8ArrayToString error: ${error}`);
-      // 降级方案：逐字节转换
+      // 降级方案：逐字节转换（可能有乱码）
       let result = '';
       for (let i = 0; i < uint8Array.length; i++) {
         result += String.fromCharCode(uint8Array[i]);
       }
       return result;
     }
+  }
+
+  /**
+   * UTF-8解码方法
+   * 正确处理多字节UTF-8字符
+   */
+  private static decodeUTF8(uint8Array: Uint8Array): string {
+    let result = '';
+    let i = 0;
+
+    while (i < uint8Array.length) {
+      let byte1 = uint8Array[i++];
+
+      if (byte1 < 0x80) {
+        // 单字节字符 (ASCII)
+        result += String.fromCharCode(byte1);
+      } else if ((byte1 & 0xE0) === 0xC0) {
+        // 双字节字符
+        if (i >= uint8Array.length) {
+          break;
+        }
+        let byte2 = uint8Array[i++];
+        let codePoint = ((byte1 & 0x1F) << 6) | (byte2 & 0x3F);
+        result += String.fromCharCode(codePoint);
+      } else if ((byte1 & 0xF0) === 0xE0) {
+        // 三字节字符
+        if (i + 1 >= uint8Array.length) {
+          break;
+        }
+        let byte2 = uint8Array[i++];
+        let byte3 = uint8Array[i++];
+        let codePoint = ((byte1 & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | (byte3 & 0x3F);
+        result += String.fromCharCode(codePoint);
+      } else if ((byte1 & 0xF8) === 0xF0) {
+        // 四字节字符
+        if (i + 2 >= uint8Array.length) {
+          break;
+        }
+        let byte2 = uint8Array[i++];
+        let byte3 = uint8Array[i++];
+        let byte4 = uint8Array[i++];
+        let codePoint = ((byte1 & 0x07) << 18) | ((byte2 & 0x3F) << 12) | ((byte3 & 0x3F) << 6) | (byte4 & 0x3F);
+
+        // 处理超出基本多文种平面的字符
+        if (codePoint > 0xFFFF) {
+          codePoint -= 0x10000;
+          result += String.fromCharCode(0xD800 + (codePoint >> 10));
+          result += String.fromCharCode(0xDC00 + (codePoint & 0x3FF));
+        } else {
+          result += String.fromCharCode(codePoint);
+        }
+      } else {
+        // 无效的UTF-8字节，跳过
+        continue;
+      }
+    }
+
+    return result;
   }
 
   /**

@@ -1,3 +1,4 @@
+import abilityDelegatorRegistry from '@ohos.app.ability.abilityDelegatorRegistry';
 import common from '@ohos.app.ability.common';
 import hilog from '@ohos.hilog';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from '@ohos/hypium';
@@ -31,9 +32,18 @@ interface LineWithTones {
 }
 
 /**
+ * Mock Context接口 - 用于测试环境
+ */
+interface MockContext {
+  resourceManager: object | null;
+  filesDir: string;
+  cacheDir: string;
+}
+
+/**
  * 启用歌词视图日志
  */
-function enableLyricViewExLog(context?: common.UIAbilityContext): void {
+function enableLyricViewLog(context?: common.UIAbilityContext): void {
   if (context) {
     LogUtils.enableLog(context, true, true);
   }
@@ -73,20 +83,42 @@ async function parseLyricData(context: common.UIAbilityContext, fileName: string
  */
 export default function lyricsInstrumentedTest() {
   describe('LyricsInstrumentedTest', () => {
-    const TAG = 'LyricsInstrumentedTest';
+    const TAG = 'LyricsView-LyricsInstrumentedTest';
     const DOMAIN = 0x0000;
     let context: common.UIAbilityContext | undefined;
     let karaokeView: KaraokeView;
 
     beforeAll(async () => {
       hilog.info(DOMAIN, TAG, 'beforeAll: 初始化测试环境');
-      // 获取测试上下文
-      // 在测试环境中，上下文通常通过其他方式获取
-      // 这里先设置为undefined，实际测试时会由测试框架提供
-      context = undefined;
+
+      try {
+        // 获取测试上下文 - 使用abilityDelegatorRegistry
+        const abilityDelegator = abilityDelegatorRegistry.getAbilityDelegator();
+        if (abilityDelegator) {
+          hilog.info(DOMAIN, TAG, 'AbilityDelegator obtained');
+
+          // 尝试获取当前顶层Ability
+          const topAbility = await abilityDelegator.getCurrentTopAbility();
+          if (topAbility && topAbility.context) {
+            context = topAbility.context as common.UIAbilityContext;
+            hilog.info(DOMAIN, TAG, 'Context obtained from top ability');
+          } else {
+            hilog.warn(DOMAIN, TAG, 'No top ability or context available');
+          }
+        } else {
+          hilog.warn(DOMAIN, TAG, 'AbilityDelegator not available');
+        }
+
+        // 如果还是没有context，尝试其他方法
+        if (!context) {
+          hilog.warn(DOMAIN, TAG, 'Context not available - tests will be limited');
+        }
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `Failed to get context: ${JSON.stringify(error)}`);
+      }
 
       // 启用日志
-      enableLyricViewExLog(context);
+      enableLyricViewLog(context);
     });
 
     beforeEach(() => {
@@ -109,17 +141,35 @@ export default function lyricsInstrumentedTest() {
     it('useAppContext', 0, async () => {
       hilog.info(DOMAIN, TAG, 'useAppContext: 测试应用上下文');
 
-      // 在实际测试环境中，context 应该由测试框架提供
-      // 这里先跳过 context 相关的断言
-      hilog.info(DOMAIN, TAG, 'Context test skipped - requires test framework setup');
-
-      // 创建KaraokeView实例 - 使用模拟context
       if (context) {
+        hilog.info(DOMAIN, TAG, 'Context is available for testing');
+
+        // 创建KaraokeView实例
         karaokeView = new KaraokeView(context);
         expect(karaokeView).not().assertUndefined();
-        enableLyricViewExLog(context);
+
+        // 启用日志
+        enableLyricViewLog(context);
+
+        hilog.info(DOMAIN, TAG, 'KaraokeView created successfully');
       } else {
-        hilog.info(DOMAIN, TAG, 'KaraokeView creation skipped - no context available');
+        hilog.warn(DOMAIN, TAG, 'Context not available - creating mock context for basic testing');
+
+        // 创建一个基本的mock context用于测试
+        const mockContext: MockContext = {
+          resourceManager: null,
+          filesDir: '/data/app/test',
+          cacheDir: '/data/app/cache'
+        };
+
+        try {
+          karaokeView = new KaraokeView(mockContext as common.UIAbilityContext);
+          expect(karaokeView).not().assertUndefined();
+          hilog.info(DOMAIN, TAG, 'KaraokeView created with mock context');
+        } catch (error) {
+          hilog.warn(DOMAIN, TAG, `KaraokeView creation failed with mock context: ${JSON.stringify(error)}`);
+          // 这不是测试失败，只是环境限制
+        }
       }
     });
 
@@ -142,16 +192,28 @@ export default function lyricsInstrumentedTest() {
       try {
         // 从rawfile读取文件内容
         const xmlFileContent = await TestUtils.loadAsString(context, fileNameOfSong);
+
         expect(xmlFileContent).not().assertUndefined();
+        expect(xmlFileContent).not().assertNull();
         expect(xmlFileContent!.includes(songArtist)).assertTrue();
 
         // 读取文件字节数据用于解析
         const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+
+        if (xmlFileData) {
+          hilog.info(DOMAIN, TAG, `xmlFileData length: ${xmlFileData.length}`);
+        }
+
         expect(xmlFileData).not().assertUndefined();
+        expect(xmlFileData).not().assertNull();
 
         // 使用字节数组解析
         const parsedLyrics = LyricsParser.parseLyricData(xmlFileData!, undefined, true, 0);
+        hilog.info(DOMAIN, TAG, `parsedLyrics is null: ${parsedLyrics === null}`);
+        hilog.info(DOMAIN, TAG, `parsedLyrics is undefined: ${parsedLyrics === undefined}`);
+
         expect(parsedLyrics).not().assertUndefined();
+        expect(parsedLyrics).not().assertNull();
 
         hilog.info(DOMAIN, TAG, `Line count for this lyrics: ${parsedLyrics!.lines.length}`);
 
@@ -159,11 +221,37 @@ export default function lyricsInstrumentedTest() {
         for (let i = 0; i < parsedLyrics!.lines.length; i++) {
           const line = parsedLyrics!.lines[i];
           // 简化输出：避免复杂断言
-          hilog.info(DOMAIN, TAG, `Line summary: index=${i}`);
+          hilog.info(DOMAIN, TAG, `Line info: ${line}`);
         }
 
-        // 验证解析结果
-        expect(parsedLyrics!.lines.length > 0).assertTrue();
+        // 验证解析结果 - 应该有42行歌词
+        expect(parsedLyrics!.lines.length).assertEqual(42);
+
+        // 第7行包含 '泪' '慢' '慢' '流' '慢' '慢' '收'
+        const the7thLine = parsedLyrics!.lines[6];
+        const startOf7thLine = parsedLyrics!.lines[6].getStartTime();
+        const endOf7thLine = parsedLyrics!.lines[6].getEndTime();
+        expect(endOf7thLine - startOf7thLine > 0).assertTrue();
+        expect(the7thLine.tones[0].word === "泪" && the7thLine.tones[0].pitch === 176).assertTrue();
+        expect(the7thLine.tones[1].word === "慢" && the7thLine.tones[1].pitch === 0).assertTrue();
+        expect(the7thLine.tones[2].word === "慢" && the7thLine.tones[2].pitch === 176).assertTrue();
+        expect(the7thLine.tones[3].word === "流" && the7thLine.tones[3].pitch === 158).assertTrue();
+        expect(the7thLine.tones[4].word === "慢" && the7thLine.tones[4].pitch === 125).assertTrue();
+        expect(the7thLine.tones[5].word === "慢" && the7thLine.tones[5].pitch === 159).assertTrue();
+        expect(the7thLine.tones[6].word === "收" && the7thLine.tones[6].pitch === 150).assertTrue();
+
+        // 第41行包含 '你' '何' '忍' '远' '走' '高' '飞'
+        const the41thLine = parsedLyrics!.lines[40];
+        const startOf41thLine = parsedLyrics!.lines[40].getStartTime();
+        const endOf41thLine = parsedLyrics!.lines[40].getEndTime();
+        expect(endOf41thLine - startOf41thLine > 0).assertTrue();
+        expect(the41thLine.tones[0].word === "你" && the41thLine.tones[0].pitch === 0).assertTrue();
+        expect(the41thLine.tones[1].word === "何" && the41thLine.tones[1].pitch === 0).assertTrue();
+        expect(the41thLine.tones[2].word === "忍" && the41thLine.tones[2].pitch === 0).assertTrue();
+        expect(the41thLine.tones[3].word === "远" && the41thLine.tones[3].pitch === 0).assertTrue();
+        expect(the41thLine.tones[4].word === "走" && the41thLine.tones[4].pitch === 0).assertTrue();
+        expect(the41thLine.tones[5].word === "高" && the41thLine.tones[5].pitch === 0).assertTrue();
+        expect(the41thLine.tones[6].word === "飞" && the41thLine.tones[6].pitch === 0).assertTrue();
 
       } catch (error) {
         hilog.error(DOMAIN, TAG, `parseOneAndOnlyOneLineXmlFile failed: ${JSON.stringify(error)}`);
@@ -336,7 +424,7 @@ export default function lyricsInstrumentedTest() {
     it('testParseLyricDataFormat', 0, async () => {
       hilog.info(DOMAIN, TAG, 'testParseLyricDataFormat: 测试歌词数据格式解析');
 
-      enableLyricViewExLog(context);
+      enableLyricViewLog(context);
 
       if (!context) {
         hilog.info(DOMAIN, TAG, 'Test skipped - no context available');

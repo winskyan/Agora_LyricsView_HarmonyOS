@@ -75,6 +75,7 @@ export class XmlParser {
     includeCopyrightSentence: boolean = true,
     lyricOffset: number = 0
   ): LyricModel | null {
+    LogUtils.d(`parseXmlLyricData lyricData: ${lyricData.length}, pitchData: ${pitchData?.length}, includeCopyrightSentence: ${includeCopyrightSentence}, lyricOffset: lyricOffset=${lyricOffset}`);
     try {
       // 解析音调数据
       let pitchesModel: XmlPitchData | null = null;
@@ -133,6 +134,7 @@ export class XmlParser {
     try {
       // 移除BOM标记
       const cleanContent = Utils.removeStringBom(xmlContent.trim());
+      LogUtils.d(`parseXML xmlContent: ${cleanContent}`);
 
       // 使用简单的XML解析（HarmonyOS可能没有完整的XML解析器）
       const song = XmlParser.parseXmlContent(cleanContent);
@@ -213,6 +215,19 @@ export class XmlParser {
       const midiMatch = xmlContent.match(/<midi_lrc>([\s\S]*?)<\/midi_lrc>/);
       if (midiMatch) {
         song.midi = XmlParser.parseMidiLrc(midiMatch[1]);
+      }
+
+      // 如果没有找到midi_lrc，尝试解析paragraphs（兼容不同格式）
+      if (!song.midi) {
+        const paragraphsMatch = xmlContent.match(/<paragraphs>([\s\S]*?)<\/paragraphs>/);
+        if (paragraphsMatch) {
+          song.midi = { paragraphs: [] };
+          const paragraphMatches = paragraphsMatch[1].matchAll(/<paragraph>([\s\S]*?)<\/paragraph>/g);
+          for (const paragraphMatch of paragraphMatches) {
+            const paragraph = XmlParser.parseParagraphDirect(paragraphMatch[1]);
+            song.midi.paragraphs.push(paragraph);
+          }
+        }
       }
     } catch (error) {
       LogUtils.e(`parseXmlContent error: ${error}`);
@@ -313,6 +328,46 @@ export class XmlParser {
   }
 
   /**
+   * 直接解析段落数据（用于处理包含monolog的格式）
+   * @param paragraphContent paragraph标签内容
+   * @returns Paragraph对象
+   */
+  private static parseParagraphDirect(paragraphContent: string): Paragraph {
+    const paragraph: Paragraph = { lines: [] };
+
+    try {
+      // 匹配所有monolog标签
+      const monologMatches = paragraphContent.matchAll(/<monolog[^>]*>([\s\S]*?)<\/monolog>/g);
+
+      for (const monologMatch of monologMatches) {
+        const monologContent = monologMatch[1];
+        const lines = XmlParser.parseMonologLines(monologContent);
+        for (const line of lines) {
+          line.duration = line.getEndTime() - line.getStartTime();
+        }
+        paragraph.lines.push(...lines);
+      }
+
+      // 如果没有monolog，尝试直接解析line标签
+      if (paragraph.lines.length === 0) {
+        const lineMatches = paragraphContent.matchAll(/<line[^>]*>([\s\S]*?)<\/line>/g);
+        for (const lineMatch of lineMatches) {
+          const lineContent = lineMatch[1];
+          const line = XmlParser.parseDirectLine(lineContent);
+          if (line) {
+            line.duration = line.getEndTime() - line.getStartTime();
+            paragraph.lines.push(line);
+          }
+        }
+      }
+    } catch (error) {
+      LogUtils.e(`parseParagraphDirect error: ${error}`);
+    }
+
+    return paragraph;
+  }
+
+  /**
    * 解析歌词行数据
    * @param sentenceTag sentence标签（包含属性）
    * @param sentenceContent sentence标签内容
@@ -330,20 +385,24 @@ export class XmlParser {
       }
 
       // 匹配所有tone标签
-      const toneMatches = sentenceContent.matchAll(/<tone[^>]*>([\s\S]*?)<\/tone>/g);
+      const toneMatches = sentenceContent.matchAll(/<tone[^>]*>[\s\S]*?<\/tone>/g);
 
       for (const toneMatch of toneMatches) {
-        const tone = XmlParser.parseTone(toneMatch[0], toneMatch[1]);
+        const toneTag = toneMatch[0];
+        const toneContent = XmlParser.extractToneContent(toneTag);
+        const tone = XmlParser.parseTone(toneTag, toneContent);
         if (tone) {
           line.tones.push(tone);
         }
       }
 
       // 匹配所有monolog标签
-      const monologMatches = sentenceContent.matchAll(/<monolog[^>]*>([\s\S]*?)<\/monolog>/g);
+      const monologMatches = sentenceContent.matchAll(/<monolog[^>]*>[\s\S]*?<\/monolog>/g);
 
       for (const monologMatch of monologMatches) {
-        const monolog = XmlParser.parseMonolog(monologMatch[0], monologMatch[1]);
+        const monologTag = monologMatch[0];
+        const monologContent = XmlParser.extractMonologContent(monologTag);
+        const monolog = XmlParser.parseMonolog(monologTag, monologContent);
         if (monolog) {
           line.tones.push(monolog);
         }
@@ -353,6 +412,82 @@ export class XmlParser {
     }
 
     return [line];
+  }
+
+  /**
+   * 解析monolog中的行数据
+   * @param monologContent monolog标签内容
+   * @returns LyricsLineModel对象数组
+   */
+  private static parseMonologLines(monologContent: string): LyricsLineModel[] {
+    const lines: LyricsLineModel[] = [];
+
+    try {
+      // 匹配所有line标签
+      const lineMatches = monologContent.matchAll(/<line[^>]*>([\s\S]*?)<\/line>/g);
+
+      for (const lineMatch of lineMatches) {
+        const lineContent = lineMatch[1];
+        const line = XmlParser.parseDirectLine(lineContent);
+        if (line) {
+          lines.push(line);
+        }
+      }
+    } catch (error) {
+      LogUtils.e(`parseMonologLines error: ${error}`);
+    }
+
+    return lines;
+  }
+
+  /**
+   * 直接解析line标签内容
+   * @param lineContent line标签内容
+   * @returns LyricsLineModel对象
+   */
+  private static parseDirectLine(lineContent: string): LyricsLineModel | null {
+    try {
+      const line = new LyricsLineModel();
+
+      // 匹配所有tone标签
+      const toneMatches =
+        lineContent.matchAll(/<tone[^>]*\s+begin="([^"]*)"[^>]*\s+end="([^"]*)"[^>]*\s+pitch="([^"]*)"[^>]*\s+word="([^"]*)"[^>]*\/>/g);
+
+      for (const toneMatch of toneMatches) {
+        const tone = new Tone();
+        tone.begin = Math.floor(parseFloat(toneMatch[1]) * 1000);
+        tone.end = Math.floor(parseFloat(toneMatch[2]) * 1000);
+        tone.pitch = Math.floor(parseFloat(toneMatch[3]));
+        tone.word = toneMatch[4];
+        tone.lang = Lang.Chinese; // 默认中文
+        line.tones.push(tone);
+      }
+
+      return line.tones.length > 0 ? line : null;
+    } catch (error) {
+      LogUtils.e(`parseDirectLine error: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * 提取tone标签的内容
+   * @param toneTag 完整的tone标签
+   * @returns tone标签内容
+   */
+  private static extractToneContent(toneTag: string): string {
+    const match = toneTag.match(/<tone[^>]*>([\s\S]*?)<\/tone>/);
+    return match ? match[1] : '';
+  }
+
+  /**
+   * 提取monolog标签的内容
+   * @param monologTag 完整的monolog标签
+   * @returns monolog标签内容
+   */
+  private static extractMonologContent(monologTag: string): string {
+    const match = monologTag.match(/<monolog[^>]*>([\s\S]*?)<\/monolog>/);
+    return match ? match[1] : '';
   }
 
   /**
@@ -368,12 +503,16 @@ export class XmlParser {
       // 解析属性
       const beginMatch = toneTag.match(/begin="([^"]*)"/);
       if (beginMatch) {
-        tone.begin = Math.floor(parseFloat(beginMatch[1]) * 1000);
+        const beginValue = parseFloat(beginMatch[1]);
+        // 如果值小于1000，假设是秒，需要转换为毫秒
+        tone.begin = beginValue < 1000 ? Math.floor(beginValue * 1000) : Math.floor(beginValue);
       }
 
       const endMatch = toneTag.match(/end="([^"]*)"/);
       if (endMatch) {
-        tone.end = Math.floor(parseFloat(endMatch[1]) * 1000);
+        const endValue = parseFloat(endMatch[1]);
+        // 如果值小于1000，假设是秒，需要转换为毫秒
+        tone.end = endValue < 1000 ? Math.floor(endValue * 1000) : Math.floor(endValue);
       }
 
       const pitchMatch = toneTag.match(/pitch="([^"]*)"/);
@@ -396,10 +535,6 @@ export class XmlParser {
 
       // 解析pronounce属性（发音）
       const pronounceMatch = toneTag.match(/pronounce="([^"]*)"/);
-      if (pronounceMatch) {
-        // 可以存储发音信息，但当前数据模型中没有对应字段
-        LogUtils.d(`Tone pronounce: ${pronounceMatch[1]}`);
-      }
 
       // 解析word内容
       const wordMatch = toneContent.match(/<word>(.*?)<\/word>/);
@@ -438,12 +573,16 @@ export class XmlParser {
       // 解析属性
       const beginMatch = monologTag.match(/begin="([^"]*)"/);
       if (beginMatch) {
-        monolog.begin = Math.floor(parseFloat(beginMatch[1]) * 1000);
+        const beginValue = parseFloat(beginMatch[1]);
+        // 如果值小于1000，假设是秒，需要转换为毫秒
+        monolog.begin = beginValue < 1000 ? Math.floor(beginValue * 1000) : Math.floor(beginValue);
       }
 
       const endMatch = monologTag.match(/end="([^"]*)"/);
       if (endMatch) {
-        monolog.end = Math.floor(parseFloat(endMatch[1]) * 1000);
+        const endValue = parseFloat(endMatch[1]);
+        // 如果值小于1000，假设是秒，需要转换为毫秒
+        monolog.end = endValue < 1000 ? Math.floor(endValue * 1000) : Math.floor(endValue);
       }
 
       const pitchMatch = monologTag.match(/pitch="([^"]*)"/);
