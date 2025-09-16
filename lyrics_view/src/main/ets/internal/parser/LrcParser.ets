@@ -204,8 +204,12 @@ export class LrcParser {
         return lines; // 返回空数组
       }
 
+      // 重置正则表达式的lastIndex，避免test()方法影响matchAll()
+      LrcParser.LRC_LYRIC_CONTENT_PATTERN.lastIndex = 0;
       if (LrcParser.LRC_LYRIC_CONTENT_PATTERN.test(text)) {
         const lineModel = new LyricsLineModel();
+        // 重置正则表达式的lastIndex，确保matchAll()从头开始匹配
+        LrcParser.LRC_LYRIC_CONTENT_PATTERN.lastIndex = 0;
         const matches = text.matchAll(LrcParser.LRC_LYRIC_CONTENT_PATTERN);
 
         for (const match of matches) {

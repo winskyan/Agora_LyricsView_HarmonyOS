@@ -1,6 +1,6 @@
+import { LyricType } from '../constants/LyricType';
 import { LyricsLineModel } from './LyricsLineModel';
 import { PitchData } from './PitchData';
-import { LyricType } from '../constants/LyricType';
 
 /**
  * 歌词数据模型 - HarmonyOS版本
@@ -44,7 +44,7 @@ export class LyricModel {
   /**
    * List of pitch data points for karaoke scoring
    */
-  public pitchDataList: PitchData[] = [];
+  public pitchDataList: PitchData[] | null = null;
 
   /**
    * Constructor for LyricModel

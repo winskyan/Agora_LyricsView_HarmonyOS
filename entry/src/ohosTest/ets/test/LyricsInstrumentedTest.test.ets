@@ -275,6 +275,10 @@ export default function lyricsInstrumentedTest() {
       const fileNameOfSong = "c18228e223144247810ee511916e2207.xml";
       const songTitle = "路边的野花不要采";
       const songArtist = "邓丽君";
+      const expectedNumberOfLines = 20;
+
+      const expectedPreludeEndPosition = Math.floor(13.0600 * 1000);
+      const expectedDuration = Math.floor(113.0414 * 1000);
 
       try {
         // 从rawfile读取文件内容
@@ -294,10 +298,12 @@ export default function lyricsInstrumentedTest() {
         // 验证元数据
         expect(parsedLyrics!.name).assertEqual(songTitle);
         expect(parsedLyrics!.singer).assertEqual(songArtist);
+        expect(parsedLyrics!.preludeEndPosition).assertEqual(expectedPreludeEndPosition);
+        expect(parsedLyrics!.duration).assertEqual(expectedDuration);
+        expect(parsedLyrics!.lines.length).assertEqual(expectedNumberOfLines);
 
         hilog.info(DOMAIN, TAG,
           `Metadata for this lyrics, numberOfLines: ${parsedLyrics!.lines.length}, title: ${parsedLyrics!.name}, singer: ${parsedLyrics!.singer}, preludeEndPosition: ${parsedLyrics!.preludeEndPosition}, duration: ${parsedLyrics!.duration}`);
-
       } catch (error) {
         hilog.error(DOMAIN, TAG, `parseMetadataForThisLyrics failed: ${JSON.stringify(error)}`);
         expect().assertFail();
@@ -316,29 +322,103 @@ export default function lyricsInstrumentedTest() {
         return;
       }
 
-      const testFiles = [
-        "237732-empty-content.xml",
-        "237732-empty-content-2.xml",
-        "237732-invalid-content.xml",
-        "237732-invalid-content-2.xml"
-      ];
+      // 测试空内容文件 - 237732-empty-content.xml
+      try {
+        let fileNameOfSong = "237732-empty-content.xml";
+        let songTitle = "不是因为寂寞才想你(Empty Content)";
+        let songArtist = "AI";
 
-      for (const fileName of testFiles) {
-        try {
-          hilog.info(DOMAIN, TAG, `Testing file: ${fileName}`);
+        hilog.info(DOMAIN, TAG, `Testing file: ${fileNameOfSong}`);
 
-          // 读取文件字节数据用于解析
-          const xmlFileData = await TestUtils.loadAsBytes(context, fileName);
-          if (xmlFileData) {
-            // 解析歌词文件，期望返回null或抛出异常
-            const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
-            // 对于异常文件，可能返回null或有限的数据
-            hilog.info(DOMAIN, TAG, `File ${fileName} parsed result: ${parsedLyrics ? 'success' : 'null'}`);
-          }
-        } catch (error) {
-          hilog.info(DOMAIN, TAG, `Expected error for ${fileName}: ${JSON.stringify(error)}`);
-          // 异常文件应该解析失败，这是预期的
+        // 从rawfile读取文件内容
+        const lyricsContentInString = await TestUtils.loadAsString(context, fileNameOfSong);
+        if (lyricsContentInString) {
+          expect(lyricsContentInString.includes(songArtist)).assertTrue();
+          expect(lyricsContentInString.includes(songTitle)).assertTrue();
         }
+
+        // 读取文件字节数据用于解析
+        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        if (xmlFileData) {
+          // 解析歌词文件，期望返回null（空内容）
+          const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
+          expect(parsedLyrics).assertNull();
+          hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} parsed result: null (expected)`);
+        }
+      } catch (error) {
+        hilog.info(DOMAIN, TAG, `Expected error for empty content file: ${JSON.stringify(error)}`);
+      }
+
+      // 测试空内容文件2 - 237732-empty-content-2.xml
+      try {
+        let fileNameOfSong = "237732-empty-content-2.xml";
+        let songTitle = "不是因为寂寞才想你(Empty Content)";
+        let songArtist = "AI";
+
+        hilog.info(DOMAIN, TAG, `Testing file: ${fileNameOfSong}`);
+
+        const lyricsContentInString = await TestUtils.loadAsString(context, fileNameOfSong);
+        if (lyricsContentInString) {
+          expect(lyricsContentInString.includes(songArtist)).assertTrue();
+          expect(lyricsContentInString.includes(songTitle)).assertTrue();
+        }
+
+        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        if (xmlFileData) {
+          const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
+          expect(parsedLyrics).assertNull();
+          hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} parsed result: null (expected)`);
+        }
+      } catch (error) {
+        hilog.info(DOMAIN, TAG, `Expected error for empty content file 2: ${JSON.stringify(error)}`);
+      }
+
+      // 测试无效内容文件 - 237732-invalid-content.xml
+      try {
+        let fileNameOfSong = "237732-invalid-content.xml";
+        let songTitle = "不是因为寂寞才想你(Invalid Content)";
+        let songArtist = "AI";
+
+        hilog.info(DOMAIN, TAG, `Testing file: ${fileNameOfSong}`);
+
+        const lyricsContentInString = await TestUtils.loadAsString(context, fileNameOfSong);
+        if (lyricsContentInString) {
+          expect(lyricsContentInString.includes(songArtist)).assertTrue();
+          expect(lyricsContentInString.includes(songTitle)).assertTrue();
+        }
+
+        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        if (xmlFileData) {
+          const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
+          expect(parsedLyrics).assertNull();
+          hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} parsed result: null (expected)`);
+        }
+      } catch (error) {
+        hilog.info(DOMAIN, TAG, `Expected error for invalid content file: ${JSON.stringify(error)}`);
+      }
+
+      // 测试无效内容文件2 - 237732-invalid-content-2.xml
+      try {
+        let fileNameOfSong = "237732-invalid-content-2.xml";
+        let songTitle = "不是因为寂寞才想你(Invalid Content)";
+        let songArtist = "AI";
+
+        hilog.info(DOMAIN, TAG, `Testing file: ${fileNameOfSong}`);
+
+        const lyricsContentInString = await TestUtils.loadAsString(context, fileNameOfSong);
+        if (lyricsContentInString) {
+          expect(lyricsContentInString.includes(songArtist)).assertTrue();
+          expect(lyricsContentInString.includes(songTitle)).assertTrue();
+        }
+
+        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        if (xmlFileData) {
+          const parsedLyrics = LyricsParser.parseLyricData(xmlFileData, undefined, true, 0);
+          expect(parsedLyrics).assertNull();
+          hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} parsed result: null (expected)`);
+        }
+      } catch (error) {
+        hilog.info(DOMAIN, TAG, `Expected error for invalid content file 2: ${JSON.stringify(error)}`);
       }
     });
 
@@ -356,24 +436,39 @@ export default function lyricsInstrumentedTest() {
 
       const fileNameOfSong = "6246262727282260.lrc";
       const fileNameOfPitch = "6246262727282260.bin";
+      const expectedNumberOfLines = 60;
 
       try {
+        hilog.info(DOMAIN, TAG, `Testing LRC and Pitch file parsing: ${fileNameOfSong}, ${fileNameOfPitch}`);
+
         // 读取歌词文件
         const lrcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
         expect(lrcFileData).not().assertUndefined();
+        expect(lrcFileData).not().assertNull();
 
         // 读取音高文件
         const pitchFileData = await TestUtils.loadAsBytes(context, fileNameOfPitch);
         expect(pitchFileData).not().assertUndefined();
+        expect(pitchFileData).not().assertNull();
 
         // 使用字节数组解析（包含pitch）
         const parsedLyrics = LyricsParser.parseLyricData(lrcFileData!, pitchFileData!, true, 0);
         expect(parsedLyrics).not().assertUndefined();
+        expect(parsedLyrics).not().assertNull();
 
         const lineCount = parsedLyrics!.lines.length;
-        expect(lineCount > 0).assertTrue();
+        expect(lineCount).assertEqual(expectedNumberOfLines);
 
-        hilog.info(DOMAIN, TAG, `LRC file parsed successfully with ${lineCount} lines`);
+        hilog.info(DOMAIN, TAG,
+          `LRC file parsed successfully with ${lineCount} lines (expected: ${expectedNumberOfLines})`);
+
+        // 验证解析结果的基本属性
+        if (parsedLyrics!.lines.length > 0) {
+          const firstLine = parsedLyrics!.lines[0];
+          expect(firstLine.getStartTime() >= 0).assertTrue();
+          expect(firstLine.getEndTime() > firstLine.getStartTime()).assertTrue();
+          hilog.info(DOMAIN, TAG, `First line: start=${firstLine.getStartTime()}, end=${firstLine.getEndTime()}`);
+        }
 
       } catch (error) {
         hilog.error(DOMAIN, TAG, `parseLrcAndPitchFile failed: ${JSON.stringify(error)}`);
@@ -396,20 +491,30 @@ export default function lyricsInstrumentedTest() {
       const fileNameOfSong = "4875936889260991133.krc";
 
       try {
+        hilog.info(DOMAIN, TAG, `Testing KRC file parsing: ${fileNameOfSong}`);
+
         // 读取KRC文件
         const krcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
         expect(krcFileData).not().assertUndefined();
+        expect(krcFileData).not().assertNull();
 
         // 使用字节数组解析
         const model = LyricsParser.parseLyricData(krcFileData!, undefined, true, 0);
         expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
 
+        // 验证解析结果
         expect(model!.lines.length > 0).assertTrue();
+        expect(model!.lines[0].getStartTime()).assertEqual(0);
         expect(model!.name).assertEqual("十年 (《明年今日》国语版|《隐婚男女》电影插曲|《摆渡人》电影插曲)");
         expect(model!.singer).assertEqual("陈奕迅");
         expect(model!.type).assertEqual(LyricType.KRC);
+        expect(model!.duration).assertEqual(182736); // [179088,3648]
+        expect(model!.preludeEndPosition).assertEqual(0);
+        expect(model!.pitchDataList).assertNull();
 
         hilog.info(DOMAIN, TAG, `KRC file parsed successfully: ${model!.name} by ${model!.singer}`);
+        hilog.info(DOMAIN, TAG, `Duration: ${model!.duration}ms, Lines: ${model!.lines.length}`);
 
       } catch (error) {
         hilog.error(DOMAIN, TAG, `testParseKRCFile failed: ${JSON.stringify(error)}`);
@@ -431,27 +536,356 @@ export default function lyricsInstrumentedTest() {
         return;
       }
 
-      const testCases: TestCase[] = [
-        { fileName: "4875936889260991133.krc", expectedType: LyricType.KRC },
-        { fileName: "6246262727282260.lrc", expectedType: LyricType.LRC },
-        { fileName: "810507.xml", expectedType: LyricType.XML }
+      // 测试KRC文件类型检测 - 8141335308133421388.krc
+      try {
+        let fileNameOfSong = "8141335308133421388.krc";
+        hilog.info(DOMAIN, TAG, `Testing file format detection: ${fileNameOfSong}`);
+
+        const model = await parseLyricData(context, fileNameOfSong);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+        expect(model!.type).assertEqual(LyricType.KRC);
+
+        hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} detected as type: ${model!.type}`);
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `Format detection failed for 8141335308133421388.krc: ${JSON.stringify(error)}`);
+        expect().assertFail();
+      }
+
+      // 测试KRC文件类型检测 - 4875936889260991133.krc
+      try {
+        let fileNameOfSong = "4875936889260991133.krc";
+        hilog.info(DOMAIN, TAG, `Testing file format detection: ${fileNameOfSong}`);
+
+        const model = await parseLyricData(context, fileNameOfSong);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+        expect(model!.type).assertEqual(LyricType.KRC);
+
+        hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} detected as type: ${model!.type}`);
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `Format detection failed for 4875936889260991133.krc: ${JSON.stringify(error)}`);
+        expect().assertFail();
+      }
+
+      // 测试XML文件类型检测 - 660078.xml
+      try {
+        let fileNameOfSong = "660078.xml";
+        hilog.info(DOMAIN, TAG, `Testing file format detection: ${fileNameOfSong}`);
+
+        const model = await parseLyricData(context, fileNameOfSong);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+        expect(model!.type).assertEqual(LyricType.XML);
+
+        hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} detected as type: ${model!.type}`);
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `Format detection failed for 660078.xml: ${JSON.stringify(error)}`);
+        expect().assertFail();
+      }
+
+      // 测试LRC文件类型检测 - 6246262727282260.lrc
+      try {
+        let fileNameOfSong = "6246262727282260.lrc";
+        hilog.info(DOMAIN, TAG, `Testing file format detection: ${fileNameOfSong}`);
+
+        const model = await parseLyricData(context, fileNameOfSong);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+        expect(model!.type).assertEqual(LyricType.LRC);
+
+        hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} detected as type: ${model!.type}`);
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `Format detection failed for 6246262727282260.lrc: ${JSON.stringify(error)}`);
+        expect().assertFail();
+      }
+
+      // 测试LRC文件类型检测 - kj5380f846be5811ed9efdb2f16c44e48f.lrc
+      try {
+        let fileNameOfSong = "kj5380f846be5811ed9efdb2f16c44e48f.lrc";
+        hilog.info(DOMAIN, TAG, `Testing file format detection: ${fileNameOfSong}`);
+
+        const model = await parseLyricData(context, fileNameOfSong);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+        expect(model!.type).assertEqual(LyricType.LRC);
+
+        hilog.info(DOMAIN, TAG, `File ${fileNameOfSong} detected as type: ${model!.type}`);
+      } catch (error) {
+        hilog.error(DOMAIN, TAG,
+          `Format detection failed for kj5380f846be5811ed9efdb2f16c44e48f.lrc: ${JSON.stringify(error)}`);
+        expect().assertFail();
+      }
+    });
+
+    /**
+     * 测试解析Pitch文件
+     * 对应Android的testParsePitchFile测试
+     */
+    it('testParsePitchFile', 0, async () => {
+      hilog.info(DOMAIN, TAG, 'testParsePitchFile: 测试解析Pitch文件');
+
+      if (!context) {
+        hilog.info(DOMAIN, TAG, 'Test skipped - no context available');
+        return;
+      }
+
+      const fileNameOfSong = "4875936889260991133.krc";
+      const fileNameOfPitch = "4875936889260991133.pitch";
+
+      try {
+        hilog.info(DOMAIN, TAG, `Testing pitch file parsing: ${fileNameOfSong} + ${fileNameOfPitch}`);
+
+        // 读取歌词文件
+        const krcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        expect(krcFileData).not().assertUndefined();
+        expect(krcFileData).not().assertNull();
+
+        // 读取音高文件
+        const pitchFileData = await TestUtils.loadAsBytes(context, fileNameOfPitch);
+        expect(pitchFileData).not().assertUndefined();
+        expect(pitchFileData).not().assertNull();
+
+        // 使用字节数组解析（包含pitch）
+        const model = LyricsParser.parseLyricData(krcFileData!, pitchFileData!, true, 0);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+
+        // 验证pitch数据
+        expect(model!.pitchDataList).not().assertNull();
+        expect(model!.pitchDataList!.length).assertEqual(294);
+        expect(model!.pitchDataList![0].duration).assertEqual(241);
+        expect(model!.pitchDataList![0].startTime).assertEqual(15203);
+        expect(model!.pitchDataList![0].pitch).assertEqual(50);
+
+        const lastIndex = model!.pitchDataList!.length - 1;
+        expect(model!.pitchDataList![lastIndex].duration).assertEqual(2907);
+        expect(model!.pitchDataList![lastIndex].startTime).assertEqual(180203);
+        expect(model!.pitchDataList![lastIndex].pitch).assertEqual(50);
+
+        hilog.info(DOMAIN, TAG, `Pitch file parsed successfully with ${model!.pitchDataList!.length} pitch points`);
+
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `testParsePitchFile failed: ${JSON.stringify(error)}`);
+        expect().assertFail();
+      }
+    });
+
+    /**
+     * 测试解析KRC歌词和Pitch文件
+     * 对应Android的testParseKRCLyricAndPitch测试
+     */
+    it('testParseKRCLyricAndPitch', 0, async () => {
+      hilog.info(DOMAIN, TAG, 'testParseKRCLyricAndPitch: 测试解析KRC歌词和Pitch文件');
+
+      if (!context) {
+        hilog.info(DOMAIN, TAG, 'Test skipped - no context available');
+        return;
+      }
+
+      const fileNameOfSong = "4875936889260991133.krc";
+      const fileNameOfPitch = "4875936889260991133.pitch";
+
+      try {
+        hilog.info(DOMAIN, TAG, `Testing KRC and pitch parsing: ${fileNameOfSong} + ${fileNameOfPitch}`);
+
+        // 读取歌词文件
+        const krcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        expect(krcFileData).not().assertUndefined();
+        expect(krcFileData).not().assertNull();
+
+        // 读取音高文件
+        const pitchFileData = await TestUtils.loadAsBytes(context, fileNameOfPitch);
+        expect(pitchFileData).not().assertUndefined();
+        expect(pitchFileData).not().assertNull();
+
+        // 使用字节数组解析（不包含版权句子）
+        const model = LyricsParser.parseLyricData(krcFileData!, pitchFileData!, false, 0);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+
+        // 验证基本信息
+        expect(model!.lines[0].getStartTime()).assertEqual(11590);
+        expect(model!.lines.length > 0).assertTrue();
+        expect(model!.name).assertEqual("十年 (《明年今日》国语版|《隐婚男女》电影插曲|《摆渡人》电影插曲)");
+        expect(model!.singer).assertEqual("陈奕迅");
+        expect(model!.type).assertEqual(LyricType.KRC);
+        expect(model!.duration).assertEqual(182736); // [179088,3648]
+        expect(model!.preludeEndPosition).assertEqual(15203);
+
+        // 验证pitch数据
+        expect(model!.pitchDataList).not().assertNull();
+        expect(model!.pitchDataList!.length > 0).assertTrue();
+        expect(model!.pitchDataList!.length).assertEqual(294);
+        expect(model!.pitchDataList![0].duration).assertEqual(241);
+        expect(model!.pitchDataList![0].startTime).assertEqual(15203);
+        expect(model!.pitchDataList![0].pitch).assertEqual(50);
+
+        const lastIndex = model!.pitchDataList!.length - 1;
+        expect(model!.pitchDataList![lastIndex].duration).assertEqual(2907);
+        expect(model!.pitchDataList![lastIndex].startTime).assertEqual(180203);
+        expect(model!.pitchDataList![lastIndex].pitch).assertEqual(50);
+
+        hilog.info(DOMAIN, TAG, `KRC and pitch parsed successfully: ${model!.name} by ${model!.singer}`);
+        hilog.info(DOMAIN, TAG, `Lines: ${model!.lines.length}, Pitch points: ${model!.pitchDataList!.length}`);
+
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `testParseKRCLyricAndPitch failed: ${JSON.stringify(error)}`);
+        expect().assertFail();
+      }
+    });
+
+    /**
+     * 测试增强LRC歌词文件
+     * 对应Android的testEnhancedLrcLyricFile测试
+     */
+    it('testEnhancedLrcLyricFile', 0, async () => {
+      hilog.info(DOMAIN, TAG, 'testEnhancedLrcLyricFile: 测试增强LRC歌词文件');
+
+      enableLyricViewLog(context);
+
+      if (!context) {
+        hilog.info(DOMAIN, TAG, 'Test skipped - no context available');
+        return;
+      }
+
+      const fileNameOfSong = "kj5380f846be5811ed9efdb2f16c44e48f.lrc";
+
+      try {
+        hilog.info(DOMAIN, TAG, `Testing enhanced LRC file: ${fileNameOfSong}`);
+
+        // 读取LRC文件
+        const lrcFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        expect(lrcFileData).not().assertUndefined();
+        expect(lrcFileData).not().assertNull();
+
+        // 使用字节数组解析
+        const model = LyricsParser.parseLyricData(lrcFileData!, undefined, true, 0);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+
+        hilog.info(DOMAIN, TAG, `Enhanced LRC model: ${JSON.stringify(model)}`);
+
+        // 验证行数
+        const lineCount = model!.lines.length;
+        hilog.info(DOMAIN, TAG, `Total lines parsed: ${lineCount}`);
+        expect(lineCount).assertEqual(8);
+
+        // 验证第一行内容
+        let firstLineContent = "";
+        for (let i = 0; i < model!.lines[0].tones.length; i++) {
+          const tone = model!.lines[0].tones[i];
+          firstLineContent += tone.word;
+        }
+        hilog.info(DOMAIN, TAG, `First line content: ${firstLineContent}`);
+        expect(firstLineContent).assertEqual("他们总是说我有时不会怎么讲话");
+
+        hilog.info(DOMAIN, TAG, `Enhanced LRC parsed successfully with ${lineCount} lines`);
+
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `testEnhancedLrcLyricFile failed: ${JSON.stringify(error)}`);
+        expect().assertFail();
+      }
+    });
+
+    /**
+     * 测试歌词文件解析
+     * 对应Android的testLyricFileParse测试
+     */
+    it('testLyricFileParse', 0, async () => {
+      hilog.info(DOMAIN, TAG, 'testLyricFileParse: 测试歌词文件解析');
+
+      enableLyricViewLog(context);
+
+      if (!context) {
+        hilog.info(DOMAIN, TAG, 'Test skipped - no context available');
+        return;
+      }
+
+      const testFiles = [
+        "non-normal-timestamp-format.lrc",
+        "6246262727282260.lrc",
+        "872957.xml",
+        "e6fa1ebb_.lrc",
+        "xml_no_type.xml",
+        "745012"
       ];
 
-      for (const testCase of testCases) {
+      for (const fileName of testFiles) {
         try {
-          hilog.info(DOMAIN, TAG, `Testing file format: ${testCase.fileName}`);
+          hilog.info(DOMAIN, TAG, `Testing lyric file parsing: ${fileName}`);
 
-          const model = await parseLyricData(context, testCase.fileName);
+          // 读取文件
+          const fileData = await TestUtils.loadAsBytes(context, fileName);
+          expect(fileData).not().assertUndefined();
+          expect(fileData).not().assertNull();
+
+          // 使用字节数组解析
+          const model = LyricsParser.parseLyricData(fileData!, undefined, true, 0);
           expect(model).not().assertUndefined();
-          expect(model!.type).assertEqual(testCase.expectedType);
+          expect(model).not().assertNull();
 
-          hilog.info(DOMAIN, TAG, `File ${testCase.fileName} detected as type: ${model!.type}`);
+          hilog.info(DOMAIN, TAG, `File ${fileName} parsed successfully: ${JSON.stringify({
+            name: model!.name,
+            singer: model!.singer,
+            type: model!.type,
+            lineCount: model!.lines.length
+          })}`);
 
         } catch (error) {
-          hilog.error(DOMAIN, TAG,
-            `testParseLyricDataFormat failed for ${testCase.fileName}: ${JSON.stringify(error)}`);
+          hilog.error(DOMAIN, TAG, `testLyricFileParse failed for ${fileName}: ${JSON.stringify(error)}`);
           expect().assertFail();
         }
+      }
+    });
+
+    /**
+     * 测试解析XML文件
+     * 对应Android的testParseXmlFile测试
+     */
+    it('testParseXmlFile', 0, async () => {
+      hilog.info(DOMAIN, TAG, 'testParseXmlFile: 测试解析XML文件');
+
+      enableLyricViewLog(context);
+
+      if (!context) {
+        hilog.info(DOMAIN, TAG, 'Test skipped - no context available');
+        return;
+      }
+
+      const fileNameOfSong = "20250317.xml";
+
+      try {
+        hilog.info(DOMAIN, TAG, `Testing XML file parsing: ${fileNameOfSong}`);
+
+        // 读取XML文件
+        const xmlFileData = await TestUtils.loadAsBytes(context, fileNameOfSong);
+        expect(xmlFileData).not().assertUndefined();
+        expect(xmlFileData).not().assertNull();
+
+        // 使用字节数组解析
+        const model = LyricsParser.parseLyricData(xmlFileData!, undefined, true, 0);
+        expect(model).not().assertUndefined();
+        expect(model).not().assertNull();
+
+        hilog.info(DOMAIN, TAG, `XML model: ${JSON.stringify({
+          name: model!.name,
+          singer: model!.singer,
+          type: model!.type,
+          lineCount: model!.lines.length
+        })}`);
+
+        // 验证解析结果
+        expect(model!.lines.length > 0).assertTrue();
+        expect(model!.lines[0].tones.length > 0).assertTrue();
+        expect(model!.lines[0].tones[0].pitch !== 0).assertTrue();
+
+        hilog.info(DOMAIN, TAG, `XML file parsed successfully with ${model!.lines.length} lines`);
+        hilog.info(DOMAIN, TAG, `First tone pitch: ${model!.lines[0].tones[0].pitch}`);
+
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `testParseXmlFile failed: ${JSON.stringify(error)}`);
+        expect().assertFail();
       }
     });
 
@@ -505,22 +939,6 @@ export default function lyricsInstrumentedTest() {
     it('testMockScoring', 0, async () => {
       hilog.info(DOMAIN, TAG, 'testMockScoring: 测试模拟评分 - 待实现');
       // TODO: 实现模拟评分测试逻辑
-    });
-
-    /**
-     * 增强LRC歌词文件测试 - 占位方法
-     */
-    it('testEnhancedLrcLyricFile', 0, async () => {
-      hilog.info(DOMAIN, TAG, 'testEnhancedLrcLyricFile: 测试增强LRC歌词文件 - 待实现');
-      // TODO: 实现增强LRC测试逻辑
-    });
-
-    /**
-     * 歌词文件解析测试 - 占位方法
-     */
-    it('testLyricFileParse', 0, async () => {
-      hilog.info(DOMAIN, TAG, 'testLyricFileParse: 测试歌词文件解析 - 待实现');
-      // TODO: 实现歌词文件解析测试逻辑
     });
 
     /**

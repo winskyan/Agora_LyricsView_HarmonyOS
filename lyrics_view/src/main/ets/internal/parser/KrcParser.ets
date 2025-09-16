@@ -47,7 +47,7 @@ export class KrcParser {
       }
 
       // 设置音调相关属性
-      lyricsModel.pitchDataList = pitchDataList || [];
+      lyricsModel.pitchDataList = pitchDataList || null;
       lyricsModel.hasPitch = pitchDataList != null && pitchDataList.length > 0;
 
       if (lyricsModel.hasPitch && pitchDataList && pitchDataList.length > 0) {
