@@ -57,7 +57,7 @@ export struct LyricsView {
   /** Vertical spacing between lyrics lines */
   @Prop lineSpacing: number = 12;
   /** Top padding for the entire lyrics view */
-  @Prop paddingTop: number = 50;
+  @Prop paddingTop: number = 5;
   /** Text to display when no lyrics are available */
   @Prop labelWhenNoLyrics: string = '暂无歌词';
   /** Whether to enable automatic line wrapping for long lyrics */
@@ -71,7 +71,7 @@ export struct LyricsView {
   /** Whether to show the prelude end position indicator */
   @Prop enablePreludeEndPositionIndicator: boolean = true;
   /** Top padding for the prelude end position indicator */
-  @Prop preludeEndPositionIndicatorPaddingTop: number = 20;
+  @Prop preludeEndPositionIndicatorPaddingTop: number = 3;
   /** Radius of the prelude end position indicator dots */
   @Prop preludeEndPositionIndicatorRadius: number = 4;
   /** Color of the prelude end position indicator */
@@ -85,6 +85,10 @@ export struct LyricsView {
   @State private mCurrentLineTranslateX: number = 0;
   @State private mWidthRatio: number = 1.0;
   @State private targetIndex: number = 0;
+  // Actual component height measured dynamically
+  @State private actualViewHeight: number = 400; // 默认值，会被实际测量值覆盖
+  // Scroll controller for auto-scrolling
+  private scroller: Scroller = new Scroller();
   // Listener for lyrics seeking events
   private mOnSeekActionListener: OnLyricsSeekListener | null = null;
   // Event bus instance for global communication
@@ -177,6 +181,10 @@ export struct LyricsView {
       this.mIndexOfCurrentLine = line;
       // 触发滚动到当前行
       this.scrollToCurrentLine();
+    } else if (this.mIndexOfCurrentLine >= 0 && this.actualViewHeight > 0) {
+      // 即使行号没变，但如果是第一次设置或组件高度刚测量完成，也要滚动到居中
+      LogUtils.d(`LyricsView: Same line ${line}, but ensuring it's centered`);
+      this.scrollToCurrentLine();
     }
   }
 
@@ -184,8 +192,41 @@ export struct LyricsView {
    * 滚动到当前行，使其居中显示
    */
   private scrollToCurrentLine(): void {
-    // 在HarmonyOS中，我们通过状态变化来触发滚动
-    // 这里可以添加滚动逻辑，暂时通过UI更新来实现
+    if (this.mIndexOfCurrentLine < 0) {
+      LogUtils.d(`LyricsView: Cannot scroll, invalid line index: ${this.mIndexOfCurrentLine}`);
+      return;
+    }
+
+    if (this.actualViewHeight <= 0) {
+      LogUtils.d(`LyricsView: Cannot scroll, view height not measured yet: ${this.actualViewHeight}`);
+      return;
+    }
+
+    LogUtils.d(`LyricsView: Scrolling to line ${this.mIndexOfCurrentLine}`);
+
+    // 简化计算：使用统一的行高
+    const lineHeight = this.textSize + this.lineSpacing + 12; // 统一行高估算
+
+    // 计算当前行的位置：顶部空白 + (行索引 × 行高)
+    const currentLinePosition = this.paddingTop + (this.mIndexOfCurrentLine * lineHeight);
+
+    // 滚动偏移 = 当前行位置 - 视图高度的一半（使当前行居中显示）
+    // yOffset 表示从顶部开始的滚动距离，值越大内容向上滚动越多
+    const scrollOffset = 500; //Math.max(0, currentLinePosition - (this.actualViewHeight / 2));
+
+    LogUtils.d(`LyricsView: Scroll calculation - line: ${this.mIndexOfCurrentLine}, lineHeight: ${lineHeight}, currentLinePosition: ${currentLinePosition}, actualViewHeight: ${this.actualViewHeight}, scrollOffset: ${scrollOffset}`);
+
+    // 使用 Scroller 进行平滑滚动
+    // xOffset: 0 (不水平滚动)
+    // yOffset: scrollOffset (垂直滚动到计算的位置)
+    this.scroller.scrollTo({
+      xOffset: 0,
+      yOffset: scrollOffset,
+      animation: {
+        duration: 600,
+        curve: Curve.EaseInOut
+      }
+    });
   }
 
   /**
@@ -377,20 +418,11 @@ export struct LyricsView {
       .width('100%')
     }
     .width('100%')
-    .justifyContent(FlexAlign.Center)
     .margin({
-      bottom: index === this.mIndexOfCurrentLine ? 16 : 8,
-      top: index === this.mIndexOfCurrentLine ? 8 : 4
+      top: index === 0 ? 0 : this.lineSpacing
     })
-    // 当前行添加背景效果
-    .backgroundColor(index === this.mIndexOfCurrentLine ? 'rgba(255, 255, 255, 0.1)' : Color.Transparent)
+    .justifyContent(FlexAlign.Center)
     .borderRadius(8)
-    .padding({
-      left: 16,
-      right: 16,
-      top: index === this.mIndexOfCurrentLine ? 12 : 8,
-      bottom: index === this.mIndexOfCurrentLine ? 12 : 8
-    })
     // 添加动画效果
     .animation({
       duration: 300,
@@ -474,28 +506,24 @@ export struct LyricsView {
       if (this.uninitializedOrNoLyrics()) {
         this.NoLyricsBuilder()
       } else {
-        Scroll() {
+        Scroll(this.scroller) {
           Column() {
             if (this.mLyricMachine?.getLyricsModel()?.lines) {
-              // 添加顶部空白，确保第一行可以居中显示
-              Blank()
-                .height(200)
-
               ForEach(this.mLyricMachine?.getLyricsModel()?.lines, (line: LyricsLineModel, index: number) => {
                 this.EnhancedLyricsLineBuilder(line, index)
               })
-
-              // 添加底部空白，确保最后一行可以居中显示
-              Blank()
-                .height(200)
             }
           }
           .width('100%')
-          .padding({ top: this.paddingTop })
+          .height('100%')
+          .backgroundColor('#FF6B11')
         }
         .width('100%')
-        .height('100%')
-        .scrollable(this.enableDragging ? ScrollDirection.Vertical : ScrollDirection.None)
+        .height('90%')
+        .margin({
+          top: this.paddingTop
+        })
+        .scrollable(ScrollDirection.Vertical)
         .scrollBar(BarState.Off) // 隐藏滚动条
         .onScrollFrameBegin((offset: number, state: ScrollState) => {
           if (this.enableDragging) {
@@ -526,7 +554,21 @@ export struct LyricsView {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(Color.Transparent)
+    // .backgroundColor(Color.Transparent)
+    .onAreaChange((oldValue: Area, newValue: Area) => {
+      // 动态获取组件实际高度
+      if (newValue.height && typeof newValue.height === 'number') {
+        this.actualViewHeight = newValue.height;
+        LogUtils.d(`LyricsView: Component height measured: ${this.actualViewHeight}`);
+
+        // 高度变化后，如果有当前行，重新滚动到居中位置
+        if (this.mIndexOfCurrentLine >= 0) {
+          setTimeout(() => {
+            this.scrollToCurrentLine();
+          }, 100); // 延迟一点确保布局完成
+        }
+      }
+    })
     .onAppear(() => {
       LogUtils.d('LyricsView: Component appeared, setting up event listeners');
       this.setupEventListeners();
