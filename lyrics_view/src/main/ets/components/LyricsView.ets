@@ -91,6 +91,9 @@ export struct LyricsView {
   @State private isAnimating: boolean = false;
   @State private animationKey: number = 0; // 用于强制重新渲染动画
   @State private previousLineIndex: number = -1; // 记录上一行索引，用于动画判断
+  @State private transitioningFromIndex: number = -1; // 正在过渡的原当前行索引
+  @State private transitioningFromY: number = 0; // 过渡行的起始Y位置
+  @State private transitioningToY: number = 0; // 过渡行的目标Y位置
   // Scroll controller for auto-scrolling
   private scroller: Scroller = new Scroller();
   // Listener for lyrics seeking events
@@ -321,12 +324,37 @@ NoLyricsBuilder() {
 }
 
 this.isAnimating = true;
+this.transitioningFromIndex = fromLine; // 记录原当前行
+
+// 计算过渡行的起始位置（基于旧的当前行索引）
+const oldCurrentIndex = fromLine;
+const offsetFromOldCurrent = fromLine - oldCurrentIndex; // 应该是0
+const lineHeight = this.getLineHeight();
+const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
+this.transitioningFromY = centerY + (offsetFromOldCurrent * lineHeight);
+
+// 计算过渡行的目标位置（基于新的当前行索引）
+const newCurrentIndex = toLine;
+const offsetFromNewCurrent = fromLine - newCurrentIndex; // 通常是-1（上一行）
+this.transitioningToY = centerY + (offsetFromNewCurrent * lineHeight);
+
+// 先设置为起始位置
+this.transitioningToY = this.transitioningFromY;
+
 this.animationKey = Date.now(); // 更新动画键值，强制重新渲染
 
-// 延迟重置动画状态，确保动画完成（包括错开延迟）
+// 延迟一帧后设置目标位置，触发动画
+setTimeout(() => {
+  if (this.isAnimating) {
+    this.transitioningToY = centerY + (offsetFromNewCurrent * lineHeight);
+  }
+}, 16); // 一帧的时间
+
+// 位置动画完成后清除状态
 setTimeout(() => {
   this.isAnimating = false;
-}, 600); // 增加时间以包含错开动画的延迟
+  this.transitioningFromIndex = -1; // 清除过渡状态
+}, 500); // 动画时长 + 延迟
   }
 
   /**
@@ -394,6 +422,9 @@ EnhancedLyricsLineBuilder(line: LyricsLineModel, index: number) {
   if (index === this.mIndexOfCurrentLine) {
     // 当前行：使用渐进式高亮效果
     this.ProgressiveHighlightLineBuilder(line, index)
+  } else if (index === this.transitioningFromIndex && this.isAnimating) {
+    // 正在过渡的原当前行：使用过渡高亮效果
+    this.TransitioningHighlightLineBuilder(line, index)
   } else {
     // 非当前行：普通显示
     this.NormalLineBuilder(line, index)
@@ -452,6 +483,41 @@ ProgressiveHighlightLineBuilder(line: LyricsLineModel, index: number) {
     .animation({
       duration: 400, // 统一动画时长
       delay: this.getAnimationDelay(index), // 错开动画延迟
+      curve: Curve.EaseInOut,
+      iterations: 1,
+      playMode: PlayMode.Normal
+    })
+}
+
+/**
+ * 过渡普通行Builder - 处理原当前行以普通行样式从当前位置移动到目标位置
+ */
+@Builder
+TransitioningHighlightLineBuilder(line: LyricsLineModel, index: number) {
+  // 直接显示为普通行，不显示高亮效果
+  Row() {
+    Text(this.getLineText(line))
+      .fontSize(this.textSize) // 使用普通行字体大小
+      .fontColor(this.getNormalLineColor(index)) // 使用普通行颜色
+      .fontWeight(FontWeight.Normal) // 使用普通行字重
+      .textAlign(this.getTextAlign())
+      .width('100%')
+  }
+    .width('100%')
+    .height(this.getLineHeight())
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
+    .position({
+      x: 0,
+      y: this.getTransitioningYPosition() // 使用动画插值位置
+    })
+    .opacity(this.getLineOpacity(index))
+    .scale({
+      x: this.getTransitioningLineScale(index),
+      y: this.getTransitioningLineScale(index)
+    })
+    .animation({
+      duration: 400, // 位置和缩放动画
       curve: Curve.EaseInOut,
       iterations: 1,
       playMode: PlayMode.Normal
@@ -566,6 +632,23 @@ NormalLineBuilder(line: LyricsLineModel, index: number) {
     // 距离当前行越远，缩放越小，但保持最小值
     return Math.max(0.95, 1.0 - (distance * 0.03));
   }
+}
+
+  /**
+   * 计算过渡行的缩放比例
+   */
+  private getTransitioningLineScale(index: number): number {
+  // 过渡行直接使用目标位置的缩放比例（普通行大小）
+  const distance = Math.abs(index - this.mIndexOfCurrentLine);
+  return Math.max(0.95, 1.0 - (distance * 0.03));
+}
+
+  /**
+   * 获取过渡行的Y位置（使用动画插值）
+   */
+  private getTransitioningYPosition(): number {
+  // 初始时返回起始位置，动画会自动插值到目标位置
+  return this.transitioningToY;
 }
 
 /**
