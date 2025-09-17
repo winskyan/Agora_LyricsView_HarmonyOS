@@ -1,6 +1,6 @@
 export { IKaraokeEvent } from './src/main/ets/IKaraokeEvent';
 export { KaraokeView } from './src/main/ets/KaraokeView';
-export { LyricsView, OnLyricsSeekListener } from './src/main/ets/components/LyricsView';
+export { LyricsView } from './src/main/ets/components/LyricsView';
 export { ScoringView } from './src/main/ets/components/ScoringView';
 export { LyricType } from './src/main/ets/constants/LyricType';
 export { LyricMachine, OnLyricListener } from './src/main/ets/internal/LyricMachine';
