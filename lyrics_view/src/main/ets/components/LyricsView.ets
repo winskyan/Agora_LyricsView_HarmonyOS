@@ -107,15 +107,6 @@ export struct LyricsView {
   }
 
   /**
-   * Set whether to allow vertical scrolling
-   * @param enable true to enable vertical scrolling, false to disable
-   */
-  setEnableDragging(enable: boolean): void {
-    LogUtils.d("setEnableDragging enable: " + enable);
-    this.enableDragging = enable;
-  }
-
-  /**
    * Requests a refresh of the UI.
    * Updates the progress and triggers a redraw if necessary.
    */
@@ -167,7 +158,6 @@ export struct LyricsView {
     }
 
     const line = this.quickSearchLineByTimestamp(this.mCurrentTime);
-    LogUtils.d(`LyricsView: Found line index=${line}, current line=${this.mIndexOfCurrentLine}`);
 
     if (line < 0 || !lyricsModel || line >= lyricsModel.lines.length) {
       LogUtils.d('LyricsView: Invalid line index, no UI update needed');
@@ -179,54 +169,9 @@ export struct LyricsView {
       LogUtils.d(`LyricsView: Line changed from ${this.mIndexOfCurrentLine} to ${line}`);
       this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL | LyricsView.UPDATE_UI_TYPE_WITH_ANIMATION;
       this.mIndexOfCurrentLine = line;
-      // 触发滚动到当前行
-      this.scrollToCurrentLine();
-    } else if (this.mIndexOfCurrentLine >= 0 && this.actualViewHeight > 0) {
-      // 即使行号没变，但如果是第一次设置或组件高度刚测量完成，也要滚动到居中
-      LogUtils.d(`LyricsView: Same line ${line}, but ensuring it's centered`);
-      this.scrollToCurrentLine();
+      // 不再需要滚动，位置由绝对定位控制
+      LogUtils.d(`LyricsView: Current line updated to ${line}, positions will be recalculated automatically`);
     }
-  }
-
-  /**
-   * 滚动到当前行，使其居中显示
-   */
-  private scrollToCurrentLine(): void {
-    if (this.mIndexOfCurrentLine < 0) {
-      LogUtils.d(`LyricsView: Cannot scroll, invalid line index: ${this.mIndexOfCurrentLine}`);
-      return;
-    }
-
-    if (this.actualViewHeight <= 0) {
-      LogUtils.d(`LyricsView: Cannot scroll, view height not measured yet: ${this.actualViewHeight}`);
-      return;
-    }
-
-    LogUtils.d(`LyricsView: Scrolling to line ${this.mIndexOfCurrentLine}`);
-
-    // 简化计算：使用统一的行高
-    const lineHeight = this.textSize + this.lineSpacing + 12; // 统一行高估算
-
-    // 计算当前行的位置：顶部空白 + (行索引 × 行高)
-    const currentLinePosition = this.paddingTop + (this.mIndexOfCurrentLine * lineHeight);
-
-    // 滚动偏移 = 当前行位置 - 视图高度的一半（使当前行居中显示）
-    // yOffset 表示从顶部开始的滚动距离，值越大内容向上滚动越多
-    const scrollOffset = 500; //Math.max(0, currentLinePosition - (this.actualViewHeight / 2));
-
-    LogUtils.d(`LyricsView: Scroll calculation - line: ${this.mIndexOfCurrentLine}, lineHeight: ${lineHeight}, currentLinePosition: ${currentLinePosition}, actualViewHeight: ${this.actualViewHeight}, scrollOffset: ${scrollOffset}`);
-
-    // 使用 Scroller 进行平滑滚动
-    // xOffset: 0 (不水平滚动)
-    // yOffset: scrollOffset (垂直滚动到计算的位置)
-    this.scroller.scrollTo({
-      xOffset: 0,
-      yOffset: scrollOffset,
-      animation: {
-        duration: 600,
-        curve: Curve.EaseInOut
-      }
-    });
   }
 
   /**
@@ -276,28 +221,11 @@ export struct LyricsView {
    * Resets all internal state variables to their default values.
    */
   private resetInternal(): void {
-    // 注意：不要重置 mLyricMachine，因为它可能正在调用这个方法
-    // this.mLyricMachine = null; // 移除这行，避免循环依赖
-    // mLyricsModel removed - now using mLyricMachine.getLyricsModel()
-    this.mIndexOfCurrentLine = -1;
     this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL;
     this.mCurrentTime = 0;
     this.mOffset = 0;
     this.targetIndex = 0;
     this.mCurrentLineTranslateX = 0;
-  }
-
-  /**
-   * Set whether to enable automatic lyrics line wrapping
-   * @param enable true to enable automatic line wrapping, false to use horizontal scrolling
-   */
-  setEnableLineWrap(enable: boolean): void {
-    LogUtils.d("setEnableLineWrap enable:" + enable);
-    if (this.enableLineWrap !== enable) {
-      this.enableLineWrap = enable;
-      this.forceCheckLineWrap();
-      this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL;
-    }
   }
 
   /**
@@ -327,13 +255,6 @@ export struct LyricsView {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
-  }
-
-  /**
-   * Determines if a tone should be highlighted based on current progress
-   */
-  private shouldHighlightTone(tone: Tone, progress: number): boolean {
-    return progress >= tone.begin && progress < tone.end;
   }
 
   /**
@@ -383,53 +304,94 @@ export struct LyricsView {
   }
 
   /**
+   * 计算歌词行的Y位置
+   */
+  private calculateLineYPosition(index: number): number {
+    const offsetFromCurrent = index - this.mIndexOfCurrentLine;
+    const lineHeight = this.getLineHeight();
+    // 当前行在视图中心，其他行相对偏移
+    const centerY = (this.actualViewHeight / 2) - (lineHeight / 2); // 减去行高的一半，确保行居中
+    return centerY + (offsetFromCurrent * lineHeight);
+  }
+
+  /**
+   * 计算歌词行高度
+   */
+  private getLineHeight(): number {
+    return this.currentLineTextSize + this.lineSpacing;
+  }
+
+  /**
+   * 计算可以显示的最大行数（上下各一半）
+   */
+  private getMaxVisibleLines(): number {
+    const lineHeight = this.getLineHeight();
+    const availableHeight = this.actualViewHeight;
+    return Math.floor(availableHeight / lineHeight);
+  }
+
+  /**
+   * 判断歌词行是否在可视范围内
+   */
+  private isLineVisible(index: number): boolean {
+    const offsetFromCurrent = Math.abs(index - this.mIndexOfCurrentLine);
+    const maxVisibleLines = this.getMaxVisibleLines();
+    // 限制显示范围：当前行上下各显示一定数量的行
+    const maxOffset = Math.floor(maxVisibleLines / 2);
+    return offsetFromCurrent <= maxOffset;
+  }
+
+  /**
    * 增强版歌词行Builder - 实现高亮、居中、滚动效果
    */
   @Builder
   EnhancedLyricsLineBuilder(line: LyricsLineModel, index: number) {
-    Row() {
-      Text() {
-        if (line.tones && line.tones.length > 0) {
-          // 当前行：显示唱过的部分为高亮，未唱的部分为正常颜色
-          if (index === this.mIndexOfCurrentLine) {
-            ForEach(line.tones, (tone: Tone, toneIndex: number) => {
-              Span(tone.word)
-                .fontSize(this.currentLineTextSize)
-                .fontColor(this.getCurrentLineCharColor(tone))
-                .fontWeight(FontWeight.Bold)
-            })
+    // 只渲染在可视范围内的行
+    if (this.isLineVisible(index)) {
+      Row() {
+        Text() {
+          if (line.tones && line.tones.length > 0) {
+            // 当前行：显示唱过的部分为高亮，未唱的部分为正常颜色
+            if (index === this.mIndexOfCurrentLine) {
+              ForEach(line.tones, (tone: Tone, toneIndex: number) => {
+                Span(tone.word)
+                  .fontSize(this.currentLineTextSize)
+                  .fontColor(this.getCurrentLineCharColor(tone))
+                  .fontWeight(FontWeight.Bold)
+              })
+            } else {
+              // 非当前行：统一颜色显示
+              ForEach(line.tones, (tone: Tone, toneIndex: number) => {
+                Span(tone.word)
+                  .fontSize(this.textSize)
+                  .fontColor(this.getNormalLineColor(index))
+              })
+            }
           } else {
-            // 非当前行：统一颜色显示
-            ForEach(line.tones, (tone: Tone, toneIndex: number) => {
-              Span(tone.word)
-                .fontSize(this.textSize)
-                .fontColor(this.getNormalLineColor(index))
-            })
+            // 如果没有音调数据，显示整行文本
+            Span(this.getLineText(line))
+              .fontSize(index === this.mIndexOfCurrentLine ? this.currentLineTextSize : this.textSize)
+              .fontColor(index === this.mIndexOfCurrentLine ? this.currentLineTextColor :
+              this.getNormalLineColor(index))
+              .fontWeight(index === this.mIndexOfCurrentLine ? FontWeight.Bold : FontWeight.Normal)
           }
-        } else {
-          // 如果没有音调数据，显示整行文本
-          Span(this.getLineText(line))
-            .fontSize(index === this.mIndexOfCurrentLine ? this.currentLineTextSize : this.textSize)
-            .fontColor(index === this.mIndexOfCurrentLine ? this.currentLineTextColor : this.getNormalLineColor(index))
-            .fontWeight(index === this.mIndexOfCurrentLine ? FontWeight.Bold : FontWeight.Normal)
         }
+        .textAlign(this.getTextAlign())
+        .width('100%')
       }
-      .textAlign(TextAlign.Center)
       .width('100%')
+      .height(this.getLineHeight())
+      .justifyContent(FlexAlign.Center)
+      .alignItems(VerticalAlign.Center)
+      .position({ x: 0, y: this.calculateLineYPosition(index) }) // 设置绝对位置
+      // 添加动画效果
+      .animation({
+        duration: 300, // 与滚动动画时长一致
+        curve: Curve.EaseInOut,
+        iterations: 1,
+        playMode: PlayMode.Normal
+      })
     }
-    .width('100%')
-    .margin({
-      top: index === 0 ? 0 : this.lineSpacing
-    })
-    .justifyContent(FlexAlign.Center)
-    .borderRadius(8)
-    // 添加动画效果
-    .animation({
-      duration: 300,
-      curve: Curve.EaseInOut,
-      iterations: 1,
-      playMode: PlayMode.Normal
-    })
   }
 
   /**
@@ -506,67 +468,28 @@ export struct LyricsView {
       if (this.uninitializedOrNoLyrics()) {
         this.NoLyricsBuilder()
       } else {
-        Scroll(this.scroller) {
-          Column() {
-            if (this.mLyricMachine?.getLyricsModel()?.lines) {
-              ForEach(this.mLyricMachine?.getLyricsModel()?.lines, (line: LyricsLineModel, index: number) => {
-                this.EnhancedLyricsLineBuilder(line, index)
-              })
-            }
+        // 使用 Stack 来支持绝对定位
+        Stack() {
+          if (this.mLyricMachine?.getLyricsModel()?.lines) {
+            ForEach(this.mLyricMachine?.getLyricsModel()?.lines, (line: LyricsLineModel, index: number) => {
+              this.EnhancedLyricsLineBuilder(line, index)
+            })
           }
-          .width('100%')
-          .height('100%')
-          .backgroundColor('#FF6B11')
         }
         .width('100%')
-        .height('90%')
-        .margin({
-          top: this.paddingTop
-        })
-        .scrollable(ScrollDirection.Vertical)
-        .scrollBar(BarState.Off) // 隐藏滚动条
-        .onScrollFrameBegin((offset: number, state: ScrollState) => {
-          if (this.enableDragging) {
-            this.mOffset += offset;
-          }
-          return { offsetRemain: offset };
-        })
-        .onScrollStart(() => {
-          if (this.enableDragging && this.mOnSeekActionListener) {
-            this.mDraggingInProgress = true;
-            this.mOnSeekActionListener.onStartTrackingTouch();
-          }
-        })
-        .onScrollStop(() => {
-          if (this.enableDragging && this.mOnSeekActionListener) {
-            this.mDraggingInProgress = false;
-            // Calculate target line based on scroll position
-            if (this.mLyricMachine?.getLyricsModel()?.lines && this.targetIndex >= 0 &&
-              this.targetIndex < this.mLyricMachine.getLyricsModel()!.lines.length) {
-              const targetLine = this.mLyricMachine.getLyricsModel()!.lines[this.targetIndex];
-              this.updateByProgress(targetLine.getStartTime());
-              this.mOnSeekActionListener.onProgressChanged(targetLine.getStartTime());
-              this.mOnSeekActionListener.onStopTrackingTouch();
-            }
-          }
-        })
+        .height('100%')
+        .alignContent(Alignment.TopStart) // 从顶部开始定位
       }
     }
     .width('100%')
-    .height('100%')
-    // .backgroundColor(Color.Transparent)
+    .height('90%')
+    .margin({ top: this.paddingTop })
     .onAreaChange((oldValue: Area, newValue: Area) => {
       // 动态获取组件实际高度
       if (newValue.height && typeof newValue.height === 'number') {
         this.actualViewHeight = newValue.height;
         LogUtils.d(`LyricsView: Component height measured: ${this.actualViewHeight}`);
-
-        // 高度变化后，如果有当前行，重新滚动到居中位置
-        if (this.mIndexOfCurrentLine >= 0) {
-          setTimeout(() => {
-            this.scrollToCurrentLine();
-          }, 100); // 延迟一点确保布局完成
-        }
+        // 高度变化后，位置会自动重新计算，不需要手动滚动
       }
     })
     .onAppear(() => {
@@ -609,7 +532,6 @@ export struct LyricsView {
 
     // 监听进度更新事件
     this.eventBus.on(LyricsEvents.SET_PROGRESS, (progress: number) => {
-      LogUtils.d(`LyricsView: Received SET_PROGRESS event: ${progress}`);
       if (this.mLyricMachine) {
         this.mLyricMachine.setProgress(progress);
       }
