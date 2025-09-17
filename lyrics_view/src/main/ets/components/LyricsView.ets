@@ -70,6 +70,8 @@ export struct LyricsView {
   @State private dragOffset: number = 0; // 拖拽偏移量
   @State private initialTouchY: number = 0; // 初始触摸Y坐标
   @State private currentTouchY: number = 0; // 当前触摸Y坐标
+  @State private dragLineOffset: number = 0; // 拖拽时的歌词行偏移量
+  @State private originalCurrentLineIndex: number = -1; // 拖拽开始时的原始当前行索引
   // 动画状态管理
   @State private isAnimating: boolean = false;
   @State private animationKey: number = 0; // 用于强制重新渲染动画
@@ -95,37 +97,37 @@ export struct LyricsView {
    * Updates the progress and triggers a redraw if necessary.
    */
   requestRefreshUi(): void {
-    if (this.mLyricMachine) {
-      this.updateByProgress(this.mLyricMachine.getCurrentLyricProgress());
-    }
+    if(this.mLyricMachine) {
+    this.updateByProgress(this.mLyricMachine.getCurrentLyricProgress());
   }
+}
 
-  /**
-   * Resets the view to its initial state.
-   * Clears all loaded lyrics and internal state.
-   */
-  reset(): void {
-    this.resetInternal();
-  }
+/**
+ * Resets the view to its initial state.
+ * Clears all loaded lyrics and internal state.
+ */
+reset(): void {
+  this.resetInternal();
+}
 
-  /**
-   * 完全重置，包括清理 LyricMachine 引用
-   * 仅在组件销毁或需要完全清理时调用
-   */
-  resetCompletely(): void {
-    this.mLyricMachine = null;
-    this.resetInternal();
-  }
+/**
+ * 完全重置，包括清理 LyricMachine 引用
+ * 仅在组件销毁或需要完全清理时调用
+ */
+resetCompletely(): void {
+  this.mLyricMachine = null;
+  this.resetInternal();
+}
 
   /**
    * Checks if the lyrics view is uninitialized or has no lyrics data.
    * @return true if lyrics are not available or not initialized
    */
   private uninitializedOrNoLyrics(): boolean {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    return !this.mLyricMachine || !lyricsModel ||
-      !lyricsModel.lines || lyricsModel.lines.length === 0;
-  }
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  return !this.mLyricMachine || !lyricsModel ||
+    !lyricsModel.lines || lyricsModel.lines.length === 0;
+}
 
   /**
    * Updates the view based on the current timestamp.
@@ -133,34 +135,34 @@ export struct LyricsView {
    * @param timestamp Current playback position in milliseconds
    */
   private updateByProgress(timestamp: number): void {
-    this.mCurrentTime = timestamp;
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  this.mCurrentTime = timestamp;
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
 
-    if (this.refreshNoLyrics()) {
-      LogUtils.d('LyricsView: No lyrics available, showing no lyrics message');
-      return;
-    }
+  if(this.refreshNoLyrics()) {
+  LogUtils.d('LyricsView: No lyrics available, showing no lyrics message');
+  return;
+}
 
-    const line = this.quickSearchLineByTimestamp(this.mCurrentTime);
+const line = this.quickSearchLineByTimestamp(this.mCurrentTime);
 
-    if (line < 0 || !lyricsModel || line >= lyricsModel.lines.length) {
-      LogUtils.d('LyricsView: Invalid line index, no UI update needed');
-      this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NO_NEED;
-      return;
-    }
+if (line < 0 || !lyricsModel || line >= lyricsModel.lines.length) {
+  LogUtils.d('LyricsView: Invalid line index, no UI update needed');
+  this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NO_NEED;
+  return;
+}
 
-    if (line !== this.mIndexOfCurrentLine) {
-      LogUtils.d(`LyricsView: Line changed from ${this.mIndexOfCurrentLine} to ${line}`);
+if (line !== this.mIndexOfCurrentLine) {
+  LogUtils.d(`LyricsView: Line changed from ${this.mIndexOfCurrentLine} to ${line}`);
 
-      // 触发行变化动画
-      this.triggerLineChangeAnimation(this.mIndexOfCurrentLine, line);
+  // 触发行变化动画
+  this.triggerLineChangeAnimation(this.mIndexOfCurrentLine, line);
 
-      this.previousLineIndex = this.mIndexOfCurrentLine;
-      this.mIndexOfCurrentLine = line;
-      this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL | LyricsView.UPDATE_UI_TYPE_WITH_ANIMATION;
+  this.previousLineIndex = this.mIndexOfCurrentLine;
+  this.mIndexOfCurrentLine = line;
+  this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL | LyricsView.UPDATE_UI_TYPE_WITH_ANIMATION;
 
-      LogUtils.d(`LyricsView: Current line updated to ${line}, animation triggered`);
-    }
+  LogUtils.d(`LyricsView: Current line updated to ${line}, animation triggered`);
+}
   }
 
   /**
@@ -168,8 +170,8 @@ export struct LyricsView {
    * @return true if no lyrics are available and refresh was performed
    */
   private refreshNoLyrics(): boolean {
-    return this.uninitializedOrNoLyrics();
-  }
+  return this.uninitializedOrNoLyrics();
+}
 
   /**
    * Performs binary search to find the lyrics line that should be displayed at the given timestamp.
@@ -177,297 +179,358 @@ export struct LyricsView {
    * @return Index of the lyrics line to display
    */
   private quickSearchLineByTimestamp(time: number): number {
-    if (this.uninitializedOrNoLyrics()) {
-      return 0;
-    }
-
-    let left = 0;
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel) {
-      return 0;
-    }
-    let right = lyricsModel.lines.length - 1;
-
-    while (left <= right) {
-      const middle = Math.floor((left + right) / 2);
-      const middleTime = lyricsModel.lines[middle].getStartTime();
-
-      if (time < middleTime) {
-        right = middle - 1;
-      } else {
-        if (middle + 1 >= lyricsModel.lines.length ||
-          time < lyricsModel.lines[middle + 1].getStartTime()) {
-          return middle;
-        }
-        left = middle + 1;
-      }
-    }
-
+  if (this.uninitializedOrNoLyrics()) {
     return 0;
   }
+
+  let left = 0;
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  if (!lyricsModel) {
+    return 0;
+  }
+  let right = lyricsModel.lines.length - 1;
+
+  while (left <= right) {
+    const middle = Math.floor((left + right) / 2);
+    const middleTime = lyricsModel.lines[middle].getStartTime();
+
+    if (time < middleTime) {
+      right = middle - 1;
+    } else {
+      if (middle + 1 >= lyricsModel.lines.length ||
+        time < lyricsModel.lines[middle + 1].getStartTime()) {
+        return middle;
+      }
+      left = middle + 1;
+    }
+  }
+
+  return 0;
+}
 
   /**
    * Resets all internal state variables to their default values.
    */
   private resetInternal(): void {
-    this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL;
-    this.mCurrentTime = 0;
-    this.mOffset = 0;
-    this.targetIndex = 0;
-    this.mCurrentLineTranslateX = 0;
-  }
+  this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL;
+  this.mCurrentTime = 0;
+  this.mOffset = 0;
+  this.targetIndex = 0;
+  this.mCurrentLineTranslateX = 0;
+}
 
   /**
    * Force check line wrap based on lyric type
    */
   private forceCheckLineWrap(): void {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
-      return;
-    }
-    if (lyricsModel.type === LyricType.LRC) {
-      this.enableLineWrap = true;
-    }
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  if(!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
+  return;
+}
+if (lyricsModel.type === LyricType.LRC) {
+  this.enableLineWrap = true;
+}
   }
 
-  /**
-   * Renders the no lyrics state
-   */
-  @Builder
-  NoLyricsBuilder() {
-    Column() {
-      Text(this.labelWhenNoLyrics)
-        .fontSize(this.currentLineTextSize)
-        .fontColor(this.currentLineHighlightedTextColor)
-        .textAlign(TextAlign.Center)
-    }
+/**
+ * Renders the no lyrics state
+ */
+@Builder
+NoLyricsBuilder() {
+  Column() {
+    Text(this.labelWhenNoLyrics)
+      .fontSize(this.currentLineTextSize)
+      .fontColor(this.currentLineHighlightedTextColor)
+      .textAlign(TextAlign.Center)
+  }
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
-  }
+}
 
   /**
    * Gets the complete text of a lyrics line
    */
   private getLineText(line: LyricsLineModel): string {
-    if (line.tones && line.tones.length > 0) {
-      return line.tones.map(tone => tone.word).join('');
-    }
-    return '';
+  if (line.tones && line.tones.length > 0) {
+    return line.tones.map(tone => tone.word).join('');
   }
+  return '';
+}
 
   /**
    * Gets the index of a lyrics line
    */
   private getLineIndex(line: LyricsLineModel): number {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel || !lyricsModel.lines) {
-      return -1;
-    }
-    return lyricsModel.lines.indexOf(line);
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  if (!lyricsModel || !lyricsModel.lines) {
+    return -1;
   }
+  return lyricsModel.lines.indexOf(line);
+}
 
   /**
    * Gets text alignment based on textGravity property
    */
   private getTextAlign(): TextAlign {
-    switch (this.textGravity) {
-      case 1:
-        return TextAlign.Start; // left
-      case 2:
-        return TextAlign.End; // right
-      default:
-        return TextAlign.Center; // center
-    }
+  switch (this.textGravity) {
+    case 1:
+      return TextAlign.Start; // left
+    case 2:
+      return TextAlign.End; // right
+    default:
+      return TextAlign.Center; // center
   }
+}
 
   /**
    * Gets the countdown value for prelude indicator
    */
   private getPreludeCountDown(): number {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel) {
-      return 0;
-    }
-    return Math.ceil((lyricsModel.preludeEndPosition - this.mCurrentTime) / 1000);
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  if (!lyricsModel) {
+    return 0;
   }
+  return Math.ceil((lyricsModel.preludeEndPosition - this.mCurrentTime) / 1000);
+}
 
   /**
    * 触发行变化动画
    */
   private triggerLineChangeAnimation(fromLine: number, toLine: number): void {
-    if (fromLine === toLine) {
-      return;
-    }
+  if(fromLine === toLine) {
+  return;
+}
 
-    this.isAnimating = true;
-    this.transitioningFromIndex = fromLine; // 记录原当前行
-    this.newCurrentTransitioning = true; // 新当前行开始过渡
-    this.styleTransitioning = false; // 样式过渡稍后开始
+this.isAnimating = true;
+this.transitioningFromIndex = fromLine; // 记录原当前行
+this.newCurrentTransitioning = true; // 新当前行开始过渡
+this.styleTransitioning = false; // 样式过渡稍后开始
 
-    const lineHeight = this.getLineHeight();
-    const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
+const lineHeight = this.getLineHeight();
+const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
 
-    // === 原当前行过渡设置 ===
-    const oldCurrentIndex = fromLine;
-    const offsetFromOldCurrent = fromLine - oldCurrentIndex; // 应该是0
-    this.transitioningFromY = centerY + (offsetFromOldCurrent * lineHeight);
+// === 原当前行过渡设置 ===
+const oldCurrentIndex = fromLine;
+const offsetFromOldCurrent = fromLine - oldCurrentIndex; // 应该是0
+this.transitioningFromY = centerY + (offsetFromOldCurrent * lineHeight);
 
-    // 计算原当前行的目标位置（基于新的当前行索引）
-    const newCurrentIndex = toLine;
-    const offsetFromNewCurrent = fromLine - newCurrentIndex; // 通常是-1（上一行）
-    const oldTargetY = centerY + (offsetFromNewCurrent * lineHeight);
+// 计算原当前行的目标位置（基于新的当前行索引）
+const newCurrentIndex = toLine;
+const offsetFromNewCurrent = fromLine - newCurrentIndex; // 通常是-1（上一行）
+const oldTargetY = centerY + (offsetFromNewCurrent * lineHeight);
 
-    // 先设置为起始位置
-    this.transitioningToY = this.transitioningFromY;
+// 先设置为起始位置
+this.transitioningToY = this.transitioningFromY;
 
-    // === 新当前行过渡设置 ===
-    // 新当前行从下一行位置开始
-    const offsetFromNewCurrentToNext = 1; // 下一行
-    this.newCurrentFromY = centerY + (offsetFromNewCurrentToNext * lineHeight);
-    this.newCurrentToY = this.newCurrentFromY; // 先设置为起始位置
+// === 新当前行过渡设置 ===
+// 新当前行从下一行位置开始
+const offsetFromNewCurrentToNext = 1; // 下一行
+this.newCurrentFromY = centerY + (offsetFromNewCurrentToNext * lineHeight);
+this.newCurrentToY = this.newCurrentFromY; // 先设置为起始位置
 
-    this.animationKey = Date.now(); // 更新动画键值，强制重新渲染
+this.animationKey = Date.now(); // 更新动画键值，强制重新渲染
 
-    // 延迟一帧后开始位置动画
-    setTimeout(() => {
-      if (this.isAnimating) {
-        // 原当前行移动到上一行
-        this.transitioningToY = oldTargetY;
-        // 新当前行移动到中心
-        this.newCurrentToY = centerY;
-      }
-    }, 16);
+// 延迟一帧后开始位置动画
+setTimeout(() => {
+  if (this.isAnimating) {
+    // 原当前行移动到上一行
+    this.transitioningToY = oldTargetY;
+    // 新当前行移动到中心
+    this.newCurrentToY = centerY;
+  }
+}, 16);
 
-    // 位置动画开始后很快开始样式过渡，创造重叠效果
-    setTimeout(() => {
-      if (this.isAnimating) {
-        this.styleTransitioning = true; // 开始样式过渡
-      }
-    }, 150); // 位置动画开始150ms后开始样式过渡
+// 位置动画开始后很快开始样式过渡，创造重叠效果
+setTimeout(() => {
+  if (this.isAnimating) {
+    this.styleTransitioning = true; // 开始样式过渡
+  }
+}, 150); // 位置动画开始150ms后开始样式过渡
 
-    // 动画完成后清除状态
-    setTimeout(() => {
-      this.isAnimating = false;
-      this.transitioningFromIndex = -1; // 清除过渡状态
-      this.newCurrentTransitioning = false; // 清除新当前行过渡状态
-      this.styleTransitioning = false; // 清除样式过渡状态
-    }, 500); // 总动画时长：150ms延迟 + 300ms样式动画 + 50ms缓冲
+// 动画完成后清除状态
+setTimeout(() => {
+  this.isAnimating = false;
+  this.transitioningFromIndex = -1; // 清除过渡状态
+  this.newCurrentTransitioning = false; // 清除新当前行过渡状态
+  this.styleTransitioning = false; // 清除样式过渡状态
+}, 500); // 总动画时长：150ms延迟 + 300ms样式动画 + 50ms缓冲
   }
 
   /**
    * 计算行动画延迟（错开动画）
    */
   private getAnimationDelay(index: number): number {
-    if (!this.isAnimating) {
-      return 0; // 非动画状态时无延迟
-    }
-
-    const distance = Math.abs(index - this.mIndexOfCurrentLine);
-    // 当前行无延迟，其他行根据距离递增延迟
-    if (distance === 0) {
-      return 0; // 当前行立即开始动画
-    } else {
-      // 距离越远延迟越大，但使用更小的增量避免过长延迟
-      return Math.min(distance * 15, 80); // 最大80ms延迟
-    }
+  if (!this.isAnimating) {
+    return 0; // 非动画状态时无延迟
   }
+
+  const distance = Math.abs(index - this.mIndexOfCurrentLine);
+  // 当前行无延迟，其他行根据距离递增延迟
+  if (distance === 0) {
+    return 0; // 当前行立即开始动画
+  } else {
+    // 距离越远延迟越大，但使用更小的增量避免过长延迟
+    return Math.min(distance * 15, 80); // 最大80ms延迟
+  }
+}
 
   /**
    * 计算歌词行的Y位置
    */
   private calculateLineYPosition(index: number): number {
-    const offsetFromCurrent = index - this.mIndexOfCurrentLine;
-    const lineHeight = this.getLineHeight();
-    // 当前行在视图中心，其他行相对偏移
-    const centerY = (this.actualViewHeight / 2) - (lineHeight / 2); // 减去行高的一半，确保行居中
+  const lineHeight = this.getLineHeight();
+  // 当前行在视图中心，其他行相对偏移
+  const centerY = (this.actualViewHeight / 2) - (lineHeight / 2); // 减去行高的一半，确保行居中
 
-    // 在拖拽时，所有行都需要根据拖拽偏移量进行调整
-    const baseY = centerY + (offsetFromCurrent * lineHeight);
+  // 统一的位置计算逻辑
+  let currentLineIndex = this.mIndexOfCurrentLine;
+  let additionalOffset = 0;
 
-    // 如果正在拖拽，应用拖拽偏移量（注意方向：向上拖拽时歌词向上移动）
-    if (this.mDraggingInProgress) {
-      return baseY - this.dragOffset;
+  if (this.mDraggingInProgress && this.originalCurrentLineIndex >= 0) {
+    // 拖拽时：使用原始当前行作为基准，加上拖拽偏移
+    currentLineIndex = this.originalCurrentLineIndex;
+    additionalOffset = this.dragLineOffset * lineHeight;
+
+    // 调试信息：输出位置计算详情
+    if (index < 5) {
+      LogUtils.d(`LyricsView: Drag calc - Line ${index}, originalIndex: ${this.originalCurrentLineIndex}, dragOffset: ${this.dragLineOffset}, additionalOffset: ${additionalOffset.toFixed(1)}`);
     }
-
-    return baseY;
   }
+
+  const offsetFromCurrent = index - currentLineIndex;
+  const baseY = centerY + (offsetFromCurrent * lineHeight) + additionalOffset;
+
+  // 添加边界检查，确保歌词行不会完全移出视图
+  const minY = -lineHeight * 0.5; // 允许稍微移出上边界
+  const maxY = this.actualViewHeight + lineHeight * 0.5; // 允许稍微移出下边界
+
+  const clampedY = Math.max(minY, Math.min(maxY, baseY));
+
+  // 如果位置被限制了，输出调试信息
+  if (this.mDraggingInProgress && Math.abs(clampedY - baseY) > 1) {
+    LogUtils.d(`LyricsView: Line ${index} position clamped from ${baseY.toFixed(1)} to ${clampedY.toFixed(1)}`);
+  }
+
+  return clampedY;
+}
 
   /**
    * 计算歌词行高度
    */
   private getLineHeight(): number {
-    return this.currentLineTextSize + this.lineSpacing;
-  }
+  return this.currentLineTextSize + this.lineSpacing;
+}
 
   /**
    * 计算可以显示的最大行数（上下各一半）
    */
   private getMaxVisibleLines(): number {
-    const lineHeight = this.getLineHeight();
-    const availableHeight = this.actualViewHeight;
-    return Math.floor(availableHeight / lineHeight);
-  }
+  const lineHeight = this.getLineHeight();
+  const availableHeight = this.actualViewHeight;
+  return Math.floor(availableHeight / lineHeight);
+}
 
   /**
    * 判断歌词行是否在可视范围内
    */
   private isLineVisible(index: number): boolean {
-    const offsetFromCurrent = Math.abs(index - this.mIndexOfCurrentLine);
-    const maxVisibleLines = this.getMaxVisibleLines();
-    // 限制显示范围：当前行上下各显示一定数量的行
-    const maxOffset = Math.floor(maxVisibleLines / 2);
-    return offsetFromCurrent <= maxOffset;
+  // 计算该行的实际Y位置
+  const lineY = this.calculateLineYPosition(index);
+  const lineHeight = this.getLineHeight();
+
+  // 判断行是否在视图范围内（包含部分可见）
+  const lineTop = lineY;
+  const lineBottom = lineY + lineHeight;
+  const viewTop = -lineHeight * 0.5; // 允许稍微超出上边界
+  const viewBottom = this.actualViewHeight + lineHeight * 0.5; // 允许稍微超出下边界
+
+  // 如果行的任何部分在扩展视图范围内，就认为是可见的
+  const isVisible = lineBottom > viewTop && lineTop < viewBottom;
+
+  // 在拖拽时输出详细调试信息
+  if (this.mDraggingInProgress && index < 10) {
+    LogUtils.d(`LyricsView: Line ${index} - Y: ${lineY.toFixed(1)}, Top: ${lineTop.toFixed(1)}, Bottom: ${lineBottom.toFixed(1)}, ViewTop: ${viewTop}, ViewBottom: ${viewBottom}, Visible: ${isVisible}`);
   }
 
+  return isVisible;
+}
+
   /**
-   * 渐进式高亮歌词行Builder - 实现卡拉OK风格的流畅高亮效果
+   * 统计并记录当前可见的行数（调试用）
    */
-  @Builder
-  EnhancedLyricsLineBuilder(line: LyricsLineModel, index: number) {
-    // 渲染所有行，但使用透明度控制可见性，确保动画连续性
-    if (index === this.mIndexOfCurrentLine && this.newCurrentTransitioning) {
-      // 新当前行正在过渡：使用新当前行过渡效果
-      this.NewCurrentLineTransitionBuilder(line, index)
-    } else if (index === this.mIndexOfCurrentLine) {
-      // 当前行：使用渐进式高亮效果
-      this.ProgressiveHighlightLineBuilder(line, index)
-    } else if (index === this.transitioningFromIndex && this.isAnimating) {
-      // 正在过渡的原当前行：使用过渡高亮效果
-      this.TransitioningHighlightLineBuilder(line, index)
-    } else {
-      // 非当前行：普通显示
-      this.NormalLineBuilder(line, index)
+  private logVisibleLinesCount(): void {
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  if(!lyricsModel || !lyricsModel.lines) {
+  return;
+}
+
+let visibleCount = 0;
+const visibleLines: number[] = [];
+
+for (let i = 0; i < lyricsModel.lines.length; i++) {
+  if (this.isLineVisible(i)) {
+    visibleCount++;
+    visibleLines.push(i);
+  }
+}
+
+LogUtils.d(`LyricsView: Visible lines count: ${visibleCount}, lines: [${visibleLines.join(', ')}], totalLines: ${lyricsModel.lines.length}`);
+
+// 如果没有可见行，这是一个问题
+if (visibleCount === 0) {
+  LogUtils.d(`LyricsView: WARNING - No visible lines! ViewHeight: ${this.actualViewHeight}, LineHeight: ${this.getLineHeight()}`);
+}
+  }
+
+/**
+ * 渐进式高亮歌词行Builder - 实现卡拉OK风格的流畅高亮效果
+ */
+@Builder
+EnhancedLyricsLineBuilder(line: LyricsLineModel, index: number) {
+  // 渲染所有行，但使用透明度控制可见性，确保动画连续性
+  if (index === this.mIndexOfCurrentLine && this.newCurrentTransitioning) {
+    // 新当前行正在过渡：使用新当前行过渡效果
+    this.NewCurrentLineTransitionBuilder(line, index)
+  } else if (index === this.mIndexOfCurrentLine) {
+    // 当前行：使用渐进式高亮效果
+    this.ProgressiveHighlightLineBuilder(line, index)
+  } else if (index === this.transitioningFromIndex && this.isAnimating) {
+    // 正在过渡的原当前行：使用过渡高亮效果
+    this.TransitioningHighlightLineBuilder(line, index)
+  } else {
+    // 非当前行：普通显示
+    this.NormalLineBuilder(line, index)
+  }
+}
+
+/**
+ * 渐进式高亮行Builder
+ */
+@Builder
+ProgressiveHighlightLineBuilder(line: LyricsLineModel, index: number) {
+  Stack() {
+    // 背景文字（正常颜色）
+    Row() {
+      Text(this.getLineText(line))
+        .fontSize(this.currentLineTextSize)
+        .fontColor(this.currentLineTextColor)
+        .fontWeight(FontWeight.Bold)
+        .textAlign(this.getTextAlign())
+        .width('100%')
     }
-  }
-
-  /**
-   * 渐进式高亮行Builder
-   */
-  @Builder
-  ProgressiveHighlightLineBuilder(line: LyricsLineModel, index: number) {
-    Stack() {
-      // 背景文字（正常颜色）
-      Row() {
-        Text(this.getLineText(line))
-          .fontSize(this.currentLineTextSize)
-          .fontColor(this.currentLineTextColor)
-          .fontWeight(FontWeight.Bold)
-          .textAlign(this.getTextAlign())
-          .width('100%')
-      }
       .width('100%')
       .justifyContent(FlexAlign.Center)
 
-      // 高亮文字（使用clip实现渐进效果）
-      Row() {
-        Text(this.getLineText(line))
-          .fontSize(this.currentLineTextSize)
-          .fontColor(this.currentLineHighlightedTextColor)
-          .fontWeight(FontWeight.Bold)
-          .textAlign(this.getTextAlign())
-          .width('100%')
-      }
+    // 高亮文字（使用clip实现渐进效果）
+    Row() {
+      Text(this.getLineText(line))
+        .fontSize(this.currentLineTextSize)
+        .fontColor(this.currentLineHighlightedTextColor)
+        .fontWeight(FontWeight.Bold)
+        .textAlign(this.getTextAlign())
+        .width('100%')
+    }
       .width('100%')
       .justifyContent(FlexAlign.Center)
       .clip(true)
@@ -481,7 +544,7 @@ export struct LyricsView {
         iterations: 1,
         playMode: PlayMode.Normal
       })
-    }
+  }
     .width('100%')
     .height(this.getLineHeight())
     .position({ x: 0, y: this.calculateLineYPosition(index) })
@@ -497,22 +560,22 @@ export struct LyricsView {
       iterations: 1,
       playMode: PlayMode.Normal
     })
-  }
+}
 
-  /**
-   * 过渡普通行Builder - 处理原当前行以普通行样式从当前位置移动到目标位置
-   */
-  @Builder
-  TransitioningHighlightLineBuilder(line: LyricsLineModel, index: number) {
-    // 直接显示为普通行，不显示高亮效果
-    Row() {
-      Text(this.getLineText(line))
-        .fontSize(this.textSize) // 使用普通行字体大小
-        .fontColor(this.getNormalLineColor(index)) // 使用普通行颜色
-        .fontWeight(FontWeight.Normal) // 使用普通行字重
-        .textAlign(this.getTextAlign())
-        .width('100%')
-    }
+/**
+ * 过渡普通行Builder - 处理原当前行以普通行样式从当前位置移动到目标位置
+ */
+@Builder
+TransitioningHighlightLineBuilder(line: LyricsLineModel, index: number) {
+  // 直接显示为普通行，不显示高亮效果
+  Row() {
+    Text(this.getLineText(line))
+      .fontSize(this.textSize) // 使用普通行字体大小
+      .fontColor(this.getNormalLineColor(index)) // 使用普通行颜色
+      .fontWeight(FontWeight.Normal) // 使用普通行字重
+      .textAlign(this.getTextAlign())
+      .width('100%')
+  }
     .width('100%')
     .height(this.getLineHeight())
     .justifyContent(FlexAlign.Center)
@@ -532,42 +595,42 @@ export struct LyricsView {
       iterations: 1,
       playMode: PlayMode.Normal
     })
-  }
+}
 
-  /**
-   * 新当前行过渡Builder - 处理从下一行位置移动到中心并变为高亮样式
-   */
-  @Builder
-  NewCurrentLineTransitionBuilder(line: LyricsLineModel, index: number) {
-    Stack() {
-      // 背景文字（平滑过渡样式）
-      Row() {
-        Text(this.getLineText(line))
-          .fontSize(this.getTransitioningFontSize())
-          .fontColor(this.getTransitioningTextColor())
-          .fontWeight(this.getTransitioningFontWeight())
-          .textAlign(this.getTextAlign())
-          .width('100%')
-          .animation({
-            duration: 300, // 样式过渡动画
-            curve: Curve.EaseInOut,
-            iterations: 1,
-            playMode: PlayMode.Normal
-          })
-      }
+/**
+ * 新当前行过渡Builder - 处理从下一行位置移动到中心并变为高亮样式
+ */
+@Builder
+NewCurrentLineTransitionBuilder(line: LyricsLineModel, index: number) {
+  Stack() {
+    // 背景文字（平滑过渡样式）
+    Row() {
+      Text(this.getLineText(line))
+        .fontSize(this.getTransitioningFontSize())
+        .fontColor(this.getTransitioningTextColor())
+        .fontWeight(this.getTransitioningFontWeight())
+        .textAlign(this.getTextAlign())
+        .width('100%')
+        .animation({
+          duration: 300, // 样式过渡动画
+          curve: Curve.EaseInOut,
+          iterations: 1,
+          playMode: PlayMode.Normal
+        })
+    }
       .width('100%')
       .justifyContent(FlexAlign.Center)
 
-      // 高亮文字（渐进显示）
-      if (this.styleTransitioning) {
-        Row() {
-          Text(this.getLineText(line))
-            .fontSize(this.currentLineTextSize)
-            .fontColor(this.currentLineHighlightedTextColor)
-            .fontWeight(FontWeight.Bold)
-            .textAlign(this.getTextAlign())
-            .width('100%')
-        }
+    // 高亮文字（渐进显示）
+    if (this.styleTransitioning) {
+      Row() {
+        Text(this.getLineText(line))
+          .fontSize(this.currentLineTextSize)
+          .fontColor(this.currentLineHighlightedTextColor)
+          .fontWeight(FontWeight.Bold)
+          .textAlign(this.getTextAlign())
+          .width('100%')
+      }
         .width('100%')
         .justifyContent(FlexAlign.Center)
         .clip(true)
@@ -582,8 +645,8 @@ export struct LyricsView {
           iterations: 1,
           playMode: PlayMode.Normal
         })
-      }
     }
+  }
     .width('100%')
     .height(this.getLineHeight())
     .position({
@@ -601,21 +664,21 @@ export struct LyricsView {
       iterations: 1,
       playMode: PlayMode.Normal
     })
-  }
+}
 
-  /**
-   * 普通行Builder
-   */
-  @Builder
-  NormalLineBuilder(line: LyricsLineModel, index: number) {
-    Row() {
-      Text(this.getLineText(line))
-        .fontSize(this.textSize)
-        .fontColor(this.getNormalLineColor(index))
-        .fontWeight(FontWeight.Normal)
-        .textAlign(this.getTextAlign())
-        .width('100%')
-    }
+/**
+ * 普通行Builder
+ */
+@Builder
+NormalLineBuilder(line: LyricsLineModel, index: number) {
+  Row() {
+    Text(this.getLineText(line))
+      .fontSize(this.textSize)
+      .fontColor(this.getNormalLineColor(index))
+      .fontWeight(FontWeight.Normal)
+      .textAlign(this.getTextAlign())
+      .width('100%')
+  }
     .width('100%')
     .height(this.getLineHeight())
     .justifyContent(FlexAlign.Center)
@@ -633,160 +696,180 @@ export struct LyricsView {
       iterations: 1,
       playMode: PlayMode.Normal
     })
-  }
+}
 
   /**
    * 计算当前行的高亮进度（0-1之间）
    */
   private calculateLineProgress(line: LyricsLineModel): number {
-    if (!line.tones || line.tones.length === 0) {
-      return 0;
-    }
-
-    const lineStartTime = line.getStartTime();
-    const lineEndTime = line.getEndTime();
-
-    if (this.mCurrentTime < lineStartTime) {
-      return 0;
-    } else if (this.mCurrentTime >= lineEndTime) {
-      return 1;
-    } else {
-      return (this.mCurrentTime - lineStartTime) / (lineEndTime - lineStartTime);
-    }
+  if (!line.tones || line.tones.length === 0) {
+    return 0;
   }
+
+  const lineStartTime = line.getStartTime();
+  const lineEndTime = line.getEndTime();
+
+  if (this.mCurrentTime < lineStartTime) {
+    return 0;
+  } else if (this.mCurrentTime >= lineEndTime) {
+    return 1;
+  } else {
+    return (this.mCurrentTime - lineStartTime) / (lineEndTime - lineStartTime);
+  }
+}
 
   /**
    * 获取当前行字符颜色（实现高亮逻辑）
    */
   private getCurrentLineCharColor(tone: Tone): string {
-    // 当前行的高亮逻辑：唱过的部分全部高亮
-    if (this.mCurrentTime >= tone.begin) {
-      return this.currentLineHighlightedTextColor; // 高亮颜色
-    } else {
-      return this.currentLineTextColor; // 当前行正常颜色
-    }
+  // 当前行的高亮逻辑：唱过的部分全部高亮
+  if (this.mCurrentTime >= tone.begin) {
+    return this.currentLineHighlightedTextColor; // 高亮颜色
+  } else {
+    return this.currentLineTextColor; // 当前行正常颜色
   }
+}
 
   /**
    * 获取普通行颜色
    */
   private getNormalLineColor(index: number): string {
-    if (index < this.mIndexOfCurrentLine) {
-      return this.previousLineTextColor; // 已唱过的行
-    } else {
-      return this.upcomingLineTextColor; // 未唱的行
-    }
+  if (index < this.mIndexOfCurrentLine) {
+    return this.previousLineTextColor; // 已唱过的行
+  } else {
+    return this.upcomingLineTextColor; // 未唱的行
   }
+}
 
   /**
-   * 计算行的透明度（基于距离当前行的远近）
+   * 计算行的透明度（基于可见性和距离当前行的远近）
    */
   private getLineOpacity(index: number): number {
-    const distance = Math.abs(index - this.mIndexOfCurrentLine);
-    const maxVisibleLines = this.getMaxVisibleLines();
-    const maxDistance = Math.floor(maxVisibleLines / 2);
+  const isVisible = this.isLineVisible(index);
 
-    if (distance === 0) {
-      return 1.0; // 当前行完全不透明
-    } else if (distance <= maxDistance) {
-      // 使用更平滑的透明度渐变
-      const fadeRatio = distance / maxDistance;
-      return Math.max(0.2, 1.0 - (fadeRatio * 0.7)); // 从1.0渐变到0.3
-    } else if (distance <= maxDistance + 1) {
-      // 边界行使用很低的透明度，确保平滑过渡
-      return 0.1;
-    } else {
-      return 0.0; // 超出范围的行完全透明
+  // 保底机制：如果拖拽时，确保当前行附近的行至少是可见的
+  if (this.mDraggingInProgress) {
+    const currentIndex =
+      this.originalCurrentLineIndex >= 0 ? this.originalCurrentLineIndex : this.mIndexOfCurrentLine;
+    const distance = Math.abs(index - currentIndex);
+
+    // 强制显示当前行附近的几行，即使位置计算有问题
+    if (distance <= 2) {
+      return distance === 0 ? 1.0 : 0.8;
     }
   }
+
+  // 如果不可见，返回透明
+  if (!isVisible) {
+    return 0.0;
+  }
+
+  // 可见的行根据距离当前行的远近计算透明度
+  const distance = Math.abs(index - this.mIndexOfCurrentLine);
+  const maxVisibleLines = this.getMaxVisibleLines();
+  const maxDistance = Math.floor(maxVisibleLines / 2);
+
+  if (distance === 0) {
+    return 1.0; // 当前行完全不透明
+  } else if (distance <= maxDistance) {
+    // 使用更平滑的透明度渐变
+    const fadeRatio = distance / maxDistance;
+    return Math.max(0.2, 1.0 - (fadeRatio * 0.7)); // 从1.0渐变到0.3
+  } else if (distance <= maxDistance + 1) {
+    // 边界行使用很低的透明度，确保平滑过渡
+    return 0.1;
+  } else {
+    return 0.0; // 超出范围的行完全透明
+  }
+}
 
   /**
    * 计算行的缩放比例
    */
   private getLineScale(index: number): number {
-    if (index === this.mIndexOfCurrentLine) {
-      return 1.1; // 当前行稍微放大，突出显示
-    } else {
-      const distance = Math.abs(index - this.mIndexOfCurrentLine);
-      // 距离当前行越远，缩放越小，但保持最小值
-      return Math.max(0.95, 1.0 - (distance * 0.03));
-    }
+  if (index === this.mIndexOfCurrentLine) {
+    return 1.1; // 当前行稍微放大，突出显示
+  } else {
+    const distance = Math.abs(index - this.mIndexOfCurrentLine);
+    // 距离当前行越远，缩放越小，但保持最小值
+    return Math.max(0.95, 1.0 - (distance * 0.03));
   }
+}
 
   /**
    * 计算过渡行的缩放比例
    */
   private getTransitioningLineScale(index: number): number {
-    // 过渡行直接使用目标位置的缩放比例（普通行大小）
-    const distance = Math.abs(index - this.mIndexOfCurrentLine);
-    return Math.max(0.95, 1.0 - (distance * 0.03));
-  }
+  // 过渡行直接使用目标位置的缩放比例（普通行大小）
+  const distance = Math.abs(index - this.mIndexOfCurrentLine);
+  return Math.max(0.95, 1.0 - (distance * 0.03));
+}
 
   /**
    * 获取过渡行的Y位置（使用动画插值）
    */
   private getTransitioningYPosition(): number {
-    // 初始时返回起始位置，动画会自动插值到目标位置
-    return this.transitioningToY;
-  }
+  // 初始时返回起始位置，动画会自动插值到目标位置
+  return this.transitioningToY;
+}
 
   /**
    * 获取新当前行的Y位置
    */
   private getNewCurrentYPosition(): number {
-    return this.newCurrentToY;
-  }
+  return this.newCurrentToY;
+}
 
   /**
    * 获取新当前行的缩放比例
    */
   private getNewCurrentScale(): number {
-    if (this.styleTransitioning) {
-      return 1.1; // 样式过渡时使用当前行缩放
-    } else {
-      return 1.0; // 位置过渡时使用普通行缩放
-    }
+  if (this.styleTransitioning) {
+    return 1.1; // 样式过渡时使用当前行缩放
+  } else {
+    return 1.0; // 位置过渡时使用普通行缩放
   }
+}
 
   /**
    * 获取高亮层的透明度
    */
   private getHighlightOpacity(): number {
-    return this.styleTransitioning ? 1.0 : 0.0;
-  }
+  return this.styleTransitioning ? 1.0 : 0.0;
+}
 
   /**
    * 获取过渡中的字体大小
    */
   private getTransitioningFontSize(): number {
-    if (this.styleTransitioning) {
-      return this.currentLineTextSize; // 过渡到当前行字体大小
-    } else {
-      return this.textSize; // 开始时使用普通行字体大小
-    }
+  if (this.styleTransitioning) {
+    return this.currentLineTextSize; // 过渡到当前行字体大小
+  } else {
+    return this.textSize; // 开始时使用普通行字体大小
   }
+}
 
   /**
    * 获取过渡中的文字颜色
    */
   private getTransitioningTextColor(): string {
-    if (this.styleTransitioning) {
-      return this.currentLineTextColor; // 过渡到当前行颜色
-    } else {
-      return this.upcomingLineTextColor; // 开始时使用未唱行颜色
-    }
+  if (this.styleTransitioning) {
+    return this.currentLineTextColor; // 过渡到当前行颜色
+  } else {
+    return this.upcomingLineTextColor; // 开始时使用未唱行颜色
   }
+}
 
   /**
    * 获取过渡中的字体粗细
    */
   private getTransitioningFontWeight(): FontWeight {
-    if (this.styleTransitioning) {
-      return FontWeight.Bold; // 过渡到当前行字重
-    } else {
-      return FontWeight.Normal; // 开始时使用普通行字重
-    }
+  if (this.styleTransitioning) {
+    return FontWeight.Bold; // 过渡到当前行字重
+  } else {
+    return FontWeight.Normal; // 开始时使用普通行字重
   }
+}
 
   /**
    * 根据触摸Y坐标计算对应的歌词行索引
@@ -794,28 +877,28 @@ export struct LyricsView {
    * @return 对应的歌词行索引，如果无效则返回-1
    */
   private calculateLineIndexByTouchY(touchY: number): number {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
-      return -1;
-    }
-
-    const lineHeight = this.getLineHeight();
-    const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
-
-    // 计算触摸点相对于当前行中心的偏移
-    const offsetFromCenter = touchY - centerY;
-    const lineOffset = Math.round(offsetFromCenter / lineHeight);
-
-    // 计算目标行索引
-    const targetLineIndex = this.mIndexOfCurrentLine + lineOffset;
-
-    // 确保索引在有效范围内
-    if (targetLineIndex >= 0 && targetLineIndex < lyricsModel.lines.length) {
-      return targetLineIndex;
-    }
-
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
     return -1;
   }
+
+  const lineHeight = this.getLineHeight();
+  const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
+
+  // 计算触摸点相对于当前行中心的偏移
+  const offsetFromCenter = touchY - centerY;
+  const lineOffset = Math.round(offsetFromCenter / lineHeight);
+
+  // 计算目标行索引
+  const targetLineIndex = this.mIndexOfCurrentLine + lineOffset;
+
+  // 确保索引在有效范围内
+  if (targetLineIndex >= 0 && targetLineIndex < lyricsModel.lines.length) {
+    return targetLineIndex;
+  }
+
+  return -1;
+}
 
   /**
    * 根据歌词行索引获取对应的开始时间
@@ -823,67 +906,33 @@ export struct LyricsView {
    * @return 对应的开始时间（毫秒），如果无效则返回-1
    */
   private getLineStartTime(lineIndex: number): number {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel || !lyricsModel.lines || lineIndex < 0 || lineIndex >= lyricsModel.lines.length) {
-      return -1;
-    }
-
-    return lyricsModel.lines[lineIndex].getStartTime();
+  const lyricsModel = this.mLyricMachine?.getLyricsModel();
+  if (!lyricsModel || !lyricsModel.lines || lineIndex < 0 || lineIndex >= lyricsModel.lines.length) {
+    return -1;
   }
 
-  /**
-   * 计算当前视图中心位置对应的歌词行索引
-   * @return 中心位置的歌词行索引
-   */
-  private calculateCenterLineIndex(): number {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
-      return -1;
-    }
-
-    const lineHeight = this.getLineHeight();
-    const centerY = this.actualViewHeight / 2;
-
-    // 考虑拖拽偏移量，计算实际的中心位置
-    const adjustedCenterY = centerY + this.dragOffset;
-
-    // 基于当前行计算偏移
-    const currentLineCenterY = centerY; // 当前行在视图中心
-    const offsetFromCurrentLine = (adjustedCenterY - currentLineCenterY) / lineHeight;
-
-    // 计算目标行索引
-    const targetLineIndex = Math.round(this.mIndexOfCurrentLine + offsetFromCurrentLine);
-
-    // 确保索引在有效范围内
-    if (targetLineIndex >= 0 && targetLineIndex < lyricsModel.lines.length) {
-      return targetLineIndex;
-    }
-
-    // 如果超出范围，返回边界值
-    if (targetLineIndex < 0) {
-      return 0;
-    } else {
-      return lyricsModel.lines.length - 1;
-    }
-  }
+  return lyricsModel.lines[lineIndex].getStartTime();
+}
 
   /**
    * 处理拖拽开始事件
    * @param touchY 初始触摸Y坐标
    */
   private handleDragStart(touchY: number): void {
-    if (!this.enableDragging) {
-      return;
-    }
+  if(!this.enableDragging) {
+  return;
+}
 
-    LogUtils.d('LyricsView: Drag start');
-    this.mDraggingInProgress = true;
-    this.initialTouchY = touchY;
-    this.currentTouchY = touchY;
-    this.dragOffset = 0;
+LogUtils.d('LyricsView: Drag start');
+this.mDraggingInProgress = true;
+this.initialTouchY = touchY;
+this.currentTouchY = touchY;
+this.dragOffset = 0;
+this.dragLineOffset = 0;
+this.originalCurrentLineIndex = this.mIndexOfCurrentLine; // 记录拖拽开始时的当前行
 
-    // 通过EventBus通知拖拽开始
-    this.eventBus.emit(LyricsEvents.DRAG_START);
+// 通过EventBus通知拖拽开始
+this.eventBus.emit(LyricsEvents.DRAG_START);
   }
 
   /**
@@ -891,15 +940,44 @@ export struct LyricsView {
    * @param touchY 当前触摸Y坐标
    */
   private handleDragMove(touchY: number): void {
-    if (!this.enableDragging || !this.mDraggingInProgress) {
-      return;
-    }
+  if(!this.enableDragging || !this.mDraggingInProgress) {
+  return;
+}
 
-    this.currentTouchY = touchY;
-    // 计算拖拽偏移量（向上拖拽为正值，向下拖拽为负值）
-    this.dragOffset = this.initialTouchY - touchY;
+this.currentTouchY = touchY;
+// 计算Y轴移动距离
+const deltaY = touchY - this.initialTouchY;
 
-    LogUtils.d(`LyricsView: Dragging, offset: ${this.dragOffset}`);
+// 根据Y轴移动距离计算歌词行偏移量
+// 使用实际的歌词行高度来计算偏移量
+const lineHeight = this.getLineHeight();
+const rawLineOffset = Math.round(deltaY / lineHeight);
+
+// 计算拖拽边界限制
+const lyricsModel = this.mLyricMachine?.getLyricsModel();
+if (lyricsModel && lyricsModel.lines) {
+  // 计算更保守的边界限制
+  const totalLines = lyricsModel.lines.length;
+
+  // 向上拖拽限制：不能超过第一行
+  const maxUpwardOffset = this.originalCurrentLineIndex;
+
+  // 向下拖拽限制：不能超过最后一行
+  const maxDownwardOffset = totalLines - 1 - this.originalCurrentLineIndex;
+
+  // 限制拖拽偏移量在安全范围内
+  this.dragLineOffset = Math.max(-maxDownwardOffset, Math.min(maxUpwardOffset, rawLineOffset));
+
+  LogUtils.d(`LyricsView: Dragging, deltaY: ${deltaY}, rawOffset: ${rawLineOffset}, limitedOffset: ${this.dragLineOffset}, bounds: [${-maxDownwardOffset}, ${maxUpwardOffset}]`);
+
+  // 统计可见行数（调试用）
+  this.logVisibleLinesCount();
+
+  // 强制触发UI更新，让可见性检查生效
+  this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL;
+} else {
+  this.dragLineOffset = 0;
+}
   }
 
   /**
@@ -907,95 +985,105 @@ export struct LyricsView {
    * @param touchY 最终触摸点的Y坐标
    */
   private handleDragEnd(touchY: number): void {
-    if (!this.enableDragging) {
-      return;
-    }
+  if(!this.enableDragging) {
+  return;
+}
 
-    LogUtils.d('LyricsView: Drag end');
-    this.mDraggingInProgress = false;
+LogUtils.d('LyricsView: Drag end');
+this.mDraggingInProgress = false;
 
-    // 计算中心位置对应的歌词行
-    const centerLineIndex = this.calculateCenterLineIndex();
-    if (centerLineIndex >= 0) {
-      const startTime = this.getLineStartTime(centerLineIndex);
-      if (startTime >= 0) {
-        LogUtils.d(`LyricsView: Center line ${centerLineIndex}, time ${startTime}ms`);
+// 计算最终的目标行索引
+const lyricsModel = this.mLyricMachine?.getLyricsModel();
+if (lyricsModel && lyricsModel.lines) {
+  const finalLineIndex = this.originalCurrentLineIndex - this.dragLineOffset;
+  const clampedIndex = Math.max(0, Math.min(finalLineIndex, lyricsModel.lines.length - 1));
+  const startTime = this.getLineStartTime(clampedIndex);
 
-        // 通过EventBus通知最终拖拽位置
-        this.eventBus.emit(LyricsEvents.DRAG_END, startTime);
-      }
-    }
+  if (startTime >= 0) {
+    LogUtils.d(`LyricsView: Final drag line ${clampedIndex}, time ${startTime}ms`);
 
-    // 重置拖拽状态
-    this.dragOffset = 0;
-    this.initialTouchY = 0;
-    this.currentTouchY = 0;
+    // 通过EventBus通知最终拖拽位置
+    this.eventBus.emit(LyricsEvents.DRAG_END, startTime);
+  } else {
+    LogUtils.d('LyricsView: Failed to get start time for final position');
+  }
+} else {
+  LogUtils.d('LyricsView: No lyrics model available');
+}
+
+// 重置拖拽状态
+this.dragOffset = 0;
+this.initialTouchY = 0;
+this.currentTouchY = 0;
+this.dragLineOffset = 0;
+this.originalCurrentLineIndex = -1;
   }
 
-  /**
-   * Renders the prelude end position indicator
-   */
-  @Builder
-  PreludeIndicatorBuilder() {
-    if (this.enablePreludeEndPositionIndicator && this.mLyricMachine?.getLyricsModel() &&
-      this.getPreludeCountDown() > 0) {
-      Row() {
-        // Indicator 1
+/**
+ * Renders the prelude end position indicator
+ */
+@Builder
+PreludeIndicatorBuilder() {
+  if (this.enablePreludeEndPositionIndicator && this.mLyricMachine?.getLyricsModel() &&
+    this.getPreludeCountDown() > 0) {
+    Row() {
+      // Indicator 1
+      Circle({
+        width: this.preludeEndPositionIndicatorRadius * 2,
+        height: this.preludeEndPositionIndicatorRadius * 2
+      })
+        .fill(this.preludeEndPositionIndicatorColor)
+
+      if (this.getPreludeCountDown() >= 2) {
+        // Indicator 2
         Circle({
           width: this.preludeEndPositionIndicatorRadius * 2,
           height: this.preludeEndPositionIndicatorRadius * 2
         })
           .fill(this.preludeEndPositionIndicatorColor)
-
-        if (this.getPreludeCountDown() >= 2) {
-          // Indicator 2
-          Circle({
-            width: this.preludeEndPositionIndicatorRadius * 2,
-            height: this.preludeEndPositionIndicatorRadius * 2
-          })
-            .fill(this.preludeEndPositionIndicatorColor)
-            .margin({ left: this.preludeEndPositionIndicatorRadius * 2 })
-        }
-
-        if (this.getPreludeCountDown() >= 3) {
-          // Indicator 3 (with blinking effect)
-          Circle({
-            width: this.preludeEndPositionIndicatorRadius * 2,
-            height: this.preludeEndPositionIndicatorRadius * 2
-          })
-            .fill(this.preludeEndPositionIndicatorColor)
-            .margin({ left: this.preludeEndPositionIndicatorRadius * 2 })
-            .opacity((this.getPreludeCountDown() % 2 === 1 || this.mCurrentTime < 2000) ? 1 : 0)
-        }
+          .margin({ left: this.preludeEndPositionIndicatorRadius * 2 })
       }
+
+      if (this.getPreludeCountDown() >= 3) {
+        // Indicator 3 (with blinking effect)
+        Circle({
+          width: this.preludeEndPositionIndicatorRadius * 2,
+          height: this.preludeEndPositionIndicatorRadius * 2
+        })
+          .fill(this.preludeEndPositionIndicatorColor)
+          .margin({ left: this.preludeEndPositionIndicatorRadius * 2 })
+          .opacity((this.getPreludeCountDown() % 2 === 1 || this.mCurrentTime < 2000) ? 1 : 0)
+      }
+    }
       .width('100%')
       .justifyContent(FlexAlign.Center)
       .margin({ top: this.preludeEndPositionIndicatorPaddingTop })
-    }
   }
+}
 
-  build() {
-    Column() {
-      // Prelude indicator
-      this.PreludeIndicatorBuilder()
+build() {
+  Column() {
+    // Prelude indicator
+    this.PreludeIndicatorBuilder()
 
-      // Main lyrics content
-      if (this.uninitializedOrNoLyrics()) {
-        this.NoLyricsBuilder()
-      } else {
-        // 使用 Stack 来支持绝对定位
-        Stack() {
-          if (this.mLyricMachine?.getLyricsModel()?.lines) {
-            ForEach(this.mLyricMachine?.getLyricsModel()?.lines, (line: LyricsLineModel, index: number) => {
-              this.EnhancedLyricsLineBuilder(line, index)
-            })
-          }
+    // Main lyrics content
+    if (this.uninitializedOrNoLyrics()) {
+      this.NoLyricsBuilder()
+    } else {
+      // 使用 Stack 来支持绝对定位
+      Stack() {
+        if (this.mLyricMachine?.getLyricsModel()?.lines) {
+          ForEach(this.mLyricMachine?.getLyricsModel()?.lines, (line: LyricsLineModel, index: number) => {
+            // 渲染所有行，但通过透明度控制可见性
+            this.EnhancedLyricsLineBuilder(line, index)
+          })
         }
+      }
         .width('100%')
         .height('100%')
         .alignContent(Alignment.TopStart) // 从顶部开始定位
-      }
     }
+  }
     .width('100%')
     .height('90%')
     .margin({ top: this.paddingTop })
@@ -1041,92 +1129,92 @@ export struct LyricsView {
       this.removeEventListeners();
       this.resetCompletely(); // 完全清理
     })
-  }
+}
 
   /**
    * 设置事件监听器
    */
   private setupEventListeners(): void {
-    LogUtils.d('LyricsView: Setting up event listeners');
+  LogUtils.d('LyricsView: Setting up event listeners');
 
-    // 初始化LyricMachine
-    this.initLyricMachine();
+  // 初始化LyricMachine
+  this.initLyricMachine();
 
-    // 监听歌词数据设置事件
-    const setLyricDataHandler = (lyricModel: LyricModel) => {
-      if (this.mLyricMachine) {
-        this.mLyricMachine.prepare(lyricModel);
-        // mLyricsModel removed - data now managed by mLyricMachine
-        this.forceCheckLineWrap();
-        LogUtils.d(`LyricsView: Lyric data set successfully, getLyricsModel: ${!!this.mLyricMachine.getLyricsModel()}`);
-      } else {
-        LogUtils.e('LyricsView: mLyricMachine is null when receiving SET_LYRIC_DATA event');
-      }
-    };
-    this.eventBus.on(LyricsEvents.SET_LYRIC_DATA, setLyricDataHandler);
+  // 监听歌词数据设置事件
+  const setLyricDataHandler = (lyricModel: LyricModel) => {
+    if (this.mLyricMachine) {
+      this.mLyricMachine.prepare(lyricModel);
+      // mLyricsModel removed - data now managed by mLyricMachine
+      this.forceCheckLineWrap();
+      LogUtils.d(`LyricsView: Lyric data set successfully, getLyricsModel: ${!!this.mLyricMachine.getLyricsModel()}`);
+    } else {
+      LogUtils.e('LyricsView: mLyricMachine is null when receiving SET_LYRIC_DATA event');
+    }
+  };
+  this.eventBus.on(LyricsEvents.SET_LYRIC_DATA, setLyricDataHandler);
 
-    // 监听进度更新事件
-    this.eventBus.on(LyricsEvents.SET_PROGRESS, (progress: number) => {
-      if (this.mLyricMachine) {
-        this.mLyricMachine.setProgress(progress);
-      }
-    });
+  // 监听进度更新事件
+  this.eventBus.on(LyricsEvents.SET_PROGRESS, (progress: number) => {
+    if (this.mLyricMachine) {
+      this.mLyricMachine.setProgress(progress);
+    }
+  });
 
-    // 监听重置事件
-    this.eventBus.on(LyricsEvents.RESET, () => {
-      LogUtils.d('LyricsView: Received RESET event');
-      if (this.mLyricMachine) {
-        this.mLyricMachine.reset();
-      }
-    });
+  // 监听重置事件
+  this.eventBus.on(LyricsEvents.RESET, () => {
+    LogUtils.d('LyricsView: Received RESET event');
+    if (this.mLyricMachine) {
+      this.mLyricMachine.reset();
+    }
+  });
 
-    // 监听刷新UI事件
-    this.eventBus.on(LyricsEvents.REQUEST_REFRESH, () => {
-      LogUtils.d('LyricsView: Received REQUEST_REFRESH event');
-      this.requestRefreshUi();
-    });
-  }
+  // 监听刷新UI事件
+  this.eventBus.on(LyricsEvents.REQUEST_REFRESH, () => {
+    LogUtils.d('LyricsView: Received REQUEST_REFRESH event');
+    this.requestRefreshUi();
+  });
+}
 
   /**
    * 移除事件监听器
    */
   private removeEventListeners(): void {
-    LogUtils.d('LyricsView: Removing event listeners');
-    // 这里可以添加具体的移除逻辑，但由于EventBus是单例，
-    // 我们可能需要保存回调函数的引用来正确移除
-  }
+  LogUtils.d('LyricsView: Removing event listeners');
+  // 这里可以添加具体的移除逻辑，但由于EventBus是单例，
+  // 我们可能需要保存回调函数的引用来正确移除
+}
 
   /**
    * 初始化LyricMachine
    */
   private initLyricMachine(): void {
-    // 创建LyricMachine并准备数据
-    if (!this.mLyricMachine) {
-      LogUtils.d('LyricsView: Creating new LyricMachine');
+  // 创建LyricMachine并准备数据
+  if(!this.mLyricMachine) {
+  LogUtils.d('LyricsView: Creating new LyricMachine');
 
-      // 创建一个简单的监听器实现
-      class LyricListenerImpl implements OnLyricListener {
-        private lyricsView: LyricsView;
+  // 创建一个简单的监听器实现
+  class LyricListenerImpl implements OnLyricListener {
+    private lyricsView: LyricsView;
 
-        constructor(lyricsView: LyricsView) {
-          this.lyricsView = lyricsView;
-        }
-
-        resetUi(): void {
-          LogUtils.d('LyricsView: resetUi called');
-          this.lyricsView.reset();
-        }
-
-        requestRefreshUi(): void {
-          this.lyricsView.requestRefreshUi();
-        }
-      }
-
-      const listener = new LyricListenerImpl(this);
-      this.mLyricMachine = new LyricMachine(listener);
-      LogUtils.d(`LyricsView: LyricMachine created successfully, initial ready state: ${this.mLyricMachine.isReady()}`);
-    } else {
-      LogUtils.d('LyricsView: LyricMachine already exists');
+    constructor(lyricsView: LyricsView) {
+      this.lyricsView = lyricsView;
     }
+
+    resetUi(): void {
+      LogUtils.d('LyricsView: resetUi called');
+      this.lyricsView.reset();
+    }
+
+    requestRefreshUi(): void {
+      this.lyricsView.requestRefreshUi();
+    }
+  }
+
+  const listener = new LyricListenerImpl(this);
+  this.mLyricMachine = new LyricMachine(listener);
+  LogUtils.d(`LyricsView: LyricMachine created successfully, initial ready state: ${this.mLyricMachine.isReady()}`);
+} else {
+  LogUtils.d('LyricsView: LyricMachine already exists');
+}
   }
 }
