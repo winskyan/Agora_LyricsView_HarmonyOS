@@ -1,15 +1,9 @@
-import Context from '@ohos.app.ability.common';
 import { IKaraokeEvent } from './IKaraokeEvent';
-import { LyricsView, OnLyricsSeekListener } from './components/LyricsView';
-import { ScoringView } from './components/ScoringView';
-import { LyricMachine, OnLyricListener } from './internal/LyricMachine';
-import { IScoringAlgorithm, OnScoringListener, ScoringMachine } from './internal/ScoringMachine';
+import { IScoringAlgorithm } from './internal/ScoringMachine';
 import { LyricsParser } from './internal/parser/LyricsParser';
 import { LyricModel } from './model/LyricModel';
-import { LyricsLineModel } from './model/LyricsLineModel';
 import { EventBus, LyricsEvents, ScoringEvents } from './utils/EventBus';
 import { LogUtils } from './utils/LogUtils';
-
 
 /**
  * 卡拉OK主控制器 - HarmonyOS版本
@@ -21,22 +15,6 @@ export class KaraokeView {
    * 卡拉OK事件监听器
    */
   private mKaraokeEvent?: IKaraokeEvent;
-  /**
-   * 歌词显示组件
-   */
-  private mLyricsView?: LyricsView;
-  /**
-   * 歌词控制器
-   */
-  private mLyricMachine?: LyricMachine;
-  /**
-   * 评分显示组件
-   */
-  private mScoringView?: ScoringView;
-  /**
-   * 评分控制器
-   */
-  private mScoringMachine?: ScoringMachine;
   /**
    * 应用上下文 - HarmonyOS版本
    * 对应Android项目中的Context
@@ -73,65 +51,6 @@ export class KaraokeView {
    */
   private initialize(): void {
     LogUtils.d('KaraokeView initialize');
-
-    // 创建歌词机器 - 使用事件总线通信
-    class LyricListenerImpl implements OnLyricListener {
-      private eventBus: EventBus;
-
-      constructor(eventBus: EventBus) {
-        this.eventBus = eventBus;
-      }
-
-      resetUi(): void {
-        this.eventBus.emit(LyricsEvents.RESET);
-        this.eventBus.emit(ScoringEvents.RESET);
-      }
-
-      requestRefreshUi(): void {
-        this.eventBus.emit(LyricsEvents.REQUEST_REFRESH);
-        this.eventBus.emit(ScoringEvents.REQUEST_REFRESH);
-      }
-    }
-
-    const lyricListener = new LyricListenerImpl(this.eventBus);
-    this.mLyricMachine = new LyricMachine(lyricListener);
-
-    // 创建评分机器 - 使用事件总线通信
-    class ScoringListenerImpl implements OnScoringListener {
-      private eventBus: EventBus;
-      private karaokeEvent?: IKaraokeEvent;
-
-      constructor(eventBus: EventBus, karaokeEvent?: IKaraokeEvent) {
-        this.eventBus = eventBus;
-        this.karaokeEvent = karaokeEvent;
-      }
-
-      onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number,
-        lineCount: number): void {
-        LogUtils.d(`onLineFinished line startTime:${line.getStartTime()}, line endTime:${line.getEndTime()}, score:${score}, cumulativeScore:${cumulativeScore}, index:${index}, lineCount:${lineCount}`);
-
-        // 通过事件总线通知评分组件
-        this.eventBus.emit(ScoringEvents.REQUEST_REFRESH);
-
-        if (this.karaokeEvent) {
-          this.karaokeEvent.onLineFinished(line, score, cumulativeScore, index, lineCount);
-        }
-      }
-
-      resetUi(): void {
-        this.eventBus.emit(LyricsEvents.RESET);
-        this.eventBus.emit(ScoringEvents.RESET);
-      }
-
-      requestRefreshUi(): void {
-        this.eventBus.emit(LyricsEvents.REQUEST_REFRESH);
-        this.eventBus.emit(ScoringEvents.REQUEST_REFRESH);
-      }
-    }
-
-    const scoringListener = new ScoringListenerImpl(this.eventBus, this.mKaraokeEvent);
-    this.mScoringMachine = new ScoringMachine(scoringListener);
-
     // 启用日志功能（如果有上下文）
     if (this.mContext) {
       // 自动使用应用私有目录，类似Android的getExternalFilesDir
@@ -186,9 +105,6 @@ export class KaraokeView {
     // 通过事件总线通知组件重置
     this.eventBus.emit(LyricsEvents.RESET);
     this.eventBus.emit(ScoringEvents.RESET);
-
-    this.mLyricMachine?.reset();
-    this.mScoringMachine?.reset();
   }
 
   /**
@@ -202,15 +118,6 @@ export class KaraokeView {
     // 通过事件总线通知组件
     this.eventBus.emit(LyricsEvents.SET_LYRIC_DATA, model);
     this.eventBus.emit(ScoringEvents.SET_LYRIC_DATA, model);
-  }
-
-  /**
-   * Get current lyrics data model
-   *
-   * @return Current lyrics model
-   */
-  getLyricData(): LyricModel | null {
-    return this.mLyricMachine?.getLyricsModel() || null;
   }
 
   /**
@@ -233,9 +140,6 @@ export class KaraokeView {
     }
 
     LogUtils.d(`setPitch speakerPitch:${speakerPitch.toFixed(2)}Hz, pitchScore:${pitchScore.toFixed(1)}%, progressInMs:${Math.floor(progressInMs)}ms`);
-    if (this.mScoringMachine) {
-      this.mScoringMachine.setPitch(speakerPitch, pitchScore, progressInMs);
-    }
   }
 
   /**
@@ -259,41 +163,6 @@ export class KaraokeView {
   setKaraokeEvent(event: IKaraokeEvent): void {
     LogUtils.d(`setKaraokeEvent event:${event}`);
     this.mKaraokeEvent = event;
-
-    if (this.mLyricsView) {
-
-      // 创建拖拽监听器实现
-      class SeekListenerImpl implements OnLyricsSeekListener {
-        private karaokeEvent?: IKaraokeEvent;
-        private lyricMachine?: LyricMachine;
-        private scoringMachine?: ScoringMachine;
-
-        constructor(karaokeEvent?: IKaraokeEvent, lyricMachine?: LyricMachine, scoringMachine?: ScoringMachine) {
-          this.karaokeEvent = karaokeEvent;
-          this.lyricMachine = lyricMachine;
-          this.scoringMachine = scoringMachine;
-        }
-
-        onProgressChanged(progress: number): void {
-          if (this.karaokeEvent) {
-            this.karaokeEvent.onDragTo(progress);
-          }
-          this.lyricMachine?.whenDraggingHappen(progress);
-          this.scoringMachine?.whenDraggingHappen(progress);
-        }
-
-        onStartTrackingTouch(): void {
-          // 开始拖拽
-        }
-
-        onStopTrackingTouch(): void {
-          // 停止拖拽
-        }
-      }
-
-      const seekListener = new SeekListenerImpl(this.mKaraokeEvent, this.mLyricMachine, this.mScoringMachine);
-      this.mLyricsView.setSeekListener(seekListener);
-    }
   }
 
   /**
@@ -303,9 +172,6 @@ export class KaraokeView {
    */
   setScoringAlgorithm(algorithm: IScoringAlgorithm): void {
     LogUtils.d(`setScoringAlgorithm algorithm:${algorithm}`);
-    if (this.mScoringMachine) {
-      this.mScoringMachine.setScoringAlgorithm(algorithm);
-    }
   }
 
   /**
@@ -315,22 +181,6 @@ export class KaraokeView {
    */
   setScoringLevel(level: number): void {
     LogUtils.d(`setScoringLevel level:${level}`);
-    if (this.mScoringMachine) {
-      this.mScoringMachine.setScoringLevel(level);
-    }
-  }
-
-  /**
-   * Get current scoring difficulty level
-   *
-   * @return Current scoring level, defaults to 15
-   */
-  getScoringLevel(): number {
-    LogUtils.d(`getScoringLevel`);
-    if (this.mScoringMachine) {
-      return this.mScoringMachine.getScoringLevel();
-    }
-    return 15;
   }
 
   // /**

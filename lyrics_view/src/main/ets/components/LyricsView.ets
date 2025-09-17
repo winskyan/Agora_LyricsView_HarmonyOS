@@ -5,27 +5,6 @@ import { LyricsLineModel, Tone } from '../model/LyricsLineModel';
 import { EventBus, LyricsEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
-/**
- * Interface for receiving lyrics seeking events.
- * Provides callbacks for tracking touch events and progress changes.
- */
-export interface OnLyricsSeekListener {
-  /**
-   * Called when the lyrics progress changes during seeking.
-   * @param progress Current progress in milliseconds
-   */
-  onProgressChanged(progress: number): void;
-
-  /**
-   * Called when the user starts dragging the lyrics.
-   */
-  onStartTrackingTouch(): void;
-
-  /**
-   * Called when the user stops dragging the lyrics.
-   */
-  onStopTrackingTouch(): void;
-}
 
 /**
  * A custom component for displaying karaoke lyrics with various visual effects.
@@ -100,22 +79,12 @@ export struct LyricsView {
   @State private styleTransitioning: boolean = false; // 样式是否正在过渡
   // Scroll controller for auto-scrolling
   private scroller: Scroller = new Scroller();
-  // Listener for lyrics seeking events
-  private mOnSeekActionListener: OnLyricsSeekListener | null = null;
   // Event bus instance for global communication
   private eventBus: EventBus = EventBus.getInstance();
   // Update UI type constants
   private static readonly UPDATE_UI_TYPE_NO_NEED: number = 0;
   private static readonly UPDATE_UI_TYPE_NORMAL: number = 1;
   private static readonly UPDATE_UI_TYPE_WITH_ANIMATION: number = 2;
-
-  /**
-   * Bind lyrics drag event callback to receive state or event callbacks during dragging.
-   * @param onSeekActionListener Callback for lyrics drag events
-   */
-  setSeekListener(onSeekActionListener: OnLyricsSeekListener): void {
-    this.mOnSeekActionListener = onSeekActionListener;
-  }
 
   /**
    * Requests a refresh of the UI.

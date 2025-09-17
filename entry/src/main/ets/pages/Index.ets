@@ -43,7 +43,6 @@ struct Index {
           if (this.karaokeView && this.lyricModel) {
             this.logDebug('Setting lyric data after delay');
             this.karaokeView.setLyricData(this.lyricModel, false);
-            this.karaokeView.setProgress(this.currentTime);
           }
         }, 50);
       }
@@ -238,7 +237,6 @@ struct Index {
       // 2. 如果KaraokeView已初始化，设置歌词数据
       if (this.karaokeView) {
         this.karaokeView.setLyricData(this.lyricModel, false);
-        this.karaokeView.setProgress(0);
       }
 
       this.logDebug(`Successfully loaded lyrics with ${this.lyricModel.lines?.length || 0} lines`);
