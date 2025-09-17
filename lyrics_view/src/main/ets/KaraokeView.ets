@@ -170,7 +170,7 @@ export class KaraokeView {
    * @param progress Current song progress in milliseconds
    */
   setProgress(progress: number): void {
-    LogUtils.d(`KaraokeView:setProgress progress:${progress}`);
+    //LogUtils.d(`KaraokeView:setProgress progress:${progress}`);
     // 通过事件总线通知组件
     this.eventBus.emit(LyricsEvents.SET_PROGRESS, progress);
     this.eventBus.emit(ScoringEvents.SET_PROGRESS, progress);
