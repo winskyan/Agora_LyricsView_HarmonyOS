@@ -342,55 +342,113 @@ export struct LyricsView {
   }
 
   /**
-   * 增强版歌词行Builder - 实现高亮、居中、滚动效果
+   * 渐进式高亮歌词行Builder - 实现卡拉OK风格的流畅高亮效果
    */
   @Builder
   EnhancedLyricsLineBuilder(line: LyricsLineModel, index: number) {
     // 只渲染在可视范围内的行
     if (this.isLineVisible(index)) {
+      if (index === this.mIndexOfCurrentLine) {
+        // 当前行：使用渐进式高亮效果
+        this.ProgressiveHighlightLineBuilder(line, index)
+      } else {
+        // 非当前行：普通显示
+        this.NormalLineBuilder(line, index)
+      }
+    }
+  }
+
+  /**
+   * 渐进式高亮行Builder
+   */
+  @Builder
+  ProgressiveHighlightLineBuilder(line: LyricsLineModel, index: number) {
+    Stack() {
+      // 背景文字（正常颜色）
       Row() {
-        Text() {
-          if (line.tones && line.tones.length > 0) {
-            // 当前行：显示唱过的部分为高亮，未唱的部分为正常颜色
-            if (index === this.mIndexOfCurrentLine) {
-              ForEach(line.tones, (tone: Tone, toneIndex: number) => {
-                Span(tone.word)
-                  .fontSize(this.currentLineTextSize)
-                  .fontColor(this.getCurrentLineCharColor(tone))
-                  .fontWeight(FontWeight.Bold)
-              })
-            } else {
-              // 非当前行：统一颜色显示
-              ForEach(line.tones, (tone: Tone, toneIndex: number) => {
-                Span(tone.word)
-                  .fontSize(this.textSize)
-                  .fontColor(this.getNormalLineColor(index))
-              })
-            }
-          } else {
-            // 如果没有音调数据，显示整行文本
-            Span(this.getLineText(line))
-              .fontSize(index === this.mIndexOfCurrentLine ? this.currentLineTextSize : this.textSize)
-              .fontColor(index === this.mIndexOfCurrentLine ? this.currentLineTextColor :
-              this.getNormalLineColor(index))
-              .fontWeight(index === this.mIndexOfCurrentLine ? FontWeight.Bold : FontWeight.Normal)
-          }
-        }
-        .textAlign(this.getTextAlign())
-        .width('100%')
+        Text(this.getLineText(line))
+          .fontSize(this.currentLineTextSize)
+          .fontColor(this.currentLineTextColor)
+          .fontWeight(FontWeight.Bold)
+          .textAlign(this.getTextAlign())
+          .width('100%')
       }
       .width('100%')
-      .height(this.getLineHeight())
       .justifyContent(FlexAlign.Center)
-      .alignItems(VerticalAlign.Center)
-      .position({ x: 0, y: this.calculateLineYPosition(index) }) // 设置绝对位置
-      // 添加动画效果
+
+      // 高亮文字（使用clip实现渐进效果）
+      Row() {
+        Text(this.getLineText(line))
+          .fontSize(this.currentLineTextSize)
+          .fontColor(this.currentLineHighlightedTextColor)
+          .fontWeight(FontWeight.Bold)
+          .textAlign(this.getTextAlign())
+          .width('100%')
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.Center)
+      .clip(true)
+      .clipShape(new Rect({
+        width: `${this.calculateLineProgress(line) * 100}%`,
+        height: '100%'
+      }))
       .animation({
-        duration: 300, // 与滚动动画时长一致
-        curve: Curve.EaseInOut,
+        duration: 100, // 快速响应时间变化
+        curve: Curve.Linear,
         iterations: 1,
         playMode: PlayMode.Normal
       })
+    }
+    .width('100%')
+    .height(this.getLineHeight())
+    //.justifyContent(FlexAlign.Center)
+    //.alignItems(VerticalAlign.Center)
+    .position({ x: 0, y: this.calculateLineYPosition(index) })
+  }
+
+  /**
+   * 普通行Builder
+   */
+  @Builder
+  NormalLineBuilder(line: LyricsLineModel, index: number) {
+    Row() {
+      Text(this.getLineText(line))
+        .fontSize(this.textSize)
+        .fontColor(this.getNormalLineColor(index))
+        .fontWeight(FontWeight.Normal)
+        .textAlign(this.getTextAlign())
+        .width('100%')
+    }
+    .width('100%')
+    .height(this.getLineHeight())
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
+    .position({ x: 0, y: this.calculateLineYPosition(index) })
+    .animation({
+      duration: 300,
+      curve: Curve.EaseInOut,
+      iterations: 1,
+      playMode: PlayMode.Normal
+    })
+  }
+
+  /**
+   * 计算当前行的高亮进度（0-1之间）
+   */
+  private calculateLineProgress(line: LyricsLineModel): number {
+    if (!line.tones || line.tones.length === 0) {
+      return 0;
+    }
+
+    const lineStartTime = line.getStartTime();
+    const lineEndTime = line.getEndTime();
+
+    if (this.mCurrentTime < lineStartTime) {
+      return 0;
+    } else if (this.mCurrentTime >= lineEndTime) {
+      return 1;
+    } else {
+      return (this.mCurrentTime - lineStartTime) / (lineEndTime - lineStartTime);
     }
   }
 
