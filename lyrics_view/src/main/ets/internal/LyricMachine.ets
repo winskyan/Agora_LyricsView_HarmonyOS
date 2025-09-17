@@ -98,7 +98,6 @@ export class LyricMachine {
       return;
     }
 
-    // 关键修复：通知UI刷新
     if (this.mListener) {
       this.mListener.requestRefreshUi();
     }
@@ -120,6 +119,7 @@ export class LyricMachine {
   reset(): void {
     this.resetProperties();
     this.resetStats();
+    this.resetUi()
   }
 
   /**
@@ -136,20 +136,17 @@ export class LyricMachine {
     this.minorReset();
   }
 
+  private resetUi() {
+    if (this.mListener) {
+      this.mListener.resetUi();
+    }
+  }
+
   /**
    * Performs a minor reset that will recover immediately
    */
   private minorReset(): void {
     this.mCurrentLyricProgress = 0;
-  }
-
-  /**
-   * Prepares the UI for lyrics display
-   */
-  prepareUi(): void {
-    if (this.mListener) {
-      this.mListener.resetUi();
-    }
   }
 
   /**

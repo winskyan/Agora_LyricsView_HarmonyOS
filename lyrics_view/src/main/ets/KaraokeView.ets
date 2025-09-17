@@ -7,6 +7,7 @@ import { IScoringAlgorithm, OnScoringListener, ScoringMachine } from './internal
 import { LyricsParser } from './internal/parser/LyricsParser';
 import { LyricModel } from './model/LyricModel';
 import { LyricsLineModel } from './model/LyricsLineModel';
+import { EventBus, LyricsEvents, ScoringEvents } from './utils/EventBus';
 import { LogUtils } from './utils/LogUtils';
 
 
@@ -41,6 +42,10 @@ export class KaraokeView {
    * 对应Android项目中的Context
    */
   private mContext?: Context;
+  /**
+   * 事件总线实例
+   */
+  private eventBus: EventBus = EventBus.getInstance();
 
   /**
    * 默认构造函数
@@ -53,28 +58,12 @@ export class KaraokeView {
    */
   constructor(context: Context);
 
-  /**
-   * 构造函数 - 带歌词和评分视图
-   * @param lyricsView 歌词显示视图（可选）
-   * @param scoringView 评分显示视图（可选）
-   */
-  constructor(lyricsView?: LyricsView, scoringView?: ScoringView);
-
-  constructor(param1?: Context | LyricsView, param2?: ScoringView) {
-    if (!param1) {
-      // 默认构造函数
-      LogUtils.d('KaraokeView created with default constructor');
-    } else if (param2 !== undefined) {
-      // 双参数构造函数: LyricsView + ScoringView
-      this.mLyricsView = param1 as LyricsView;
-      this.mScoringView = param2;
-      LogUtils.d('KaraokeView created with LyricsView and ScoringView');
-      // 尝试从视图获取context（如果有的话）
-      // 注意：HarmonyOS组件可能没有直接的getContext方法
-    } else {
-      // 单参数构造函数: Context
-      this.mContext = param1 as Context;
+  constructor(param1?: Context) {
+    if (param1) {
+      this.mContext = param1;
       LogUtils.d('KaraokeView created with Context');
+    } else {
+      LogUtils.d('KaraokeView created with default constructor');
     }
     this.initialize();
   }
@@ -83,50 +72,37 @@ export class KaraokeView {
    * 初始化卡拉OK组件，包括歌词和评分机器
    */
   private initialize(): void {
-    LogUtils.d('initialize');
+    LogUtils.d('KaraokeView initialize');
 
-    // 创建歌词机器
+    // 创建歌词机器 - 使用事件总线通信
     class LyricListenerImpl implements OnLyricListener {
-      private lyricsView?: LyricsView;
-      private scoringView?: ScoringView;
+      private eventBus: EventBus;
 
-      constructor(lyricsView?: LyricsView, scoringView?: ScoringView) {
-        this.lyricsView = lyricsView;
-        this.scoringView = scoringView;
+      constructor(eventBus: EventBus) {
+        this.eventBus = eventBus;
       }
 
       resetUi(): void {
-        if (this.lyricsView) {
-          this.lyricsView.requestRefreshUi();
-        }
-        if (this.scoringView) {
-          this.scoringView.resetPitchIndicatorAndAnimation();
-          this.scoringView.requestRefreshUi();
-        }
+        this.eventBus.emit(LyricsEvents.RESET);
+        this.eventBus.emit(ScoringEvents.RESET);
       }
 
       requestRefreshUi(): void {
-        if (this.lyricsView) {
-          this.lyricsView.requestRefreshUi();
-        }
-        if (this.scoringView) {
-          this.scoringView.requestRefreshUi();
-        }
+        this.eventBus.emit(LyricsEvents.REQUEST_REFRESH);
+        this.eventBus.emit(ScoringEvents.REQUEST_REFRESH);
       }
     }
 
-    const lyricListener = new LyricListenerImpl(this.mLyricsView, this.mScoringView);
+    const lyricListener = new LyricListenerImpl(this.eventBus);
     this.mLyricMachine = new LyricMachine(lyricListener);
 
-    // 创建评分机器
+    // 创建评分机器 - 使用事件总线通信
     class ScoringListenerImpl implements OnScoringListener {
-      private lyricsView?: LyricsView;
-      private scoringView?: ScoringView;
+      private eventBus: EventBus;
       private karaokeEvent?: IKaraokeEvent;
 
-      constructor(lyricsView?: LyricsView, scoringView?: ScoringView, karaokeEvent?: IKaraokeEvent) {
-        this.lyricsView = lyricsView;
-        this.scoringView = scoringView;
+      constructor(eventBus: EventBus, karaokeEvent?: IKaraokeEvent) {
+        this.eventBus = eventBus;
         this.karaokeEvent = karaokeEvent;
       }
 
@@ -134,9 +110,8 @@ export class KaraokeView {
         lineCount: number): void {
         LogUtils.d(`onLineFinished line startTime:${line.getStartTime()}, line endTime:${line.getEndTime()}, score:${score}, cumulativeScore:${cumulativeScore}, index:${index}, lineCount:${lineCount}`);
 
-        if (this.scoringView) {
-          this.scoringView.resetPitchIndicatorAndAnimationWhenFullLineFinished(score);
-        }
+        // 通过事件总线通知评分组件
+        this.eventBus.emit(ScoringEvents.REQUEST_REFRESH);
 
         if (this.karaokeEvent) {
           this.karaokeEvent.onLineFinished(line, score, cumulativeScore, index, lineCount);
@@ -144,26 +119,17 @@ export class KaraokeView {
       }
 
       resetUi(): void {
-        if (this.lyricsView) {
-          this.lyricsView.requestRefreshUi();
-        }
-        if (this.scoringView) {
-          this.scoringView.resetPitchIndicatorAndAnimation();
-          this.scoringView.requestRefreshUi();
-        }
+        this.eventBus.emit(LyricsEvents.RESET);
+        this.eventBus.emit(ScoringEvents.RESET);
       }
 
       requestRefreshUi(): void {
-        if (this.lyricsView) {
-          this.lyricsView.requestRefreshUi();
-        }
-        if (this.scoringView) {
-          this.scoringView.requestRefreshUi();
-        }
+        this.eventBus.emit(LyricsEvents.REQUEST_REFRESH);
+        this.eventBus.emit(ScoringEvents.REQUEST_REFRESH);
       }
     }
 
-    const scoringListener = new ScoringListenerImpl(this.mLyricsView, this.mScoringView, this.mKaraokeEvent);
+    const scoringListener = new ScoringListenerImpl(this.eventBus, this.mKaraokeEvent);
     this.mScoringMachine = new ScoringMachine(scoringListener);
 
     // 启用日志功能（如果有上下文）
@@ -173,20 +139,6 @@ export class KaraokeView {
     }
   }
 
-  /**
-   * 重置所有组件到初始状态
-   */
-  reset(): void {
-    LogUtils.d('KaraokeView reset');
-    if (this.mLyricsView) {
-      this.mLyricsView.reset();
-    }
-    if (this.mScoringView) {
-      this.mScoringView.reset();
-    }
-    this.mLyricMachine?.reset();
-    this.mScoringMachine?.reset();
-  }
 
   /**
    * Parse lyrics data from file path or byte array
@@ -203,7 +155,7 @@ export class KaraokeView {
     includeCopyrightSentence: boolean = true,
     lyricOffset: number = 0
   ): LyricModel | null {
-    LogUtils.d(`parseLyrics lyricSource type:${typeof lyricSource}, pitchSource type:${typeof pitchSource}, includeCopyrightSentence:${includeCopyrightSentence}, lyricOffset:${lyricOffset}`);
+    LogUtils.d(`KaraokeView parseLyrics lyricSource type:${typeof lyricSource}, pitchSource type:${typeof pitchSource}, includeCopyrightSentence:${includeCopyrightSentence}, lyricOffset:${lyricOffset}`);
 
     try {
       // 根据输入类型分发处理逻辑
@@ -226,103 +178,17 @@ export class KaraokeView {
   }
 
   /**
-   * Attach UI components to the karaoke view
-   *
-   * @param lyrics  Lyrics view component
-   * @param scoring Scoring view component
-   * @throws IllegalStateException if called before initialization
+   * Reset all components (通过事件总线)
    */
-  attachUi(lyrics?: LyricsView, scoring?: ScoringView): void {
-    LogUtils.d(`attachUi lyrics:${!!lyrics}, scoring:${!!scoring}`);
+  reset(): void {
+    LogUtils.d('KaraokeView reset');
 
-    if (!this.mLyricMachine) {
-      throw new Error('Call this after KaraokeView initialized, this is a convenient method for attach/detach on-the-fly');
-    }
+    // 通过事件总线通知组件重置
+    this.eventBus.emit(LyricsEvents.RESET);
+    this.eventBus.emit(ScoringEvents.RESET);
 
-    if (!this.mScoringMachine) {
-      throw new Error('Call this after KaraokeView initialized, this is a convenient method for attach/detach on-the-fly');
-    }
-
-    // 处理评分视图
-    if (scoring && this.mScoringView !== scoring) {
-      if (this.mScoringView) {
-        this.mScoringView.reset();
-      }
-      this.mScoringView = scoring;
-      LogUtils.d('ScoringView attached to KaraokeView');
-    } else if (!scoring && this.mScoringView) {
-      this.mScoringView.reset();
-      this.mScoringView = undefined;
-      LogUtils.d('ScoringView detached from KaraokeView');
-    }
-
-    // 处理歌词视图
-    if (lyrics && this.mLyricsView !== lyrics) {
-      if (this.mLyricsView) {
-        this.mLyricsView.reset();
-      }
-      this.mLyricsView = lyrics;
-      LogUtils.d('LyricsView attached to KaraokeView');
-    } else if (!lyrics && this.mLyricsView) {
-      this.mLyricsView.reset();
-      this.mLyricsView = undefined;
-      LogUtils.d('LyricsView detached from KaraokeView');
-    }
-
-    // 重新初始化监听器，确保组件引用是最新的
-    this.reinitializeListeners();
-
-    // 附加到机器
-    if (this.mLyricsView && this.mLyricMachine) {
-      this.mLyricsView.attachToLyricMachine(this.mLyricMachine);
-      LogUtils.d('LyricsView attached to LyricMachine');
-    }
-
-    if (this.mScoringView && this.mScoringMachine) {
-      this.mScoringView.attachToScoreMachine(this.mScoringMachine);
-      LogUtils.d('ScoringView attached to ScoringMachine');
-    }
-  }
-
-  /**
-   * 重新初始化监听器，确保组件引用是最新的
-   */
-  private reinitializeListeners(): void {
-    if (this.mLyricMachine && this.mScoringMachine) {
-      // 重新创建监听器实现，使用最新的组件引用
-      class LyricListenerImpl implements OnLyricListener {
-        private lyricsView?: LyricsView;
-        private scoringView?: ScoringView;
-
-        constructor(lyricsView?: LyricsView, scoringView?: ScoringView) {
-          this.lyricsView = lyricsView;
-          this.scoringView = scoringView;
-        }
-
-        resetUi(): void {
-          if (this.lyricsView) {
-            this.lyricsView.requestRefreshUi();
-          }
-          if (this.scoringView) {
-            this.scoringView.resetPitchIndicatorAndAnimation();
-            this.scoringView.requestRefreshUi();
-          }
-        }
-
-        requestRefreshUi(): void {
-          if (this.lyricsView) {
-            this.lyricsView.requestRefreshUi();
-          }
-          if (this.scoringView) {
-            this.scoringView.requestRefreshUi();
-          }
-        }
-      }
-
-      const lyricListener = new LyricListenerImpl(this.mLyricsView, this.mScoringView);
-      // 注意：这里可能需要根据LyricMachine的API来设置新的监听器
-      LogUtils.d('Listeners reinitialized with updated component references');
-    }
+    this.mLyricMachine?.reset();
+    this.mScoringMachine?.reset();
   }
 
   /**
@@ -332,20 +198,10 @@ export class KaraokeView {
    * @param usingInternalScoring Whether to use internal scoring algorithm
    */
   setLyricData(model: LyricModel, usingInternalScoring: boolean = true): void {
-    LogUtils.d(`setLyricData model:${model} usingInternalScoring:${usingInternalScoring}`);
-    this.mLyricMachine?.prepare(model);
-    this.mScoringMachine?.prepare(model, usingInternalScoring);
-
-    if (this.mLyricsView && this.mLyricMachine) {
-      this.mLyricsView.attachToLyricMachine(this.mLyricMachine);
-    }
-
-    if (this.mScoringView && this.mScoringMachine) {
-      this.mScoringView.attachToScoreMachine(this.mScoringMachine);
-    }
-
-    this.mLyricMachine?.prepareUi();
-    this.mScoringMachine?.prepareUi();
+    LogUtils.d(`KaraokeView setLyricData model lines:${model.lines.length} usingInternalScoring:${usingInternalScoring}`);
+    // 通过事件总线通知组件
+    this.eventBus.emit(LyricsEvents.SET_LYRIC_DATA, model);
+    this.eventBus.emit(ScoringEvents.SET_LYRIC_DATA, model);
   }
 
   /**
@@ -389,9 +245,10 @@ export class KaraokeView {
    * @param progress Current song progress in milliseconds
    */
   setProgress(progress: number): void {
-    LogUtils.d(`setProgress progress:${progress}`);
-    this.mLyricMachine?.setProgress(progress);
-    this.mScoringMachine?.setLyricProgress(progress);
+    LogUtils.d(`KaraokeView:setProgress progress:${progress}`);
+    // 通过事件总线通知组件
+    this.eventBus.emit(LyricsEvents.SET_PROGRESS, progress);
+    this.eventBus.emit(ScoringEvents.SET_PROGRESS, progress);
   }
 
   /**

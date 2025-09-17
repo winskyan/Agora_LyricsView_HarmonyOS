@@ -1,7 +1,8 @@
 import { LyricType } from '../constants/LyricType';
-import { LyricMachine } from '../internal/LyricMachine';
+import { LyricMachine, OnLyricListener } from '../internal/LyricMachine';
 import { LyricModel } from '../model/LyricModel';
 import { LyricsLineModel, Tone } from '../model/LyricsLineModel';
+import { EventBus, LyricsEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
 /**
@@ -34,8 +35,6 @@ export interface OnLyricsSeekListener {
 @Component
 export struct LyricsView {
   // Core properties
-  /** The current lyrics model containing all lyrics data */
-  @State private mLyricsModel: LyricModel | null = null;
   /** The lyrics state machine managing lyrics progression */
   @State private mLyricMachine: LyricMachine | null = null;
   /** Index of the currently displayed lyrics line */
@@ -88,6 +87,8 @@ export struct LyricsView {
   @State private targetIndex: number = 0;
   // Listener for lyrics seeking events
   private mOnSeekActionListener: OnLyricsSeekListener | null = null;
+  // Event bus instance for global communication
+  private eventBus: EventBus = EventBus.getInstance();
   // Update UI type constants
   private static readonly UPDATE_UI_TYPE_NO_NEED: number = 0;
   private static readonly UPDATE_UI_TYPE_NORMAL: number = 1;
@@ -111,20 +112,6 @@ export struct LyricsView {
   }
 
   /**
-   * Attaches a lyrics machine to this view.
-   * The lyrics machine must be prepared before attaching.
-   * @param machine The lyrics machine to attach
-   */
-  attachToLyricMachine(machine: LyricMachine): void {
-    if (!machine.isReady()) {
-      throw new Error("Must call LyricMachine.prepare before attaching");
-    }
-    this.mLyricMachine = machine;
-    this.mLyricsModel = machine.getLyricsModel();
-    this.forceCheckLineWrap();
-  }
-
-  /**
    * Requests a refresh of the UI.
    * Updates the progress and triggers a redraw if necessary.
    */
@@ -143,13 +130,22 @@ export struct LyricsView {
   }
 
   /**
+   * 完全重置，包括清理 LyricMachine 引用
+   * 仅在组件销毁或需要完全清理时调用
+   */
+  resetCompletely(): void {
+    this.mLyricMachine = null;
+    this.resetInternal();
+  }
+
+  /**
    * Checks if the lyrics view is uninitialized or has no lyrics data.
-   * @param machine The lyrics state machine to check
    * @return true if lyrics are not available or not initialized
    */
-  private uninitializedOrNoLyrics(machine: LyricMachine | null): boolean {
-    return !machine || !this.mLyricMachine || !this.mLyricsModel ||
-      !this.mLyricsModel.lines || this.mLyricsModel.lines.length === 0;
+  private uninitializedOrNoLyrics(): boolean {
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    return !this.mLyricMachine || !lyricsModel ||
+      !lyricsModel.lines || lyricsModel.lines.length === 0;
   }
 
   /**
@@ -159,19 +155,24 @@ export struct LyricsView {
    */
   private updateByProgress(timestamp: number): void {
     this.mCurrentTime = timestamp;
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
 
     if (this.refreshNoLyrics()) {
+      LogUtils.d('LyricsView: No lyrics available, showing no lyrics message');
       return;
     }
 
     const line = this.quickSearchLineByTimestamp(this.mCurrentTime);
+    LogUtils.d(`LyricsView: Found line index=${line}, current line=${this.mIndexOfCurrentLine}`);
 
-    if (line < 0 || !this.mLyricsModel || line >= this.mLyricsModel.lines.length) {
+    if (line < 0 || !lyricsModel || line >= lyricsModel.lines.length) {
+      LogUtils.d('LyricsView: Invalid line index, no UI update needed');
       this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NO_NEED;
       return;
     }
 
     if (line !== this.mIndexOfCurrentLine) {
+      LogUtils.d(`LyricsView: Line changed from ${this.mIndexOfCurrentLine} to ${line}`);
       this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL | LyricsView.UPDATE_UI_TYPE_WITH_ANIMATION;
       this.mIndexOfCurrentLine = line;
       // 触发滚动到当前行
@@ -192,7 +193,7 @@ export struct LyricsView {
    * @return true if no lyrics are available and refresh was performed
    */
   private refreshNoLyrics(): boolean {
-    return this.uninitializedOrNoLyrics(this.mLyricMachine);
+    return this.uninitializedOrNoLyrics();
   }
 
   /**
@@ -201,22 +202,26 @@ export struct LyricsView {
    * @return Index of the lyrics line to display
    */
   private quickSearchLineByTimestamp(time: number): number {
-    if (this.uninitializedOrNoLyrics(this.mLyricMachine) || !this.mLyricsModel) {
+    if (this.uninitializedOrNoLyrics()) {
       return 0;
     }
 
     let left = 0;
-    let right = this.mLyricsModel.lines.length - 1;
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    if (!lyricsModel) {
+      return 0;
+    }
+    let right = lyricsModel.lines.length - 1;
 
     while (left <= right) {
       const middle = Math.floor((left + right) / 2);
-      const middleTime = this.mLyricsModel.lines[middle].getStartTime();
+      const middleTime = lyricsModel.lines[middle].getStartTime();
 
       if (time < middleTime) {
         right = middle - 1;
       } else {
-        if (middle + 1 >= this.mLyricsModel.lines.length ||
-          time < this.mLyricsModel.lines[middle + 1].getStartTime()) {
+        if (middle + 1 >= lyricsModel.lines.length ||
+          time < lyricsModel.lines[middle + 1].getStartTime()) {
           return middle;
         }
         left = middle + 1;
@@ -230,8 +235,9 @@ export struct LyricsView {
    * Resets all internal state variables to their default values.
    */
   private resetInternal(): void {
-    this.mLyricMachine = null;
-    this.mLyricsModel = null;
+    // 注意：不要重置 mLyricMachine，因为它可能正在调用这个方法
+    // this.mLyricMachine = null; // 移除这行，避免循环依赖
+    // mLyricsModel removed - now using mLyricMachine.getLyricsModel()
     this.mIndexOfCurrentLine = -1;
     this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL;
     this.mCurrentTime = 0;
@@ -257,10 +263,11 @@ export struct LyricsView {
    * Force check line wrap based on lyric type
    */
   private forceCheckLineWrap(): void {
-    if (!this.mLyricsModel || !this.mLyricsModel.lines || this.mLyricsModel.lines.length === 0) {
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
       return;
     }
-    if (this.mLyricsModel.type === LyricType.LRC) {
+    if (lyricsModel.type === LyricType.LRC) {
       this.enableLineWrap = true;
     }
   }
@@ -302,10 +309,11 @@ export struct LyricsView {
    * Gets the index of a lyrics line
    */
   private getLineIndex(line: LyricsLineModel): number {
-    if (!this.mLyricsModel || !this.mLyricsModel.lines) {
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    if (!lyricsModel || !lyricsModel.lines) {
       return -1;
     }
-    return this.mLyricsModel.lines.indexOf(line);
+    return lyricsModel.lines.indexOf(line);
   }
 
   /**
@@ -326,10 +334,11 @@ export struct LyricsView {
    * Gets the countdown value for prelude indicator
    */
   private getPreludeCountDown(): number {
-    if (!this.mLyricsModel) {
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    if (!lyricsModel) {
       return 0;
     }
-    return Math.ceil((this.mLyricsModel.preludeEndPosition - this.mCurrentTime) / 1000);
+    return Math.ceil((lyricsModel.preludeEndPosition - this.mCurrentTime) / 1000);
   }
 
   /**
@@ -419,7 +428,8 @@ export struct LyricsView {
    */
   @Builder
   PreludeIndicatorBuilder() {
-    if (this.enablePreludeEndPositionIndicator && this.mLyricsModel && this.getPreludeCountDown() > 0) {
+    if (this.enablePreludeEndPositionIndicator && this.mLyricMachine?.getLyricsModel() &&
+      this.getPreludeCountDown() > 0) {
       Row() {
         // Indicator 1
         Circle({
@@ -461,17 +471,17 @@ export struct LyricsView {
       this.PreludeIndicatorBuilder()
 
       // Main lyrics content
-      if (this.uninitializedOrNoLyrics(this.mLyricMachine)) {
+      if (this.uninitializedOrNoLyrics()) {
         this.NoLyricsBuilder()
       } else {
         Scroll() {
           Column() {
-            if (this.mLyricsModel && this.mLyricsModel.lines) {
+            if (this.mLyricMachine?.getLyricsModel()?.lines) {
               // 添加顶部空白，确保第一行可以居中显示
               Blank()
                 .height(200)
 
-              ForEach(this.mLyricsModel.lines, (line: LyricsLineModel, index: number) => {
+              ForEach(this.mLyricMachine?.getLyricsModel()?.lines, (line: LyricsLineModel, index: number) => {
                 this.EnhancedLyricsLineBuilder(line, index)
               })
 
@@ -503,9 +513,9 @@ export struct LyricsView {
           if (this.enableDragging && this.mOnSeekActionListener) {
             this.mDraggingInProgress = false;
             // Calculate target line based on scroll position
-            if (this.mLyricsModel && this.targetIndex >= 0 &&
-              this.targetIndex < this.mLyricsModel.lines.length) {
-              const targetLine = this.mLyricsModel.lines[this.targetIndex];
+            if (this.mLyricMachine?.getLyricsModel()?.lines && this.targetIndex >= 0 &&
+              this.targetIndex < this.mLyricMachine.getLyricsModel()!.lines.length) {
+              const targetLine = this.mLyricMachine.getLyricsModel()!.lines[this.targetIndex];
               this.updateByProgress(targetLine.getStartTime());
               this.mOnSeekActionListener.onProgressChanged(targetLine.getStartTime());
               this.mOnSeekActionListener.onStopTrackingTouch();
@@ -517,5 +527,107 @@ export struct LyricsView {
     .width('100%')
     .height('100%')
     .backgroundColor(Color.Transparent)
+    .onAppear(() => {
+      LogUtils.d('LyricsView: Component appeared, setting up event listeners');
+      this.setupEventListeners();
+
+      // 通知外部组件LyricsView已准备好
+      setTimeout(() => {
+        LogUtils.d('LyricsView: Ready for events');
+      }, 10);
+    })
+    .onDisAppear(() => {
+      LogUtils.d('LyricsView: Component disappearing, cleaning up');
+      this.removeEventListeners();
+      this.resetCompletely(); // 完全清理
+    })
+  }
+
+  /**
+   * 设置事件监听器
+   */
+  private setupEventListeners(): void {
+    LogUtils.d('LyricsView: Setting up event listeners');
+
+    // 初始化LyricMachine
+    this.initLyricMachine();
+
+    // 监听歌词数据设置事件
+    const setLyricDataHandler = (lyricModel: LyricModel) => {
+      if (this.mLyricMachine) {
+        this.mLyricMachine.prepare(lyricModel);
+        // mLyricsModel removed - data now managed by mLyricMachine
+        this.forceCheckLineWrap();
+        LogUtils.d(`LyricsView: Lyric data set successfully, getLyricsModel: ${!!this.mLyricMachine.getLyricsModel()}`);
+      } else {
+        LogUtils.e('LyricsView: mLyricMachine is null when receiving SET_LYRIC_DATA event');
+      }
+    };
+    this.eventBus.on(LyricsEvents.SET_LYRIC_DATA, setLyricDataHandler);
+
+    // 监听进度更新事件
+    this.eventBus.on(LyricsEvents.SET_PROGRESS, (progress: number) => {
+      LogUtils.d(`LyricsView: Received SET_PROGRESS event: ${progress}`);
+      if (this.mLyricMachine) {
+        this.mLyricMachine.setProgress(progress);
+      }
+    });
+
+    // 监听重置事件
+    this.eventBus.on(LyricsEvents.RESET, () => {
+      LogUtils.d('LyricsView: Received RESET event');
+      if (this.mLyricMachine) {
+        this.mLyricMachine.reset();
+      }
+    });
+
+    // 监听刷新UI事件
+    this.eventBus.on(LyricsEvents.REQUEST_REFRESH, () => {
+      LogUtils.d('LyricsView: Received REQUEST_REFRESH event');
+      this.requestRefreshUi();
+    });
+  }
+
+  /**
+   * 移除事件监听器
+   */
+  private removeEventListeners(): void {
+    LogUtils.d('LyricsView: Removing event listeners');
+    // 这里可以添加具体的移除逻辑，但由于EventBus是单例，
+    // 我们可能需要保存回调函数的引用来正确移除
+  }
+
+  /**
+   * 初始化LyricMachine
+   */
+  private initLyricMachine(): void {
+    // 创建LyricMachine并准备数据
+    if (!this.mLyricMachine) {
+      LogUtils.d('LyricsView: Creating new LyricMachine');
+
+      // 创建一个简单的监听器实现
+      class LyricListenerImpl implements OnLyricListener {
+        private lyricsView: LyricsView;
+
+        constructor(lyricsView: LyricsView) {
+          this.lyricsView = lyricsView;
+        }
+
+        resetUi(): void {
+          LogUtils.d('LyricsView: resetUi called');
+          this.lyricsView.reset();
+        }
+
+        requestRefreshUi(): void {
+          this.lyricsView.requestRefreshUi();
+        }
+      }
+
+      const listener = new LyricListenerImpl(this);
+      this.mLyricMachine = new LyricMachine(listener);
+      LogUtils.d(`LyricsView: LyricMachine created successfully, initial ready state: ${this.mLyricMachine.isReady()}`);
+    } else {
+      LogUtils.d('LyricsView: LyricMachine already exists');
+    }
   }
 }

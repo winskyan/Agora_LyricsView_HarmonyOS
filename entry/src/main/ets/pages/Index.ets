@@ -20,9 +20,7 @@ struct Index {
   // 卡拉OK相关
   private karaokeView: KaraokeView | null = null;
   @State lyricModel: LyricModel | null = null;
-  // 组件实例引用 - 使用 @State 来触发UI更新
-  @State private lyricsViewRef: LyricsView | undefined = undefined;
-  @State private scoringViewRef: ScoringView | undefined = undefined;
+  // 移除组件引用，采用事件驱动的方式
   private timer: number = -1;
   private songList: string[] = ['十年', '月亮代表我的心', '童话'];
 
@@ -36,14 +34,18 @@ struct Index {
    */
   private initKaraokeView() {
     if (!this.karaokeView) {
-      // 创建KaraokeView实例，传入LyricsView和ScoringView
-      this.karaokeView = new KaraokeView(this.lyricsViewRef || undefined, this.scoringViewRef || undefined);
-      this.logDebug('KaraokeView initialized with component references');
+      // 创建KaraokeView实例，使用默认构造函数
+      this.karaokeView = new KaraokeView();
 
-      // 如果已经有歌词数据，重新设置
+      // 如果已经有歌词数据，延迟设置以确保事件监听器已准备好
       if (this.lyricModel) {
-        this.karaokeView.setLyricData(this.lyricModel, false);
-        this.karaokeView.setProgress(this.currentTime);
+        setTimeout(() => {
+          if (this.karaokeView && this.lyricModel) {
+            this.logDebug('Setting lyric data after delay');
+            this.karaokeView.setLyricData(this.lyricModel, false);
+            this.karaokeView.setProgress(this.currentTime);
+          }
+        }, 50);
       }
     }
   }
@@ -239,9 +241,6 @@ struct Index {
         this.karaokeView.setProgress(0);
       }
 
-      // 3. 如果KaraokeView还未初始化，会在initKaraokeView中处理
-
-      this.callBackInfo = `已加载歌词，行数: ${this.lyricModel.lines?.length || 0}`;
       this.logDebug(`Successfully loaded lyrics with ${this.lyricModel.lines?.length || 0} lines`);
 
     } catch (error) {
@@ -333,45 +332,12 @@ struct Index {
   }
 
   /**
-   * LyricsView组件就绪回调
+   * 组件就绪回调 - 简化版本
    */
-  private onLyricsViewReady() {
-    this.logDebug('LyricsView is ready, attempting to get component instance');
-    // 在HarmonyOS中，我们简化处理方式
-    // 直接初始化KaraokeView，不依赖具体的组件实例引用
-    this.initKaraokeViewWithComponents();
-  }
-
-  /**
-   * ScoringView组件就绪回调
-   */
-  private onScoringViewReady() {
-    this.logDebug('ScoringView is ready, attempting to get component instance');
-    // 在HarmonyOS中，我们简化处理方式
-    // 直接初始化KaraokeView，不依赖具体的组件实例引用
-    this.initKaraokeViewWithComponents();
-  }
-
-  /**
-   * 当组件实例都准备好后，初始化KaraokeView
-   */
-  private initKaraokeViewWithComponents() {
-    // 检查是否已经有KaraokeView实例，如果没有则创建
-    if (!this.karaokeView) {
-      // 创建KaraokeView，并传入组件实例
-      this.karaokeView = new KaraokeView(this.lyricsViewRef || undefined, this.scoringViewRef || undefined);
-      this.logDebug('KaraokeView created with component instances');
-
-      // 如果已经有歌词数据，设置给KaraokeView
-      if (this.lyricModel) {
-        this.karaokeView.setLyricData(this.lyricModel, false);
-        this.karaokeView.setProgress(this.currentTime);
-      }
-    } else {
-      // 如果KaraokeView已存在，使用attachUi方法更新组件引用
-      this.karaokeView.attachUi(this.lyricsViewRef || undefined, this.scoringViewRef || undefined);
-      this.logDebug('KaraokeView updated with component instances');
-    }
+  private onComponentReady() {
+    this.logDebug('Components are ready');
+    // 初始化KaraokeView（如果还没有初始化）
+    this.initKaraokeView();
   }
 
   /**
@@ -395,23 +361,17 @@ struct Index {
 
     this.callBackInfo = `${componentType === 'lyrics' ? '歌词' : '评分'}${enabled ? '开启' : '关闭'}`;
 
-    // 如果是歌词开关，重新绑定或解绑LyricsView
+    // 在新架构中，组件状态通过@State变量自动管理
+    // KaraokeView会通过事件系统与LyricsView通信
     if (componentType === 'lyrics' && this.karaokeView) {
-      if (enabled && this.lyricsViewRef) {
-        // 重新绑定LyricsView
-        this.karaokeView.attachUi(this.lyricsViewRef || undefined, this.scoringViewRef || undefined);
-      } else {
-        // 解绑LyricsView
-        this.karaokeView.attachUi(undefined, this.scoringViewRef || undefined);
-      }
+      this.logDebug(`Lyrics component ${enabled ? 'enabled' : 'disabled'}`);
     }
   }
 
-  @
-  Builder
+  @Builder
   LyricsViewBuilder() {
     if (this.enableLyrics && this.lyricModel) {
-      // 直接使用LyricsView组件，并获取组件实例引用
+      // 直接使用LyricsView组件，所有逻辑由组件内部处理
       LyricsView({
         textSize: 16,
         currentLineTextSize: 20,
@@ -436,9 +396,9 @@ struct Index {
         .height('100%')
         .onAppear(() => {
           this.logDebug('LyricsView component appeared');
-          // 延迟获取组件实例，确保组件完全渲染
+          // 延迟初始化，确保LyricsView的事件监听器已设置
           setTimeout(() => {
-            this.onLyricsViewReady();
+            this.onComponentReady();
           }, 100);
         })
     } else if (!this.enableLyrics) {
@@ -452,11 +412,10 @@ struct Index {
     }
   }
 
-  @
-  Builder
+  @Builder
   ScoringViewBuilder() {
     if (this.enableScoring) {
-      // 使用真实的ScoringView组件，并获取组件实例引用
+      // 使用真实的ScoringView组件，所有逻辑由组件内部处理
       ScoringView({
         // ScoringView的配置参数
       })
@@ -464,10 +423,7 @@ struct Index {
         .height('100%')
         .onAppear(() => {
           this.logDebug('ScoringView component appeared');
-          // 延迟获取组件实例，确保组件完全渲染
-          setTimeout(() => {
-            this.onScoringViewReady();
-          }, 100);
+          //this.onComponentReady();
         })
     } else {
       Text('评分已关闭')
