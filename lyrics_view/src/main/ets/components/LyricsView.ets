@@ -66,6 +66,10 @@ export struct LyricsView {
   @State private targetIndex: number = 0;
   // Actual component height measured dynamically
   @State private actualViewHeight: number = 400; // 默认值，会被实际测量值覆盖
+  // 拖拽相关状态
+  @State private dragOffset: number = 0; // 拖拽偏移量
+  @State private initialTouchY: number = 0; // 初始触摸Y坐标
+  @State private currentTouchY: number = 0; // 当前触摸Y坐标
   // 动画状态管理
   @State private isAnimating: boolean = false;
   @State private animationKey: number = 0; // 用于强制重新渲染动画
@@ -377,7 +381,16 @@ export struct LyricsView {
     const lineHeight = this.getLineHeight();
     // 当前行在视图中心，其他行相对偏移
     const centerY = (this.actualViewHeight / 2) - (lineHeight / 2); // 减去行高的一半，确保行居中
-    return centerY + (offsetFromCurrent * lineHeight);
+
+    // 在拖拽时，所有行都需要根据拖拽偏移量进行调整
+    const baseY = centerY + (offsetFromCurrent * lineHeight);
+
+    // 如果正在拖拽，应用拖拽偏移量（注意方向：向上拖拽时歌词向上移动）
+    if (this.mDraggingInProgress) {
+      return baseY - this.dragOffset;
+    }
+
+    return baseY;
   }
 
   /**
@@ -776,6 +789,150 @@ export struct LyricsView {
   }
 
   /**
+   * 根据触摸Y坐标计算对应的歌词行索引
+   * @param touchY 触摸点的Y坐标
+   * @return 对应的歌词行索引，如果无效则返回-1
+   */
+  private calculateLineIndexByTouchY(touchY: number): number {
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
+      return -1;
+    }
+
+    const lineHeight = this.getLineHeight();
+    const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
+
+    // 计算触摸点相对于当前行中心的偏移
+    const offsetFromCenter = touchY - centerY;
+    const lineOffset = Math.round(offsetFromCenter / lineHeight);
+
+    // 计算目标行索引
+    const targetLineIndex = this.mIndexOfCurrentLine + lineOffset;
+
+    // 确保索引在有效范围内
+    if (targetLineIndex >= 0 && targetLineIndex < lyricsModel.lines.length) {
+      return targetLineIndex;
+    }
+
+    return -1;
+  }
+
+  /**
+   * 根据歌词行索引获取对应的开始时间
+   * @param lineIndex 歌词行索引
+   * @return 对应的开始时间（毫秒），如果无效则返回-1
+   */
+  private getLineStartTime(lineIndex: number): number {
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    if (!lyricsModel || !lyricsModel.lines || lineIndex < 0 || lineIndex >= lyricsModel.lines.length) {
+      return -1;
+    }
+
+    return lyricsModel.lines[lineIndex].getStartTime();
+  }
+
+  /**
+   * 计算当前视图中心位置对应的歌词行索引
+   * @return 中心位置的歌词行索引
+   */
+  private calculateCenterLineIndex(): number {
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
+      return -1;
+    }
+
+    const lineHeight = this.getLineHeight();
+    const centerY = this.actualViewHeight / 2;
+
+    // 考虑拖拽偏移量，计算实际的中心位置
+    const adjustedCenterY = centerY + this.dragOffset;
+
+    // 基于当前行计算偏移
+    const currentLineCenterY = centerY; // 当前行在视图中心
+    const offsetFromCurrentLine = (adjustedCenterY - currentLineCenterY) / lineHeight;
+
+    // 计算目标行索引
+    const targetLineIndex = Math.round(this.mIndexOfCurrentLine + offsetFromCurrentLine);
+
+    // 确保索引在有效范围内
+    if (targetLineIndex >= 0 && targetLineIndex < lyricsModel.lines.length) {
+      return targetLineIndex;
+    }
+
+    // 如果超出范围，返回边界值
+    if (targetLineIndex < 0) {
+      return 0;
+    } else {
+      return lyricsModel.lines.length - 1;
+    }
+  }
+
+  /**
+   * 处理拖拽开始事件
+   * @param touchY 初始触摸Y坐标
+   */
+  private handleDragStart(touchY: number): void {
+    if (!this.enableDragging) {
+      return;
+    }
+
+    LogUtils.d('LyricsView: Drag start');
+    this.mDraggingInProgress = true;
+    this.initialTouchY = touchY;
+    this.currentTouchY = touchY;
+    this.dragOffset = 0;
+
+    // 通过EventBus通知拖拽开始
+    this.eventBus.emit(LyricsEvents.DRAG_START);
+  }
+
+  /**
+   * 处理拖拽移动事件
+   * @param touchY 当前触摸Y坐标
+   */
+  private handleDragMove(touchY: number): void {
+    if (!this.enableDragging || !this.mDraggingInProgress) {
+      return;
+    }
+
+    this.currentTouchY = touchY;
+    // 计算拖拽偏移量（向上拖拽为正值，向下拖拽为负值）
+    this.dragOffset = this.initialTouchY - touchY;
+
+    LogUtils.d(`LyricsView: Dragging, offset: ${this.dragOffset}`);
+  }
+
+  /**
+   * 处理拖拽结束事件
+   * @param touchY 最终触摸点的Y坐标
+   */
+  private handleDragEnd(touchY: number): void {
+    if (!this.enableDragging) {
+      return;
+    }
+
+    LogUtils.d('LyricsView: Drag end');
+    this.mDraggingInProgress = false;
+
+    // 计算中心位置对应的歌词行
+    const centerLineIndex = this.calculateCenterLineIndex();
+    if (centerLineIndex >= 0) {
+      const startTime = this.getLineStartTime(centerLineIndex);
+      if (startTime >= 0) {
+        LogUtils.d(`LyricsView: Center line ${centerLineIndex}, time ${startTime}ms`);
+
+        // 通过EventBus通知最终拖拽位置
+        this.eventBus.emit(LyricsEvents.DRAG_END, startTime);
+      }
+    }
+
+    // 重置拖拽状态
+    this.dragOffset = 0;
+    this.initialTouchY = 0;
+    this.currentTouchY = 0;
+  }
+
+  /**
    * Renders the prelude end position indicator
    */
   @Builder
@@ -842,6 +999,26 @@ export struct LyricsView {
     .width('100%')
     .height('90%')
     .margin({ top: this.paddingTop })
+    .onTouch((event: TouchEvent) => {
+      if (!this.enableDragging) {
+        return false;
+      }
+
+      switch (event.type) {
+        case TouchType.Down:
+          this.handleDragStart(event.touches[0].y);
+          return true;
+        case TouchType.Move:
+          this.handleDragMove(event.touches[0].y);
+          return true;
+        case TouchType.Up:
+        case TouchType.Cancel:
+          this.handleDragEnd(event.touches[0].y);
+          return true;
+        default:
+          return false;
+      }
+    })
     .onAreaChange((oldValue: Area, newValue: Area) => {
       // 动态获取组件实际高度
       if (newValue.height && typeof newValue.height === 'number') {

@@ -2,8 +2,35 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import common from '@ohos.app.ability.common';
 import fs from '@ohos.file.fs';
 import {
-  KaraokeView, LyricModel, LyricsView, ScoringView, Utils
+  IKaraokeEvent,
+  KaraokeView,
+  LyricModel,
+  LyricsLineModel,
+  LyricsView,
+  ScoringView,
+  Utils
 } from 'lyrics_view';
+
+/**
+ * 卡拉OK事件监听器实现
+ */
+class KaraokeEventImpl implements IKaraokeEvent {
+  private indexComponent: Index;
+
+  constructor(indexComponent: Index) {
+    this.indexComponent = indexComponent;
+  }
+
+  onDragTo(progress: number): void {
+    this.indexComponent.logDebug(`onDragTo: ${progress}ms`);
+    this.indexComponent.handleDragTo(progress);
+  }
+
+  onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number,
+    lineCount: number): void {
+    this.indexComponent.logDebug(`Line ${index} finished with score ${score}`);
+  }
+}
 
 @Entry
 @Component
@@ -37,6 +64,10 @@ struct Index {
       // 创建KaraokeView实例，使用默认构造函数
       this.karaokeView = new KaraokeView();
 
+      // 设置拖拽事件监听器
+      const eventListener = new KaraokeEventImpl(this);
+      this.karaokeView.setKaraokeEvent(eventListener);
+
       // 如果已经有歌词数据，延迟设置以确保事件监听器已准备好
       if (this.lyricModel) {
         setTimeout(() => {
@@ -67,7 +98,7 @@ struct Index {
     }
   }
 
-  private logDebug(message: string) {
+  public logDebug(message: string) {
     hilog.debug(0x0000, "LyricsView-Main", message);
   }
 
@@ -184,26 +215,6 @@ struct Index {
       }
     } catch (error) {
       this.logDebug(`Failed to list directory ${dirPath}: ${error}`);
-    }
-  }
-
-  /**
-   * 从私有目录读取文件内容
-   */
-  private async readPrivateFile(fileName: string): Promise<string> {
-    try {
-      const context = getContext(this) as common.UIAbilityContext;
-      const filePath = `${context.filesDir}/lyrics/${fileName}`;
-
-      const fileBytes = Utils.getFileBytes(filePath);
-      if (!fileBytes) {
-        throw new Error(`File not found or failed to read: ${fileName}`);
-      }
-
-      return Utils.uint8ArrayToString(fileBytes);
-    } catch (error) {
-      this.logDebug(`Failed to read private file ${fileName}: ${error}`);
-      throw new Error(`Failed to read private file ${fileName}: ${error}`);
     }
   }
 
@@ -327,6 +338,33 @@ struct Index {
 
   private openSettings() {
     this.callBackInfo = '设置功能待实现';
+  }
+
+  /**
+   * 处理拖拽开始事件
+   */
+  private handleDragStart() {
+    // 暂停播放，避免定时器与拖拽冲突
+    if (this.isPlaying) {
+      this.pausePlayback();
+    }
+    this.callBackInfo = '开始拖拽歌词';
+  }
+
+  /**
+   * 处理拖拽结束事件
+   * @param finalProgress 最终拖拽位置（毫秒）
+   */
+  public handleDragTo(finalProgress: number) {
+    // 更新当前时间到拖拽的最终位置
+    this.currentTime = finalProgress;
+    this.playingProgress = `${this.currentTime}ms`;
+    this.callBackInfo = `拖拽到: ${this.currentTime}ms`;
+
+    // 同步更新KaraokeView的进度
+    if (this.karaokeView) {
+      this.karaokeView.setProgress(this.currentTime);
+    }
   }
 
   /**

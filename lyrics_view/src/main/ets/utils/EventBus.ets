@@ -81,7 +81,11 @@ export class LyricsEvents {
   static readonly RESET = 'lyrics:reset';
   /** 请求刷新UI */
   static readonly REQUEST_REFRESH = 'lyrics:requestRefresh';
-  /** 歌词拖拽事件 */
+  /** 歌词拖拽开始 */
+  static readonly DRAG_START = 'lyrics:dragStart';
+  /** 歌词拖拽结束 */
+  static readonly DRAG_END = 'lyrics:dragEnd';
+  /** 歌词拖拽事件（兼容旧版本） */
   static readonly SEEK_PROGRESS = 'lyrics:seekProgress';
 }
 

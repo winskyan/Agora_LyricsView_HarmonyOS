@@ -56,6 +56,27 @@ export class KaraokeView {
       // 自动使用应用私有目录，类似Android的getExternalFilesDir
       LogUtils.enableLog(this.mContext, true, true);
     }
+
+    // 设置拖拽事件监听
+    this.setupDragEventListeners();
+  }
+
+  /**
+   * 设置拖拽事件监听器
+   */
+  private setupDragEventListeners(): void {
+    // 监听拖拽开始事件
+    this.eventBus.on(LyricsEvents.DRAG_START, () => {
+      LogUtils.d('KaraokeView: Drag start received');
+    });
+
+    // 监听拖拽结束事件
+    this.eventBus.on(LyricsEvents.DRAG_END, (finalProgress: number) => {
+      LogUtils.d(`KaraokeView: Drag end received: ${finalProgress}ms`);
+      if (this.mKaraokeEvent) {
+        this.mKaraokeEvent.onDragTo(finalProgress);
+      }
+    });
   }
 
 
