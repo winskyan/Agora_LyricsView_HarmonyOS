@@ -457,6 +457,33 @@ setTimeout(() => {
 }
 
   /**
+   * 判断是否应该渲染某一行（基于enablePreviousLines和enableUpcomingLines开关）
+   */
+  private shouldRenderLine(index: number): boolean {
+  // 确定当前参考行索引
+  const currentIndex = this.mDraggingInProgress && this.originalCurrentLineIndex >= 0
+    ? this.originalCurrentLineIndex
+    : this.mIndexOfCurrentLine;
+
+  // 当前行始终渲染
+  if (index === currentIndex) {
+    return true;
+  }
+
+  // 检查是否是之前的行
+  if (index < currentIndex) {
+    return this.enablePreviousLines;
+  }
+
+  // 检查是否是未来的行
+  if (index > currentIndex) {
+    return this.enableUpcomingLines;
+  }
+
+  return true;
+}
+
+  /**
    * 统计并记录当前可见的行数（调试用）
    */
   private logVisibleLinesCount(): void {
@@ -466,16 +493,23 @@ setTimeout(() => {
 }
 
 let visibleCount = 0;
+let renderedCount = 0;
 const visibleLines: number[] = [];
+const renderedLines: number[] = [];
 
 for (let i = 0; i < lyricsModel.lines.length; i++) {
-  if (this.isLineVisible(i)) {
-    visibleCount++;
-    visibleLines.push(i);
+  if (this.shouldRenderLine(i)) {
+    renderedCount++;
+    renderedLines.push(i);
+
+    if (this.isLineVisible(i)) {
+      visibleCount++;
+      visibleLines.push(i);
+    }
   }
 }
 
-LogUtils.d(`LyricsView: Visible lines count: ${visibleCount}, lines: [${visibleLines.join(', ')}], totalLines: ${lyricsModel.lines.length}`);
+LogUtils.d(`LyricsView: Rendered lines: ${renderedCount}, Visible lines: ${visibleCount}, Total: ${lyricsModel.lines.length}, Previous: ${this.enablePreviousLines}, Upcoming: ${this.enableUpcomingLines}`);
 
 // 如果没有可见行，这是一个问题
 if (visibleCount === 0) {
@@ -745,6 +779,11 @@ NormalLineBuilder(line: LyricsLineModel, index: number) {
    * 计算行的透明度（基于可见性和距离当前行的远近）
    */
   private getLineOpacity(index: number): number {
+  // 首先检查是否应该渲染该行
+  if (!this.shouldRenderLine(index)) {
+    return 0.0; // 如果开关禁用了该行，完全透明
+  }
+
   const isVisible = this.isLineVisible(index);
 
   // 保底机制：如果拖拽时，确保当前行附近的行至少是可见的
@@ -1074,8 +1113,10 @@ build() {
       Stack() {
         if (this.mLyricMachine?.getLyricsModel()?.lines) {
           ForEach(this.mLyricMachine?.getLyricsModel()?.lines, (line: LyricsLineModel, index: number) => {
-            // 渲染所有行，但通过透明度控制可见性
-            this.EnhancedLyricsLineBuilder(line, index)
+            // 根据开关决定是否绘制该行
+            if (this.shouldRenderLine(index)) {
+              this.EnhancedLyricsLineBuilder(line, index)
+            }
           })
         }
       }
