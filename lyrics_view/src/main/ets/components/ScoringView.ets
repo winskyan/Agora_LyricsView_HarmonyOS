@@ -1,4 +1,6 @@
 import { ScoringMachine } from "../../../../Index";
+import { EventBus, KaraokeEvents, ScoringEvents } from '../utils/EventBus';
+import { LogUtils } from '../utils/LogUtils';
 
 /**
  * 评分显示组件 - HarmonyOS版本
@@ -15,6 +17,8 @@ export struct ScoringView {
   @Prop currentPitch: number = 0;
   /** 是否显示音调指示器 */
   @Prop showPitchIndicator: boolean = true;
+  // 事件总线实例
+  private eventBus: EventBus = EventBus.getInstance();
 
   build() {
     Column() {
@@ -27,6 +31,45 @@ export struct ScoringView {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
+    .onAppear(() => {
+      LogUtils.d('ScoringView: Component appeared, setting up event listeners');
+      this.setupEventListeners();
+
+      // 通知外部组件ScoringView已准备好
+      setTimeout(() => {
+        LogUtils.d('ScoringView: Ready for events, emitting COMPONENT_READY');
+        this.eventBus.emit(ScoringEvents.COMPONENT_READY);
+      }, 10);
+    })
+    .onDisAppear(() => {
+      LogUtils.d('ScoringView: Component disappearing, cleaning up');
+      this.removeEventListeners();
+    })
+  }
+
+  /**
+   * 设置事件监听器
+   */
+  private setupEventListeners(): void {
+    LogUtils.d('ScoringView: Setting up event listeners');
+
+    // 响应组件检测请求
+    this.eventBus.on(KaraokeEvents.COMPONENT_DETECTION, (request: string) => {
+      if (request === KaraokeEvents.COMPONENT_DETECTION_REQUEST) {
+        LogUtils.d('ScoringView: Responding to component detection');
+        this.eventBus.emit(KaraokeEvents.COMPONENT_DETECTION, KaraokeEvents.COMPONENT_SCORING_VIEW);
+      }
+    });
+
+    // TODO: 添加其他事件监听器（如SET_LYRIC_DATA, SET_PROGRESS等）
+  }
+
+  /**
+   * 移除事件监听器
+   */
+  private removeEventListeners(): void {
+    LogUtils.d('ScoringView: Removing event listeners');
+    // TODO: 实现事件监听器移除逻辑
   }
 
   /**

@@ -2,7 +2,7 @@ import { LyricType } from '../constants/LyricType';
 import { LyricMachine, OnLyricListener } from '../internal/LyricMachine';
 import { LyricModel } from '../model/LyricModel';
 import { LyricsLineModel, Tone } from '../model/LyricsLineModel';
-import { EventBus, LyricsEvents } from '../utils/EventBus';
+import { EventBus, KaraokeEvents, LyricsEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
 /**
@@ -1630,7 +1630,6 @@ export struct LyricsView {
       return;
     }
 
-    LogUtils.d('LyricsView: Drag start');
     this.mDraggingInProgress = true;
     this.initialTouchY = touchY;
     this.dragLineOffset = 0;
@@ -1687,7 +1686,6 @@ export struct LyricsView {
       return;
     }
 
-    LogUtils.d('LyricsView: Drag end');
     this.mDraggingInProgress = false;
 
     // 计算最终的目标行索引
@@ -1823,7 +1821,8 @@ export struct LyricsView {
 
       // 通知外部组件LyricsView已准备好
       setTimeout(() => {
-        LogUtils.d('LyricsView: Ready for events');
+        LogUtils.d('LyricsView: Ready for events, emitting COMPONENT_READY');
+        this.eventBus.emit(LyricsEvents.COMPONENT_READY);
       }, 10);
     })
     .onDisAppear(() => {
@@ -1841,6 +1840,14 @@ export struct LyricsView {
 
     // 初始化LyricMachine
     this.initLyricMachine();
+
+    // 响应组件检测请求
+    this.eventBus.on(KaraokeEvents.COMPONENT_DETECTION, (request: string) => {
+      if (request === KaraokeEvents.COMPONENT_DETECTION_REQUEST) {
+        LogUtils.d('LyricsView: Responding to component detection');
+        this.eventBus.emit(KaraokeEvents.COMPONENT_DETECTION, KaraokeEvents.COMPONENT_LYRICS_VIEW);
+      }
+    });
 
     // 监听歌词数据设置事件
     const setLyricDataHandler = (lyricModel: LyricModel) => {

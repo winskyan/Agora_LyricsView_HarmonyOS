@@ -21,6 +21,11 @@ class KaraokeEventImpl implements IKaraokeEvent {
     this.indexComponent = indexComponent;
   }
 
+  onKaraokeReady(): void {
+    this.indexComponent.logDebug('🎉 All karaoke components are ready!');
+    this.indexComponent.handleKaraokeReady();
+  }
+
   onDragTo(progress: number): void {
     this.indexComponent.logDebug(`onDragTo: ${progress}ms`);
     this.indexComponent.handleDragTo(progress);
@@ -40,8 +45,6 @@ struct Index {
   @State callBackInfo: string = '';
   @State currentTime: number = 0;
   @State isPlaying: boolean = false;
-  @State enableScoring: boolean = true;
-  @State enableLyrics: boolean = true;
   @State currentSongIndex: number = 0;
   @State isOriginalTrack: boolean = false;
   // 卡拉OK相关
@@ -53,7 +56,7 @@ struct Index {
 
   aboutToAppear() {
     this.updateLyricsDescription();
-    this.initializeApp();
+    this.initKaraokeView();
   }
 
   /**
@@ -67,16 +70,6 @@ struct Index {
       // 设置拖拽事件监听器
       const eventListener = new KaraokeEventImpl(this);
       this.karaokeView.setKaraokeEvent(eventListener);
-
-      // 如果已经有歌词数据，延迟设置以确保事件监听器已准备好
-      if (this.lyricModel) {
-        setTimeout(() => {
-          if (this.karaokeView && this.lyricModel) {
-            this.logDebug('Setting lyric data after delay');
-            this.karaokeView.setLyricData(this.lyricModel, false);
-          }
-        }, 50);
-      }
     }
   }
 
@@ -85,9 +78,19 @@ struct Index {
   }
 
   /**
+   * 处理卡拉OK组件准备就绪事件
+   */
+  public handleKaraokeReady() {
+    this.callBackInfo = '🎉 所有卡拉OK组件已准备就绪！';
+    this.logDebug('KaraokeView components are ready, can now safely use all features');
+
+    this.loadSong();
+  }
+
+  /**
    * 初始化应用，创建必要目录并复制文件
    */
-  private async initializeApp() {
+  private async loadSong() {
     try {
       await this.ensureLyricsDirectory();
       await this.copyRawFilesToPrivate();
@@ -260,8 +263,7 @@ struct Index {
   }
 
   private updateLyricsDescription() {
-    this.lyricsDescription = `当前歌曲: ${this.songList[this.currentSongIndex]} | 评分: ${this.enableScoring ? '开启' :
-      '关闭'} | 歌词: ${this.enableLyrics ? '开启' : '关闭'}`;
+    this.lyricsDescription = `当前歌曲: ${this.songList[this.currentSongIndex]} `;
   }
 
   private startPlayback() {
@@ -341,17 +343,6 @@ struct Index {
   }
 
   /**
-   * 处理拖拽开始事件
-   */
-  private handleDragStart() {
-    // 暂停播放，避免定时器与拖拽冲突
-    if (this.isPlaying) {
-      this.pausePlayback();
-    }
-    this.callBackInfo = '开始拖拽歌词';
-  }
-
-  /**
    * 处理拖拽结束事件
    * @param finalProgress 最终拖拽位置（毫秒）
    */
@@ -367,105 +358,41 @@ struct Index {
     }
   }
 
-  /**
-   * 组件就绪回调 - 简化版本
-   */
-  private onComponentReady() {
-    this.logDebug('Components are ready');
-    // 初始化KaraokeView（如果还没有初始化）
-    this.initKaraokeView();
-  }
-
-  /**
-   * 处理组件开关变化
-   */
-  private onComponentToggle(componentType:
-  'lyrics' | 'scoring', enabled:
-    boolean
-  ) {
-    if (componentType === 'lyrics') {
-      this.enableLyrics = enabled;
-    } else {
-      this.enableScoring = enabled;
-    }
-
-    this.updateLyricsDescription();
-
-    // 在HarmonyOS中，我们使用状态驱动的方式来控制UI显示
-    // 不需要直接传递组件引用给KaraokeView.attachUi
-    // 因为我们已经通过@State变量来控制歌词显示了
-
-    this.callBackInfo = `${componentType === 'lyrics' ? '歌词' : '评分'}${enabled ? '开启' : '关闭'}`;
-
-    // 在新架构中，组件状态通过@State变量自动管理
-    // KaraokeView会通过事件系统与LyricsView通信
-    if (componentType === 'lyrics' && this.karaokeView) {
-      this.logDebug(`Lyrics component ${enabled ? 'enabled' : 'disabled'}`);
-    }
-  }
-
   @Builder
   LyricsViewBuilder() {
-    if (this.enableLyrics && this.lyricModel) {
-      // 直接使用LyricsView组件，所有逻辑由组件内部处理
-      LyricsView({
-        textSize: 16,
-        currentLineTextSize: 20,
-        currentLineTextColor: '#FFFF00',
-        currentLineHighlightedTextColor: '#FFF44336',
-        previousLineTextColor: '#FFFFFF',
-        upcomingLineTextColor: '#FFFFFF',
-        lineSpacing: 15,
-        paddingTop: 15,
-        labelWhenNoLyrics: '暂无歌词',
-        enableLineWrap: false,
-        enableDragging: true,
-        enablePreviousLines: true,
-        enableUpcomingLines: true,
-        enablePreludeEndPositionIndicator: true,
-        preludeEndPositionIndicatorPaddingTop: 5,
-        preludeEndPositionIndicatorRadius: 4,
-        preludeEndPositionIndicatorColor: '#FF6B35',
-        textGravity: 0
-      })
-        .width('100%')
-        .height('100%')
-        .onAppear(() => {
-          this.logDebug('LyricsView component appeared');
-          // 延迟初始化，确保LyricsView的事件监听器已设置
-          setTimeout(() => {
-            this.onComponentReady();
-          }, 100);
-        })
-    } else if (!this.enableLyrics) {
-      Text('歌词已关闭')
-        .fontSize(14)
-        .fontColor('#999999')
-    } else {
-      Text('正在加载歌词...')
-        .fontSize(14)
-        .fontColor('#666666')
-    }
+    // 直接使用LyricsView组件，所有逻辑由组件内部处理
+    LyricsView({
+      textSize: 16,
+      currentLineTextSize: 20,
+      currentLineTextColor: '#FFFF00',
+      currentLineHighlightedTextColor: '#FFF44336',
+      previousLineTextColor: '#FFFFFF',
+      upcomingLineTextColor: '#FFFFFF',
+      lineSpacing: 15,
+      paddingTop: 15,
+      labelWhenNoLyrics: '暂无歌词',
+      enableLineWrap: false,
+      enableDragging: true,
+      enablePreviousLines: true,
+      enableUpcomingLines: true,
+      enablePreludeEndPositionIndicator: true,
+      preludeEndPositionIndicatorPaddingTop: 5,
+      preludeEndPositionIndicatorRadius: 4,
+      preludeEndPositionIndicatorColor: '#FF6B35',
+      textGravity: 0
+    })
+      .width('100%')
+      .height('100%')
   }
 
   @Builder
   ScoringViewBuilder() {
-    if (this.enableScoring) {
-      // 使用真实的ScoringView组件，所有逻辑由组件内部处理
-      ScoringView({
-        // ScoringView的配置参数
-      })
-        .width('100%')
-        .height('100%')
-        .onAppear(() => {
-          this.logDebug('ScoringView component appeared');
-          //this.onComponentReady();
-        })
-    } else {
-      Text('评分已关闭')
-        .fontSize(14)
-        .fontColor('#999999')
-    }
+    // 使用真实的ScoringView组件，所有逻辑由组件内部处理
+    ScoringView({
+      // ScoringView的配置参数
+    })
+      .width('100%')
+      .height('100%')
   }
 
   build() {
@@ -585,24 +512,6 @@ struct Index {
       }
       .width('100%')
       .height('100%')
-
-      // 评分开关
-      Checkbox({ name: 'enableScoring', group: 'checkboxGroup' })
-        .select(this.enableScoring)
-        .selectedColor('#2196F3')
-        .onChange((value: boolean) => {
-          this.onComponentToggle('scoring', value);
-        })
-        .position({ x: '90%', y: 160 })
-
-      // 歌词开关
-      Checkbox({ name: 'enableLyrics', group: 'checkboxGroup' })
-        .select(this.enableLyrics)
-        .selectedColor('#2196F3')
-        .onChange((value: boolean) => {
-          this.onComponentToggle('lyrics', value);
-        })
-        .position({ x: '90%', y: 500 })
     }
     .width('100%')
     .height('100%')
