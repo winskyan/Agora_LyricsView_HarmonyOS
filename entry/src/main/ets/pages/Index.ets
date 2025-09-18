@@ -323,13 +323,16 @@ struct Index {
   }
 
   private skipIntro() {
-    this.currentTime = 15000;
-    this.playingProgress = `${this.currentTime}ms`;
-    this.callBackInfo = '跳过前奏';
+
 
     // 同步更新KaraokeView的进度（触发歌词显示更新）
     if (this.lyricModel && this.karaokeView) {
-      this.karaokeView.setProgress(this.currentTime);
+      const preludeEndPosition = this.lyricModel.preludeEndPosition - 1000;
+      this.currentTime = preludeEndPosition;
+      this.playingProgress = `${preludeEndPosition}ms`;
+      this.callBackInfo = '跳过前奏';
+
+      this.karaokeView.setProgress(preludeEndPosition);
     }
   }
 
@@ -456,18 +459,15 @@ struct Index {
 
         // 主要控制按钮
         Row({ space: 8 }) {
-          Button('播放')
+          Button(this.isPlaying ? '暂停' : '播放')
             .fontSize(14)
-            .backgroundColor('#4CAF50')
+            .backgroundColor(this.isPlaying ? '#FF9800' : '#4CAF50')
             .onClick(() => {
-              this.startPlayback();
-            })
-
-          Button('暂停')
-            .fontSize(14)
-            .backgroundColor('#FF9800')
-            .onClick(() => {
-              this.pausePlayback();
+              if (this.isPlaying) {
+                this.pausePlayback();
+              } else {
+                this.startPlayback();
+              }
             })
 
           Button('切换歌曲')
@@ -475,6 +475,13 @@ struct Index {
             .backgroundColor('#2196F3')
             .onClick(() => {
               this.switchToNext();
+            })
+
+          Button('跳过前奏')
+            .fontSize(14)
+            .backgroundColor('#9C27B0')
+            .onClick(() => {
+              this.skipIntro();
             })
         }
         .width('100%')
@@ -484,13 +491,6 @@ struct Index {
 
         // 次要控制按钮
         Row({ space: 8 }) {
-          Button('跳过前奏')
-            .fontSize(14)
-            .backgroundColor('#9C27B0')
-            .onClick(() => {
-              this.skipIntro();
-            })
-
           Button(this.isOriginalTrack ? '播放伴奏' : '播放原唱')
             .fontSize(14)
             .backgroundColor('#607D8B')
