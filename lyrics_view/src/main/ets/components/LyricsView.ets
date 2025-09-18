@@ -70,27 +70,18 @@ export struct LyricsView {
   @Prop textGravity: number = 0;
   // Internal state
   @State private mDraggingInProgress: boolean = false;
-  @State private mOffset: number = 0;
-  @State private mForceUpdateUi: number = 1; // UPDATE_UI_TYPE_NORMAL
   @State private mCurrentLineTranslateX: number = 0;
-  @State private mWidthRatio: number = 1.0;
-  @State private targetIndex: number = 0;
   // 横向滚动相关状态
-  @State private mLastRightOfRectClip: number = 0; // 上次高亮区域的右边界
-  @State private mRectClipWidth: number = 0; // 当前高亮区域宽度
   // Actual component dimensions measured dynamically
   @State private actualViewHeight: number = 400; // 默认值，会被实际测量值覆盖
   @State private actualViewWidth: number = 300; // 默认值，会被实际测量值覆盖
   // 拖拽相关状态
-  @State private dragOffset: number = 0; // 拖拽偏移量
   @State private initialTouchY: number = 0; // 初始触摸Y坐标
-  @State private currentTouchY: number = 0; // 当前触摸Y坐标
   @State private dragLineOffset: number = 0; // 拖拽时的歌词行偏移量
   @State private originalCurrentLineIndex: number = -1; // 拖拽开始时的原始当前行索引
   // 动画状态管理
   @State private isAnimating: boolean = false;
   @State private animationKey: number = 0; // 用于强制重新渲染动画
-  @State private previousLineIndex: number = -1; // 记录上一行索引，用于动画判断
   @State private transitioningFromIndex: number = -1; // 正在过渡的原当前行索引
   @State private transitioningFromY: number = 0; // 过渡行的起始Y位置
   @State private transitioningToY: number = 0; // 过渡行的目标Y位置
@@ -99,21 +90,14 @@ export struct LyricsView {
   @State private newCurrentToY: number = 0; // 新当前行的目标Y位置
   @State private styleTransitioning: boolean = false; // 样式是否正在过渡
   // 文本滚动相关状态
-  @State private textScrollOffset: number = 0; // 当前文本滚动偏移
   @State private isTextScrolling: boolean = false; // 是否正在滚动文本
   @State private textScrollTimer: number = -1; // 文本滚动定时器
-  // Scroll controller for auto-scrolling
-  private scroller: Scroller = new Scroller();
   // Text scroll controller for horizontal scrolling
   private textScroller: Scroller = new Scroller();
   // 当前行的滚动偏移状态（用于调试日志）
   @State private currentLineScrollOffset: number = 0;
   // Event bus instance for global communication
   private eventBus: EventBus = EventBus.getInstance();
-  // Update UI type constants
-  private static readonly UPDATE_UI_TYPE_NO_NEED: number = 0;
-  private static readonly UPDATE_UI_TYPE_NORMAL: number = 1;
-  private static readonly UPDATE_UI_TYPE_WITH_ANIMATION: number = 2;
 
   /**
    * Requests a refresh of the UI.
@@ -170,33 +154,24 @@ export struct LyricsView {
 
     if (line < 0 || !lyricsModel || line >= lyricsModel.lines.length) {
       LogUtils.d('LyricsView: Invalid line index, no UI update needed');
-      this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NO_NEED;
       return;
     }
 
     if (line !== this.mIndexOfCurrentLine) {
-      LogUtils.d(`LyricsView: Line changed from ${this.mIndexOfCurrentLine} to ${line}`);
-
       // 停止之前行的文本滚动
       this.stopTextScrollAnimation();
 
       // 触发行变化动画
       this.triggerLineChangeAnimation(this.mIndexOfCurrentLine, line);
 
-      this.previousLineIndex = this.mIndexOfCurrentLine;
       this.mIndexOfCurrentLine = line;
-      this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL | LyricsView.UPDATE_UI_TYPE_WITH_ANIMATION;
 
       // 启动新当前行的文本滚动
       const lyricsModel = this.mLyricMachine?.getLyricsModel();
       if (lyricsModel && lyricsModel.lines && line >= 0 && line < lyricsModel.lines.length) {
         this.startTextScrollAnimation(lyricsModel.lines[line]);
       }
-
-      LogUtils.d(`LyricsView: Current line updated to ${line}, animation triggered`);
     }
-
-    // 横向滚动现在由startTextScrollAnimation的定时器处理，无需在这里额外检查
   }
 
   /**
@@ -246,18 +221,11 @@ export struct LyricsView {
    * Resets all internal state variables to their default values.
    */
   private resetInternal(): void {
-    this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL;
     this.mCurrentTime = 0;
-    this.mOffset = 0;
-    this.targetIndex = 0;
     this.mCurrentLineTranslateX = 0;
-    this.mLastRightOfRectClip = 0;
-    this.mRectClipWidth = 0;
 
     // 停止文本滚动动画
     this.stopTextScrollAnimation();
-
-    LogUtils.d(`LyricsView: 🔄 resetInternal called - currentLineScrollOffset reset to: ${this.currentLineScrollOffset}`);
   }
 
   /**
@@ -297,17 +265,6 @@ export struct LyricsView {
       return line.tones.map(tone => tone.word).join('');
     }
     return '';
-  }
-
-  /**
-   * Gets the index of a lyrics line
-   */
-  private getLineIndex(line: LyricsLineModel): number {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel || !lyricsModel.lines) {
-      return -1;
-    }
-    return lyricsModel.lines.indexOf(line);
   }
 
   /**
@@ -376,12 +333,6 @@ export struct LyricsView {
     this.newCurrentTransitioning = true; // 新当前行开始过渡
     this.styleTransitioning = false; // 样式过渡稍后开始
 
-    LogUtils.d(`LyricsView: 🎬 Animation state set - isAnimating: ${this.isAnimating}, transitioningFromIndex: ${this.transitioningFromIndex}, newCurrentTransitioning: ${this.newCurrentTransitioning}, mIndexOfCurrentLine: ${this.mIndexOfCurrentLine}`);
-
-    // 记录组件选择逻辑
-    LogUtils.d(`LyricsView: 🎭 Component selection - Line ${this.transitioningFromIndex} will use TransitioningHighlightLineBuilder`);
-    LogUtils.d(`LyricsView: 🎭 Component selection - Line ${this.mIndexOfCurrentLine} will use NewCurrentLineTransitionBuilder (newCurrentTransitioning: ${this.newCurrentTransitioning})`);
-
     const lineHeight = this.getLineHeight();
     const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
 
@@ -394,8 +345,6 @@ export struct LyricsView {
     // 上一行位置 = 中心位置 - 一个行高
     const oldTargetY = centerY - lineHeight;
 
-    LogUtils.d(`LyricsView: 🎬 Animation START - fromLine: ${fromLine}, toLine: ${toLine}, centerY: ${centerY}, lineHeight: ${lineHeight}, oldTargetY: ${oldTargetY}`);
-
     // 设置起始位置
     this.transitioningFromY = centerY; // 过渡行起始位置：中心
     this.newCurrentFromY = centerY + lineHeight; // 新当前行起始位置：下一行
@@ -406,12 +355,6 @@ export struct LyricsView {
 
     this.animationKey = Date.now(); // 更新动画键值，强制重新渲染
 
-    LogUtils.d(`LyricsView: 📍 Position setup - Transitioning: ${this.transitioningFromY} -> ${this.transitioningToY} (diff: ${this.transitioningToY -
-    this.transitioningFromY})`);
-    LogUtils.d(`LyricsView: 📍 Position setup - NewCurrent: ${this.newCurrentFromY} -> ${this.newCurrentToY} (diff: ${this.newCurrentToY -
-    this.newCurrentFromY})`);
-    LogUtils.d(`LyricsView: ⏰ Animation key set to: ${this.animationKey}`);
-
     // 位置动画开始后很快开始样式过渡，创造重叠效果
     setTimeout(() => {
       if (this.isAnimating) {
@@ -421,12 +364,10 @@ export struct LyricsView {
 
     // 动画完成后清除状态
     setTimeout(() => {
-      LogUtils.d(`LyricsView: 🏁 Animation END - Clearing animation states`);
       this.isAnimating = false;
       this.transitioningFromIndex = -1; // 清除过渡状态
       this.newCurrentTransitioning = false; // 清除新当前行过渡状态
       this.styleTransitioning = false; // 清除样式过渡状态
-      LogUtils.d(`LyricsView: 🏁 Animation states cleared - Line ${this.mIndexOfCurrentLine} now using ProgressiveHighlightLineBuilder`);
     }, 500); // 总动画时长：150ms延迟 + 300ms样式动画 + 50ms缓冲
   }
 
@@ -472,11 +413,6 @@ export struct LyricsView {
       // 拖拽时：使用原始当前行作为基准，加上拖拽偏移
       currentLineIndex = this.originalCurrentLineIndex;
       additionalOffset = this.dragLineOffset * currentLineHeight;
-
-      // 调试信息：输出位置计算详情
-      if (index < 5) {
-        LogUtils.d(`LyricsView: Drag calc - Line ${index}, originalIndex: ${this.originalCurrentLineIndex}, dragOffset: ${this.dragLineOffset}, additionalOffset: ${additionalOffset.toFixed(1)}`);
-      }
     }
 
     // 动态位置计算：累积每行的实际高度
@@ -485,7 +421,6 @@ export struct LyricsView {
     if (index === currentLineIndex) {
       // 当前行：在中心位置
       yPosition = centerY + additionalOffset;
-      LogUtils.d(`LyricsView: 📐 calculateLineYPosition - Line ${index} (CURRENT): centerY=${centerY.toFixed(1)}, additionalOffset=${additionalOffset.toFixed(1)}, result=${yPosition.toFixed(1)}`);
     } else if (index < currentLineIndex) {
       // 上方的行：累积计算向上的偏移
       let totalOffset = 0;
@@ -497,7 +432,6 @@ export struct LyricsView {
         }
       }
       yPosition = centerY - totalOffset + additionalOffset;
-      LogUtils.d(`LyricsView: 📐 calculateLineYPosition - Line ${index} (ABOVE): centerY=${centerY.toFixed(1)}, totalOffset=${totalOffset.toFixed(1)}, additionalOffset=${additionalOffset.toFixed(1)}, result=${yPosition.toFixed(1)}`);
     } else {
       // 下方的行：累积计算向下的偏移
       let totalOffset = currentLineHeight; // 从当前行底部开始
@@ -513,7 +447,6 @@ export struct LyricsView {
         }
       }
       yPosition = centerY + totalOffset + additionalOffset;
-      LogUtils.d(`LyricsView: 📐 calculateLineYPosition - Line ${index} (BELOW): centerY=${centerY.toFixed(1)}, totalOffset=${totalOffset.toFixed(1)}, additionalOffset=${additionalOffset.toFixed(1)}, result=${yPosition.toFixed(1)}`);
     }
 
     // 添加边界检查，确保歌词行不会完全移出视图
@@ -527,11 +460,6 @@ export struct LyricsView {
     const maxY = this.actualViewHeight + targetLineHeight * 0.5;
 
     const clampedY = Math.max(minY, Math.min(maxY, yPosition));
-
-    // 如果位置被限制了，输出调试信息
-    if (this.mDraggingInProgress && Math.abs(clampedY - yPosition) > 1) {
-      LogUtils.d(`LyricsView: Line ${index} position clamped from ${yPosition.toFixed(1)} to ${clampedY.toFixed(1)}`);
-    }
 
     return clampedY;
   }
@@ -721,14 +649,10 @@ export struct LyricsView {
     const availableWidth = this.actualViewWidth; // 使用完整宽度
     const isOverflowing = actualTextWidth > availableWidth;
 
-    LogUtils.d(`LyricsView: 📏 Text overflow check - text: "${text.substring(0,
-      20)}...", length: ${text.length}, fontSize: ${fontSize}, actualWidth: ${actualTextWidth.toFixed(1)}, availableWidth: ${availableWidth.toFixed(1)}, overflowing: ${isOverflowing}, enableLineWrap: ${this.shouldEnableLineWrap()}`);
-
     // 为了测试，降低滚动触发阈值
     if (!this.shouldEnableLineWrap()) {
       // 对于不换行模式，如果文本长度超过5个字符就认为需要滚动（便于测试）
       if (text.length > 5) {
-        LogUtils.d(`LyricsView: 🔧 Force overflow for testing - text length: ${text.length} > 5, fontSize: ${fontSize}`);
         return true;
       }
     }
@@ -770,38 +694,28 @@ export struct LyricsView {
    */
   private startTextScrollAnimation(line: LyricsLineModel): void {
     const text = this.getLineText(line);
-    LogUtils.d(`LyricsView: 🚀 startTextScrollAnimation called - text: "${text.substring(0,
-      30)}...", enableLineWrap: ${this.shouldEnableLineWrap()}`);
 
     // 重置滚动偏移，为新行准备
     this.currentLineScrollOffset = 0;
 
     if (this.shouldEnableLineWrap()) {
-      LogUtils.d(`LyricsView: ❌ Line wrap enabled, skipping scroll animation`);
       return; // 启用换行时不需要滚动
     }
 
     if (!this.isTextOverflowing(text, this.currentLineTextSize)) {
-      LogUtils.d(`LyricsView: ❌ Text not overflowing, skipping scroll animation`);
       return; // 文本不超长时不需要滚动
     }
 
     this.isTextScrolling = true;
-    this.textScrollOffset = 0;
-    // currentLineScrollOffset 已经在上面重置了
 
     // 清除之前的定时器
     if (this.textScrollTimer !== -1) {
       clearInterval(this.textScrollTimer);
     }
 
-    LogUtils.d(`LyricsView: ✅ Starting text scroll animation for line: "${text.substring(0,
-      20)}...", textLength: ${text.length}, fontSize: ${this.currentLineTextSize}, viewWidth: ${this.actualViewWidth}`);
-
     // 启动滚动定时器，每50ms更新一次以获得更流畅的效果
     this.textScrollTimer = setInterval(() => {
       if (!this.isTextScrolling) {
-        LogUtils.d(`LyricsView: ⏹️ Scroll timer stopped - isTextScrolling: false`);
         return;
       }
 
@@ -822,9 +736,6 @@ export struct LyricsView {
             curve: Curve.EaseOut
           }
         });
-
-        LogUtils.d(`LyricsView: 🔄 Scroll update - progress: ${(progress *
-          100).toFixed(1)}%, oldOffset: ${oldOffset.toFixed(1)}px, newOffset: ${targetOffset.toFixed(1)}px, scrollTo: ${targetOffset.toFixed(1)}px`);
       }
     }, 50);
   }
@@ -838,14 +749,12 @@ export struct LyricsView {
       this.textScrollTimer = -1;
     }
     this.isTextScrolling = false;
-    this.textScrollOffset = 0;
     this.mCurrentLineTranslateX = 0; // 重置水平滚动偏移
     // 重置滚动位置到开始
     this.textScroller.scrollTo({
       xOffset: 0,
       yOffset: 0
     });
-    LogUtils.d(`LyricsView: 🛑 Text scroll animation stopped and reset to start`);
   }
 
   /**
@@ -875,7 +784,6 @@ export struct LyricsView {
     // 计算当前高亮区域宽度
     const progress = this.calculateLineProgress(line);
     const currentHighlightWidth = textWidth * progress;
-    this.mRectClipWidth = currentHighlightWidth;
 
     // Android版本的滚动逻辑：
     // 1. 高亮部分大于视图宽度的一半
@@ -893,15 +801,10 @@ export struct LyricsView {
       // 应用滚动
       this.updateScrollPosition(this.mCurrentLineTranslateX);
 
-      LogUtils.d(`LyricsView: Horizontal scroll - progress: ${(progress *
-        100).toFixed(1)}%, highlightWidth: ${currentHighlightWidth.toFixed(1)}, targetScrollX: ${targetScrollX.toFixed(1)}, actualScrollX: ${this.mCurrentLineTranslateX.toFixed(1)}`);
     } else {
       this.mCurrentLineTranslateX = 0;
       this.updateScrollPosition(0);
     }
-
-    // 更新上次高亮区域右边界
-    this.mLastRightOfRectClip = currentHighlightWidth;
   }
 
   /**
@@ -921,17 +824,6 @@ export struct LyricsView {
    */
   private isLyricsLineOverlong(textWidth: number): boolean {
     return textWidth > this.actualViewWidth;
-  }
-
-  /**
-   * 计算高亮区域宽度（像素值）
-   */
-  private calculateHighlightWidthPx(line: LyricsLineModel): number {
-    const progress = this.calculateLineProgress(line);
-    const text = this.getLineText(line);
-    const fontSize = this.currentLineTextSize;
-    const totalWidth = text.length * fontSize * 0.6;
-    return totalWidth * progress;
   }
 
   /**
@@ -959,11 +851,6 @@ export struct LyricsView {
 
     // 如果行的任何部分在扩展视图范围内，就认为是可见的
     const isVisible = lineBottom > viewTop && lineTop < viewBottom;
-
-    // 在拖拽时输出详细调试信息
-    if (this.mDraggingInProgress && index < 10) {
-      LogUtils.d(`LyricsView: Line ${index} - Y: ${lineY.toFixed(1)}, Top: ${lineTop.toFixed(1)}, Bottom: ${lineBottom.toFixed(1)}, ViewTop: ${viewTop}, ViewBottom: ${viewBottom}, Visible: ${isVisible}`);
-    }
 
     return isVisible;
   }
@@ -1020,13 +907,6 @@ export struct LyricsView {
         }
       }
     }
-
-    LogUtils.d(`LyricsView: Rendered lines: ${renderedCount}, Visible lines: ${visibleCount}, Total: ${lyricsModel.lines.length}, Previous: ${this.enablePreviousLines}, Upcoming: ${this.enableUpcomingLines}`);
-
-    // 如果没有可见行，这是一个问题
-    if (visibleCount === 0) {
-      LogUtils.d(`LyricsView: WARNING - No visible lines! ViewHeight: ${this.actualViewHeight}, LineHeight: ${this.getLineHeight()}`);
-    }
   }
 
   /**
@@ -1062,11 +942,9 @@ export struct LyricsView {
     // 检查是否是LRC格式（通过检查歌词模型的类型）
     const lyricsModel = this.mLyricMachine?.getLyricsModel();
     if (lyricsModel && lyricsModel.type === LyricType.LRC) {
-      LogUtils.d(`LyricsView: LRC format detected, enabling line wrap by default`);
       return true; // LRC格式默认启用换行
     }
 
-    LogUtils.d(`LyricsView: Non-LRC format or no lyrics model, disabling line wrap by default`);
     return false; // 其他格式默认不启用换行
   }
 
@@ -1180,8 +1058,6 @@ export struct LyricsView {
           .textOverflow({ overflow: TextOverflow.None }) // 不显示省略号
           .width('auto') // 让文本自然宽度
           .onAppear(() => {
-            LogUtils.d(`LyricsView: 🎨 Background text rendered - scrollOffset: ${this.currentLineScrollOffset}, text: "${this.getLineText(line)
-              .substring(0, 15)}..."`);
           })
 
         // 高亮文字（使用clip实现渐进效果）
@@ -1671,9 +1547,6 @@ export struct LyricsView {
     const isInStartPhase = timeSinceAnimation < 50;
     const position = isInStartPhase ? this.transitioningFromY : this.transitioningToY;
 
-    LogUtils.d(`LyricsView: 🔄 getTransitioningYPosition - phase: ${isInStartPhase ? 'START' :
-      'TARGET'}, position: ${position}, timeSince: ${timeSinceAnimation}ms, fromY: ${this.transitioningFromY}, toY: ${this.transitioningToY}`);
-
     return position;
   }
 
@@ -1687,9 +1560,6 @@ export struct LyricsView {
     const isInStartPhase = timeSinceAnimation < 50;
     const position = isInStartPhase ? this.newCurrentFromY : this.newCurrentToY;
 
-    LogUtils.d(`LyricsView: 🆕 getNewCurrentYPosition - phase: ${isInStartPhase ? 'START' :
-      'TARGET'}, position: ${position}, timeSince: ${timeSinceAnimation}ms, fromY: ${this.newCurrentFromY}, toY: ${this.newCurrentToY}`);
-
     return position;
   }
 
@@ -1702,13 +1572,6 @@ export struct LyricsView {
     } else {
       return 1.0; // 位置过渡时使用普通行缩放
     }
-  }
-
-  /**
-   * 获取高亮层的透明度
-   */
-  private getHighlightOpacity(): number {
-    return this.styleTransitioning ? 1.0 : 0.0;
   }
 
   /**
@@ -1745,35 +1608,6 @@ export struct LyricsView {
   }
 
   /**
-   * 根据触摸Y坐标计算对应的歌词行索引
-   * @param touchY 触摸点的Y坐标
-   * @return 对应的歌词行索引，如果无效则返回-1
-   */
-  private calculateLineIndexByTouchY(touchY: number): number {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
-      return -1;
-    }
-
-    const lineHeight = this.getLineHeight();
-    const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
-
-    // 计算触摸点相对于当前行中心的偏移
-    const offsetFromCenter = touchY - centerY;
-    const lineOffset = Math.round(offsetFromCenter / lineHeight);
-
-    // 计算目标行索引
-    const targetLineIndex = this.mIndexOfCurrentLine + lineOffset;
-
-    // 确保索引在有效范围内
-    if (targetLineIndex >= 0 && targetLineIndex < lyricsModel.lines.length) {
-      return targetLineIndex;
-    }
-
-    return -1;
-  }
-
-  /**
    * 根据歌词行索引获取对应的开始时间
    * @param lineIndex 歌词行索引
    * @return 对应的开始时间（毫秒），如果无效则返回-1
@@ -1799,8 +1633,6 @@ export struct LyricsView {
     LogUtils.d('LyricsView: Drag start');
     this.mDraggingInProgress = true;
     this.initialTouchY = touchY;
-    this.currentTouchY = touchY;
-    this.dragOffset = 0;
     this.dragLineOffset = 0;
     this.originalCurrentLineIndex = this.mIndexOfCurrentLine; // 记录拖拽开始时的当前行
 
@@ -1817,7 +1649,6 @@ export struct LyricsView {
       return;
     }
 
-    this.currentTouchY = touchY;
     // 计算Y轴移动距离
     const deltaY = touchY - this.initialTouchY;
 
@@ -1840,14 +1671,8 @@ export struct LyricsView {
 
       // 限制拖拽偏移量在安全范围内
       this.dragLineOffset = Math.max(-maxDownwardOffset, Math.min(maxUpwardOffset, rawLineOffset));
-
-      LogUtils.d(`LyricsView: Dragging, deltaY: ${deltaY}, rawOffset: ${rawLineOffset}, limitedOffset: ${this.dragLineOffset}, bounds: [${-maxDownwardOffset}, ${maxUpwardOffset}]`);
-
       // 统计可见行数（调试用）
       this.logVisibleLinesCount();
-
-      // 强制触发UI更新，让可见性检查生效
-      this.mForceUpdateUi = LyricsView.UPDATE_UI_TYPE_NORMAL;
     } else {
       this.dragLineOffset = 0;
     }
@@ -1885,9 +1710,7 @@ export struct LyricsView {
     }
 
     // 重置拖拽状态
-    this.dragOffset = 0;
     this.initialTouchY = 0;
-    this.currentTouchY = 0;
     this.dragLineOffset = 0;
     this.originalCurrentLineIndex = -1;
   }
