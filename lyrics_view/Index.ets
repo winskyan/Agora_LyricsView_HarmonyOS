@@ -2,6 +2,7 @@ export { IKaraokeEvent } from './src/main/ets/IKaraokeEvent';
 export { KaraokeView } from './src/main/ets/KaraokeView';
 export { LyricsView } from './src/main/ets/components/LyricsView';
 export { ScoringView } from './src/main/ets/components/ScoringView';
+export { Constants } from './src/main/ets/constants/Constants';
 export { LyricType } from './src/main/ets/constants/LyricType';
 export { LyricMachine, OnLyricListener } from './src/main/ets/internal/LyricMachine';
 export { IScoringAlgorithm, OnScoringListener, ScoringMachine } from './src/main/ets/internal/ScoringMachine';
@@ -11,4 +12,13 @@ export { Lang, LyricsLineModel, Monolog, Tone } from './src/main/ets/model/Lyric
 export { PitchData, createPitchData } from './src/main/ets/model/PitchData';
 export { ILogger, LogUtils } from './src/main/ets/utils/LogUtils';
 export { Utils } from './src/main/ets/utils/Utils';
+
+// 导出下载器相关类
+export {
+  DownloadError,
+  DownloadErrorDetail,
+  DownloadLyricModel,
+  HttpUrlRequest, LyricsFileDownloader,
+  LyricsFileDownloaderCallback, RequestCallback
+} from './src/main/ets/downloader/index';
 

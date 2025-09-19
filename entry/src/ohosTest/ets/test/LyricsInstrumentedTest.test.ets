@@ -3,7 +3,20 @@ import common from '@ohos.app.ability.common';
 import hilog from '@ohos.hilog';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from '@ohos/hypium';
 // 导入lyrics_view模块的相关类
-import { KaraokeView, LogUtils, LyricModel, LyricType, LyricsParser, Utils } from 'lyrics_view';
+import fs from '@ohos.file.fs';
+import {
+  Constants,
+  DownloadError,
+  DownloadErrorDetail,
+  KaraokeView,
+  LogUtils,
+  LyricModel,
+  LyricType,
+  LyricsFileDownloader,
+  LyricsFileDownloaderCallback,
+  LyricsParser,
+  Utils
+} from 'lyrics_view';
 
 /**
  * 测试用例接口
@@ -924,11 +937,373 @@ export default function lyricsInstrumentedTest() {
     });
 
     /**
-     * 下载测试 - 占位方法
+     * 下载功能测试
      */
     it('testDownload', 0, async () => {
-      hilog.info(DOMAIN, TAG, 'testDownload: 测试下载功能 - 待实现');
-      // TODO: 实现下载测试逻辑
+      hilog.info(DOMAIN, TAG, 'testDownload: 开始测试下载功能');
+
+      const abilityDelegator = abilityDelegatorRegistry.getAbilityDelegator();
+      const context = abilityDelegator.getAppContext() as common.UIAbilityContext;
+
+      // 测试URL列表
+      const urls: string[] = [
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/1.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/2.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/3.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/4.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/5.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/6.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/7.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/8.lrc',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/9.lrc',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/10.lrc'
+      ];
+
+      const requestIdList: number[] = [];
+      let completedCount = 0;
+
+      // 获取下载器实例并配置
+      const downloader = LyricsFileDownloader.getInstance(context);
+      downloader.cleanAll();
+      downloader.setMaxFileNum(5);
+      downloader.setMaxFileAge(8 * 60 * 60);
+
+      // 创建下载回调实现
+      class TestDownloadCallback implements LyricsFileDownloaderCallback {
+        onLyricsFileDownloadProgress(requestId: number, progress: number): void {
+          hilog.info(DOMAIN, TAG, `下载进度 - requestId: ${requestId}, progress: ${(progress * 100).toFixed(1)}%`);
+          expect(requestIdList.includes(requestId)).assertTrue();
+        }
+
+        onLyricsFileDownloadCompleted(requestId: number, fileData: Uint8Array | null,
+          error: DownloadErrorDetail | null): void {
+          hilog.info(DOMAIN, TAG, `下载完成 - requestId: ${requestId}, error: ${error?.toString()}`);
+
+          expect(fileData).not().assertUndefined();
+          expect(error).assertNull();
+          expect(requestIdList.includes(requestId)).assertTrue();
+
+          const index = requestIdList.indexOf(requestId);
+          if (index > -1) {
+            requestIdList.splice(index, 1);
+          }
+          completedCount++;
+        }
+      }
+
+      const callback = new TestDownloadCallback();
+      downloader.setLyricsFileDownloaderCallback(callback);
+
+      // 启动所有下载任务
+      for (const url of urls) {
+        const requestId = await downloader.download(url);
+        requestIdList.push(requestId);
+        hilog.info(DOMAIN, TAG, `启动下载 - url: ${url}, requestId: ${requestId}`);
+
+        // 模拟延迟
+        await new Promise<void>(resolve => setTimeout(resolve, 100));
+      }
+
+      // 等待所有下载完成（最多等待60秒）
+      let waitTime = 0;
+      const maxWaitTime = 60000; // 60秒
+      while (requestIdList.length > 0 && waitTime < maxWaitTime) {
+        await new Promise<void>(resolve => setTimeout(resolve, 1000));
+        waitTime += 1000;
+        hilog.info(DOMAIN, TAG, `等待下载完成 - 剩余: ${requestIdList.length}, 已等待: ${waitTime}ms`);
+      }
+
+      // 验证结果
+      expect(requestIdList.length).assertEqual(0);
+      expect(completedCount).assertEqual(urls.length);
+
+      // 验证缓存文件数量（应该只保留5个，因为设置了maxFileNum为5）
+      const cacheDir = `${context.cacheDir}/${Constants.LYRICS_FILE_DOWNLOAD_DIR}`;
+      try {
+        if (fs.accessSync(cacheDir)) {
+          const files = fs.listFileSync(cacheDir);
+          let fileCount = 0;
+          for (const fileName of files) {
+            const filePath = `${cacheDir}/${fileName}`;
+            const stat = fs.statSync(filePath);
+            if (stat.isFile()) {
+              fileCount++;
+            }
+          }
+          expect(fileCount).assertEqual(5);
+          hilog.info(DOMAIN, TAG, `缓存文件数量验证通过: ${fileCount}`);
+        }
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `验证缓存文件失败: ${error}`);
+      }
+
+      // 清理缓存
+      downloader.cleanAll();
+
+      hilog.info(DOMAIN, TAG, 'testDownload: 下载功能测试完成');
+    });
+
+    /**
+     * 测试错误URL下载
+     */
+    it('testDownloadForFakeUrls', 0, async () => {
+      hilog.info(DOMAIN, TAG, '开始测试错误URL下载');
+
+      const abilityDelegator = abilityDelegatorRegistry.getAbilityDelegator();
+      const context = abilityDelegator.getAppContext() as common.UIAbilityContext;
+      const downloader = LyricsFileDownloader.getInstance(context);
+
+      const fakeUrls: string[] = [
+        'https://127.0.0.1/lyricsMockDownload/1.zip',
+        'https://agora.fake.domain.com/lyricsMockDownload/1.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/10000.zip',
+        'https://8.141.208.82/lyricsMockDownload/1.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/11.zip',
+        'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/11.txt'
+      ];
+
+      const requestErrorMap = new Map<number, DownloadError>();
+      let completedCount = 0;
+
+      downloader.cleanAll();
+      downloader.setMaxFileNum(5);
+      downloader.setMaxFileAge(8 * 60 * 60);
+
+      class TestErrorCallback implements LyricsFileDownloaderCallback {
+        onLyricsFileDownloadProgress(requestId: number, progress: number): void {
+          hilog.info(DOMAIN, TAG,
+            `错误URL下载进度 - requestId: ${requestId}, progress: ${(progress * 100).toFixed(1)}%`);
+          expect(requestErrorMap.has(requestId)).assertTrue();
+        }
+
+        onLyricsFileDownloadCompleted(requestId: number, fileData: Uint8Array | null,
+          error: DownloadErrorDetail | null): void {
+          hilog.info(DOMAIN, TAG, `错误URL下载完成 - requestId: ${requestId}, error: ${error?.toString()}`);
+
+          expect(error).not().assertUndefined();
+          expect(fileData).assertNull();
+
+          const expectedError = requestErrorMap.get(requestId);
+          expect(expectedError).not().assertUndefined();
+          hilog.info(DOMAIN, TAG,
+            `错误类型验证 - requestId: ${requestId}, expectedError: ${expectedError}, error: ${error}`);
+          expect(error!.getType()).assertEqual(expectedError!);
+
+          requestErrorMap.delete(requestId);
+          completedCount++;
+        }
+      }
+
+      const errorCallback = new TestErrorCallback();
+      downloader.setLyricsFileDownloaderCallback(errorCallback);
+
+      // 启动错误URL下载并设置期望的错误类型
+      for (let i = 0; i < fakeUrls.length; i++) {
+        const requestId = await downloader.download(fakeUrls[i]);
+
+        let expectedError: DownloadError;
+        switch (i) {
+          case 0:
+            expectedError = DownloadError.HTTP_DOWNLOAD_ERROR;
+            break;
+          case 1:
+            expectedError = DownloadError.HTTP_DOWNLOAD_ERROR;
+            break;
+          case 2:
+            expectedError = DownloadError.HTTP_DOWNLOAD_ERROR_LOGIC;
+            break;
+          case 3:
+            expectedError = DownloadError.HTTP_DOWNLOAD_ERROR;
+            break;
+          case 4:
+            expectedError = DownloadError.UNZIP_FAIL;
+            break;
+          case 5:
+            expectedError = DownloadError.UNZIP_FAIL;
+            break;
+          default:
+            expectedError = DownloadError.GENERAL;
+        }
+
+        requestErrorMap.set(requestId, expectedError);
+      }
+
+      // 等待所有错误下载完成
+      let waitTime = 0;
+      const maxWaitTime = 60 * 60 * 1000; // 60min，确保覆盖所有超时情况
+      while (requestErrorMap.size > 0 && waitTime < maxWaitTime) {
+        await new Promise<void>(resolve => setTimeout(resolve, 1000));
+        waitTime += 1000;
+        hilog.info(DOMAIN, TAG, `等待错误下载完成... ${waitTime}ms, 剩余请求: ${requestErrorMap.size}`);
+        if (requestErrorMap.size == 0) {
+          break;
+        }
+      }
+
+      expect(requestErrorMap.size).assertEqual(0);
+      expect(completedCount).assertEqual(fakeUrls.length);
+
+      downloader.cleanAll();
+      hilog.info(DOMAIN, TAG, '错误URL下载测试完成');
+    });
+
+    /**
+     * 测试文件存活时间
+     */
+    it('testDownloadFileAge', 0, async () => {
+      hilog.info(DOMAIN, TAG, '开始测试文件存活时间');
+
+      const abilityDelegator = abilityDelegatorRegistry.getAbilityDelegator();
+      const context = abilityDelegator.getAppContext() as common.UIAbilityContext;
+      const downloader = LyricsFileDownloader.getInstance(context);
+
+      const testUrls: string[] = [
+        'https://d1n8x1oristvw.cloudfront.net/song_resource/20220705/7b95e6e99afb4d099bca10cc5e3f74a0.xml',
+        'https://accktvpic.oss-cn-beijing.aliyuncs.com/pic/meta/demo/fulldemoStatic/privacy/loadFil.xml'
+      ];
+
+      let completedCount = 0;
+      const requestIdList: number[] = [];
+
+      downloader.cleanAll();
+      downloader.setMaxFileNum(5);
+      downloader.setMaxFileAge(1); // 设置1秒存活时间
+
+      class TestAgeCallback implements LyricsFileDownloaderCallback {
+        onLyricsFileDownloadProgress(requestId: number, progress: number): void {
+          expect(requestIdList.includes(requestId)).assertTrue();
+        }
+
+        onLyricsFileDownloadCompleted(requestId: number, fileData: Uint8Array | null,
+          error: DownloadErrorDetail | null): void {
+          expect(fileData).not().assertUndefined();
+          expect(error).assertNull();
+          expect(requestIdList.includes(requestId)).assertTrue();
+
+          const index = requestIdList.indexOf(requestId);
+          if (index > -1) {
+            requestIdList.splice(index, 1);
+          }
+          completedCount++;
+        }
+      }
+
+      const ageCallback = new TestAgeCallback();
+      downloader.setLyricsFileDownloaderCallback(ageCallback);
+
+      // 下载第一个文件
+      const requestId1 = await downloader.download(testUrls[0]);
+      requestIdList.push(requestId1);
+
+      // 等待下载完成
+      let waitTime = 0;
+      while (requestIdList.length > 0 && waitTime < 10000) {
+        await new Promise<void>(resolve => setTimeout(resolve, 1000));
+        waitTime += 1000;
+      }
+
+      // 等待3秒让文件过期
+      await new Promise<void>(resolve => setTimeout(resolve, 3000));
+
+      // 下载第二个文件，这时第一个文件应该已经被清理
+      const requestId2 = await downloader.download(testUrls[1]);
+      requestIdList.push(requestId2);
+
+      expect(requestIdList.length).assertEqual(1);
+
+      // 取消第二个下载
+      downloader.cancelDownload(requestIdList[0]);
+
+      // 验证缓存目录为空
+      const cacheDir = `${context.cacheDir}/${Constants.LYRICS_FILE_DOWNLOAD_DIR}`;
+      try {
+        if (fs.accessSync(cacheDir)) {
+          const files = fs.listFileSync(cacheDir);
+          let fileCount = 0;
+          for (const fileName of files) {
+            const filePath = `${cacheDir}/${fileName}`;
+            const stat = fs.statSync(filePath);
+            if (stat.isFile()) {
+              fileCount++;
+            }
+          }
+          expect(fileCount).assertEqual(0);
+        }
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `验证文件存活时间失败: ${error}`);
+      }
+
+      downloader.cleanAll();
+      hilog.info(DOMAIN, TAG, '文件存活时间测试完成');
+    });
+
+    /**
+     * 测试重复下载
+     */
+    it('testDownloadRepeat', 0, async () => {
+      hilog.info(DOMAIN, TAG, '开始测试重复下载');
+
+      const abilityDelegator = abilityDelegatorRegistry.getAbilityDelegator();
+      const context = abilityDelegator.getAppContext() as common.UIAbilityContext;
+      const downloader = LyricsFileDownloader.getInstance(context);
+
+      const testUrl = 'https://fullapp.oss-cn-beijing.aliyuncs.com/lyricsMockDownload/10.lrc';
+      const requestIdList: number[] = [];
+      let completedCount = 0;
+      let repeatDownloadCount = 0;
+
+      downloader.cleanAll();
+      downloader.setMaxFileNum(5);
+      downloader.setMaxFileAge(8 * 60 * 60);
+
+      class TestRepeatCallback implements LyricsFileDownloaderCallback {
+        onLyricsFileDownloadProgress(requestId: number, progress: number): void {
+          expect(requestIdList.includes(requestId)).assertTrue();
+        }
+
+        onLyricsFileDownloadCompleted(requestId: number, fileData: Uint8Array | null,
+          error: DownloadErrorDetail | null): void {
+          hilog.info(DOMAIN, TAG, `重复下载完成 - requestId: ${requestId}, error: ${error?.toString()}`);
+
+          if (error && error.getType() === DownloadError.REPEAT_DOWNLOADING) {
+            repeatDownloadCount++;
+          } else {
+            // 正常下载完成
+            expect(fileData).not().assertUndefined();
+            expect(error).assertNull();
+            expect(requestIdList.includes(requestId)).assertTrue();
+
+            const index = requestIdList.indexOf(requestId);
+            if (index > -1) {
+              requestIdList.splice(index, 1);
+            }
+            completedCount++;
+          }
+        }
+      }
+
+      const repeatCallback = new TestRepeatCallback();
+      downloader.setLyricsFileDownloaderCallback(repeatCallback);
+
+      // 同时启动两个相同URL的下载
+      const requestId1 = await downloader.download(testUrl);
+      const requestId2 = await downloader.download(testUrl);
+
+      requestIdList.push(requestId1);
+
+      // 等待下载完成
+      let waitTime = 0;
+      while (requestIdList.length > 0 && waitTime < 30000) {
+        await new Promise<void>(resolve => setTimeout(resolve, 1000));
+        waitTime += 1000;
+      }
+
+      expect(requestIdList.length).assertEqual(0);
+      expect(completedCount).assertEqual(1); // 一个成功，一个重复下载错误
+      expect(repeatDownloadCount).assertEqual(1);
+
+      downloader.cleanAll();
+      hilog.info(DOMAIN, TAG, '重复下载测试完成');
     });
 
     /**

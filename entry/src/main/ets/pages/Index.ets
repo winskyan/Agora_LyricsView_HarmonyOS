@@ -470,7 +470,7 @@ struct Index {
               }
             })
 
-          Button('切换歌曲')
+          Button('切歌')
             .fontSize(14)
             .backgroundColor('#2196F3')
             .onClick(() => {
@@ -491,7 +491,7 @@ struct Index {
 
         // 次要控制按钮
         Row({ space: 8 }) {
-          Button(this.isOriginalTrack ? '播放伴奏' : '播放原唱')
+          Button(this.isOriginalTrack ? '伴唱' : '原唱')
             .fontSize(14)
             .backgroundColor('#607D8B')
             .onClick(() => {

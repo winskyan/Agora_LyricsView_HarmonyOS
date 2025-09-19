@@ -7,7 +7,6 @@ import { LogUtils } from './LogUtils';
  * 提供通用的工具方法，包括文件操作、字符串处理、编码转换等
  */
 export class Utils {
-
   // ========== 字符串处理工具 ==========
 
   /**
@@ -96,20 +95,26 @@ export class Utils {
         result += String.fromCharCode(byte1);
       } else if ((byte1 & 0xE0) === 0xC0) {
         // 双字节字符
-        if (i >= uint8Array.length) break;
+        if (i >= uint8Array.length) {
+          break;
+        }
         let byte2 = uint8Array[i++];
         let codePoint = ((byte1 & 0x1F) << 6) | (byte2 & 0x3F);
         result += String.fromCharCode(codePoint);
       } else if ((byte1 & 0xF0) === 0xE0) {
         // 三字节字符
-        if (i + 1 >= uint8Array.length) break;
+        if (i + 1 >= uint8Array.length) {
+          break;
+        }
         let byte2 = uint8Array[i++];
         let byte3 = uint8Array[i++];
         let codePoint = ((byte1 & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | (byte3 & 0x3F);
         result += String.fromCharCode(codePoint);
       } else if ((byte1 & 0xF8) === 0xF0) {
         // 四字节字符
-        if (i + 2 >= uint8Array.length) break;
+        if (i + 2 >= uint8Array.length) {
+          break;
+        }
         let byte2 = uint8Array[i++];
         let byte3 = uint8Array[i++];
         let byte4 = uint8Array[i++];
@@ -216,7 +221,9 @@ export class Utils {
   static async readFileAsString(filePath: string): Promise<string | null> {
     try {
       const bytes = await Utils.readFileAsync(filePath);
-      if (!bytes) return null;
+      if (!bytes) {
+        return null;
+      }
       return Utils.uint8ArrayToString(bytes);
     } catch (error) {
       LogUtils.e(`readFileAsString error for path ${filePath}: ${error}`);
@@ -340,7 +347,9 @@ export class Utils {
   static async loadAsString(context: common.UIAbilityContext, fileName: string): Promise<string | null> {
     try {
       const fileData = await Utils.loadAsBytes(context, fileName);
-      if (!fileData) return null;
+      if (!fileData) {
+        return null;
+      }
 
       const content = Utils.uint8ArrayToString(fileData);
       LogUtils.d(`loadAsString success: ${fileName}, length: ${content.length}`);
@@ -442,6 +451,20 @@ export class Utils {
   // ========== 特殊格式文件处理工具 ==========
 
   /**
+   * 读取文件内容为字节数组
+   * @param filePath 文件路径
+   * @returns 字节数组，失败返回null
+   */
+  static async readFileToBytes(filePath: string): Promise<Uint8Array | null> {
+    try {
+      return await Utils.readFileAsync(filePath);
+    } catch (error) {
+      LogUtils.e(`readFileToBytes failed: ${filePath}, error: ${error}`);
+      return null;
+    }
+  }
+
+  /**
    * 读取文件内容为数字数组
    * 适用于包含数字列表的文本文件
    * @param filePath 文件路径
@@ -450,7 +473,9 @@ export class Utils {
   static async readFileToDoubleArray(filePath: string): Promise<number[] | null> {
     try {
       const content = await Utils.readFileAsString(filePath);
-      if (!content) return null;
+      if (!content) {
+        return null;
+      }
 
       const lines = content.split('\n');
       const numbers: number[] = [];
