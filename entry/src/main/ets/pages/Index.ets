@@ -1,5 +1,4 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import common from '@ohos.app.ability.common';
 import fs from '@ohos.file.fs';
 import {
   IKaraokeEvent,
@@ -10,11 +9,11 @@ import {
   ScoringView,
   Utils
 } from 'lyrics_view';
+import { contextManager } from '../utils/ContextManager';
 
-/**
- * 卡拉OK事件监听器实现
- */
-class KaraokeEventImpl implements IKaraokeEvent {
+const TAG = 'Index';
+
+class IndexKaraokeEventImpl implements IKaraokeEvent {
   private indexComponent: Index;
 
   constructor(indexComponent: Index) {
@@ -22,18 +21,16 @@ class KaraokeEventImpl implements IKaraokeEvent {
   }
 
   onKaraokeReady(): void {
-    this.indexComponent.logDebug('🎉 All karaoke components are ready!');
     this.indexComponent.handleKaraokeReady();
   }
 
-  onDragTo(progress: number): void {
-    this.indexComponent.logDebug(`onDragTo: ${progress}ms`);
-    this.indexComponent.handleDragTo(progress);
+  onDragTo(position: number): void {
+    this.indexComponent.handleDragTo(position);
   }
 
   onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number,
     lineCount: number): void {
-    this.indexComponent.logDebug(`Line ${index} finished with score ${score}`);
+    this.indexComponent.handleLineFinished(line, score, cumulativeScore, index, lineCount);
   }
 }
 
@@ -63,46 +60,51 @@ struct Index {
    * 初始化KaraokeView，在组件实例创建后调用
    */
   private initKaraokeView() {
-    if (!this.karaokeView) {
-      // 创建KaraokeView实例，使用默认构造函数
+    try {
       this.karaokeView = new KaraokeView();
-
-      // 设置拖拽事件监听器
-      const eventListener = new KaraokeEventImpl(this);
-      this.karaokeView.setKaraokeEvent(eventListener);
+      this.karaokeView.setKaraokeEvent(new IndexKaraokeEventImpl(this));
+      this.logDebug('KaraokeView initialized successfully');
+    } catch (error) {
+      this.logDebug(`Failed to initialize KaraokeView: ${error}`);
     }
   }
 
   aboutToDisappear() {
-    this.stopPlayback();
+    if (this.timer !== -1) {
+      clearInterval(this.timer);
+      this.timer = -1;
+    }
   }
 
   /**
-   * 处理卡拉OK组件准备就绪事件
+   * 处理卡拉OK准备就绪事件
    */
   public handleKaraokeReady() {
-    this.callBackInfo = '🎉 所有卡拉OK组件已准备就绪！';
-    this.logDebug('KaraokeView components are ready, can now safely use all features');
-
+    this.logDebug('Karaoke components are ready');
+    this.callBackInfo = '卡拉OK组件已准备就绪';
+    // 自动加载歌曲
     this.loadSong();
   }
 
   /**
-   * 初始化应用，创建必要目录并复制文件
+   * 加载歌曲数据
    */
   private async loadSong() {
     try {
-      await this.ensureLyricsDirectory();
       await this.copyRawFilesToPrivate();
       await this.loadCurrentSong();
+      this.callBackInfo = '歌曲加载完成';
     } catch (error) {
-      this.logDebug(`Failed to initialize app: ${error}`);
-      this.callBackInfo = `初始化失败: ${error}`;
+      this.logDebug(`Failed to load song: ${error}`);
+      this.callBackInfo = `加载失败: ${error}`;
     }
   }
 
-  public logDebug(message: string) {
-    hilog.debug(0x0000, "LyricsView-Main", message);
+  /**
+   * 调试日志输出
+   */
+  private logDebug(message: string): void {
+    hilog.debug(0x0000, TAG, `%{public}s`, message);
   }
 
   /**
@@ -110,10 +112,9 @@ struct Index {
    */
   private async ensureLyricsDirectory(): Promise<string> {
     try {
-      const context = getContext(this) as common.UIAbilityContext;
-      const lyricsDir = `${context.filesDir}/lyrics`;
+      const lyricsDir = `${contextManager.getFilesDir()}/lyrics`;
 
-      this.logDebug(`App files directory: ${context.filesDir}`);
+      this.logDebug(`App files directory: ${contextManager.getFilesDir()}`);
       this.logDebug(`Checking lyrics directory: ${lyricsDir}`);
 
       // 检查目录是否存在
@@ -157,7 +158,6 @@ struct Index {
   private async copyRawFilesToPrivate(): Promise<void> {
     try {
       const lyricsDir = await this.ensureLyricsDirectory();
-      const context = getContext(this) as common.UIAbilityContext;
 
       // 定义要复制的文件列表
       const filesToCopy = [
@@ -176,7 +176,7 @@ struct Index {
 
         try {
           // 使用Utils直接从rawfile读取内容
-          const content = await Utils.loadAsString(context, fileName);
+          const content = await Utils.loadAsString(contextManager.getContext(), fileName);
           if (!content) {
             throw new Error(`Failed to load rawfile: ${fileName}`);
           }
@@ -226,9 +226,8 @@ struct Index {
    */
   private async loadCurrentSong() {
     try {
-      const context = getContext(this) as common.UIAbilityContext;
-      const lyricFilePath = `${context.filesDir}/lyrics/4875936889260991133.krc`;
-      const pitchFilePath = `${context.filesDir}/lyrics/4875936889260991133.pitch`;
+      const lyricFilePath = `${contextManager.getFilesDir()}/lyrics/4875936889260991133.krc`;
+      const pitchFilePath = `${contextManager.getFilesDir()}/lyrics/4875936889260991133.pitch`;
 
       this.logDebug(`lyricFilePath: ${lyricFilePath} pitchFilePath: ${pitchFilePath}`);
 
@@ -323,8 +322,6 @@ struct Index {
   }
 
   private skipIntro() {
-
-
     // 同步更新KaraokeView的进度（触发歌词显示更新）
     if (this.lyricModel && this.karaokeView) {
       const preludeEndPosition = this.lyricModel.preludeEndPosition - 1000;
@@ -346,8 +343,8 @@ struct Index {
   }
 
   /**
-   * 处理拖拽结束事件
-   * @param finalProgress 最终拖拽位置（毫秒）
+   * 处理拖拽到指定位置的事件
+   * 这个方法会被IKaraokeEvent.onDragTo调用
    */
   public handleDragTo(finalProgress: number) {
     // 更新当前时间到拖拽的最终位置
@@ -359,6 +356,16 @@ struct Index {
     if (this.karaokeView) {
       this.karaokeView.setProgress(this.currentTime);
     }
+  }
+
+  /**
+   * 处理歌词行完成事件
+   * 这个方法会被IKaraokeEvent.onLineFinished调用
+   */
+  public handleLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number,
+    lineCount: number) {
+    this.logDebug(`Line ${index} finished with score ${score}`);
+    this.callBackInfo = `第${index + 1}行完成，得分: ${score}`;
   }
 
   @Builder
@@ -411,8 +418,7 @@ struct Index {
         }
         .width('100%')
         .height(40)
-        .padding({ left: 8, right: 8, top: 4 })
-        .alignItems(VerticalAlign.Top)
+        .padding({ left: 16, right: 16 })
         .justifyContent(FlexAlign.Start)
 
         // 评分视图区域
@@ -421,8 +427,7 @@ struct Index {
         }
         .width('100%')
         .height(300)
-        .backgroundColor('#FFE0B2')
-        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#E1BEE7')
         .margin({ bottom: 20 })
 
         // 歌词视图区域
@@ -453,7 +458,7 @@ struct Index {
         }
         .width('100%')
         .height(30)
-        .padding({ left: 8, right: 8 })
+        .padding({ left: 16, right: 16 })
         .justifyContent(FlexAlign.Start)
         .alignItems(VerticalAlign.Center)
 
