@@ -4,6 +4,7 @@ import {
   IKaraokeEvent,
   KaraokeView,
   LyricModel,
+  LyricsCutter,
   LyricsLineModel,
   LyricsView,
   ScoringView,
@@ -248,11 +249,15 @@ struct Index {
       }
 
       // 2. 如果KaraokeView已初始化，设置歌词数据
-      if (this.karaokeView) {
-        this.karaokeView.setLyricData(this.lyricModel, false);
+      if (this.karaokeView && this.lyricModel) {
+        const cutResult = LyricsCutter.cut(this.lyricModel, 0, this.lyricModel.duration);
+        if (cutResult !== null) {
+          this.lyricModel = cutResult;
+          this.karaokeView.setLyricData(this.lyricModel, false);
+        }
       }
 
-      this.logDebug(`Successfully loaded lyrics with ${this.lyricModel.lines?.length || 0} lines`);
+      this.logDebug(`Successfully loaded lyrics with ${this.lyricModel?.lines?.length || 0} lines`);
 
     } catch (error) {
       console.error('Failed to load song:', error);

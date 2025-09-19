@@ -11,6 +11,7 @@ export { LyricModel } from './src/main/ets/model/LyricModel';
 export { Lang, LyricsLineModel, Monolog, Tone } from './src/main/ets/model/LyricsLineModel';
 export { PitchData, createPitchData } from './src/main/ets/model/PitchData';
 export { ILogger, LogUtils } from './src/main/ets/utils/LogUtils';
+export { LyricsCutter } from './src/main/ets/utils/LyricsCutter';
 export { Utils } from './src/main/ets/utils/Utils';
 
 // 导出下载器相关类
