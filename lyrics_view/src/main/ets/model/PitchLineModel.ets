@@ -168,3 +168,28 @@ export class Pitch {
     return `Pitch{begin=${this.begin}, end=${this.end}, pitch=${this.pitch}, highlightPartMap=${JSON.stringify(Array.from(this.highlightPartMap.entries()))}}`;
   }
 }
+
+/**
+ * Pitch条数据接口
+ */
+export interface PitchStickData {
+  x: number; // X坐标
+  y: number; // Y坐标
+  width: number; // 宽度
+  height: number; // 高度
+  pitch: number; // 音调值
+  isHighlighted: boolean; // 是否高亮
+  isCurrentPitch: boolean; // 是否当前正在演唱的pitch
+  // 新增：着色段信息
+  highlightSegments: HighlightSegment[]; // 已着色的段落列表
+}
+
+/**
+ * 着色段数据结构 - 对应Android的highlightPartMap中的每个条目
+ */
+export interface HighlightSegment {
+  startX: number; // 着色段开始X坐标
+  endX: number; // 着色段结束X坐标
+  startTime: number; // 着色段开始时间
+  endTime: number; // 着色段结束时间
+}

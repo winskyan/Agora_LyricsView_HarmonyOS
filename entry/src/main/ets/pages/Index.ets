@@ -51,6 +51,7 @@ struct Index {
   // 移除组件引用，采用事件驱动的方式
   private timer: number = -1;
   private songList: string[] = ['十年', '月亮代表我的心', '童话'];
+  private lastPitch: number = 50; // 记录上一次的pitch值，用于生成更平滑的变化
 
   aboutToAppear() {
     this.updateLyricsDescription();
@@ -289,6 +290,20 @@ struct Index {
       // 调用KaraokeView的setProgress方法（这会触发LyricMachine.setProgress → LyricsView.requestRefreshUi → updateByProgress）
       if (this.karaokeView) {
         this.karaokeView.setProgress(this.currentTime);
+
+        // 生成更平滑的pitch变化，避免剧烈跳跃
+        // 每次变化幅度控制在±10以内，更接近真实唱歌的pitch变化
+        const maxChange = 10; // 最大变化幅度
+        const change = (Math.random() - 0.5) * 2 * maxChange; // -10到+10的变化
+        this.lastPitch = Math.max(0, Math.min(100, this.lastPitch + change));
+
+        // 设置平滑变化的pitch到KaraokeView中
+        this.karaokeView.setPitch(this.lastPitch, 0, this.currentTime);
+
+        // 每秒输出一次调试信息（避免日志过多）
+        if (this.currentTime % 1000 === 0) {
+          console.log(`Index: Setting smooth pitch - value: ${this.lastPitch.toFixed(2)},  time: ${this.currentTime}ms`);
+        }
       }
 
       // 模拟播放结束（3分钟）

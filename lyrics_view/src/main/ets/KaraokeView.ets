@@ -295,7 +295,7 @@ export class KaraokeView {
       LogUtils.w(`Invalid progress: ${progressInMs}, expected >= 0`);
     }
 
-    LogUtils.d(`setPitch speakerPitch:${speakerPitch.toFixed(2)}Hz, pitchScore:${pitchScore.toFixed(1)}%, progressInMs:${Math.floor(progressInMs)}ms`);
+    LogUtils.d(`KaraokeView:setPitch speakerPitch:${speakerPitch.toFixed(2)}, pitchScore:${pitchScore.toFixed(1)}, progressInMs:${Math.floor(progressInMs)}ms`);
 
     // 通过事件总线发送音高数据给ScoringView
     this.eventBus.emit(ScoringEvents.SET_PITCH, speakerPitch, pitchScore, progressInMs);

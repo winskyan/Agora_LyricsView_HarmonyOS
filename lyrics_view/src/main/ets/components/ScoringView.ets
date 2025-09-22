@@ -2,6 +2,7 @@ import { IScoringAlgorithm } from '../IScoringAlgorithm';
 import { OnScoringListener, ScoringMachine } from '../internal/ScoringMachine';
 import { LyricModel } from '../model/LyricModel';
 import { LyricsLineModel } from '../model/LyricsLineModel';
+import { Pitch, PitchStickData, HighlightSegment } from '../model/PitchLineModel';
 import { EventBus, KaraokeEvents, ScoringEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
@@ -16,31 +17,34 @@ export struct ScoringView {
   @Prop leadingLinesColor: string = '#4DFFFFFF'
   @Prop leadingLinesHeight: number = 1
   @Prop pitchIndicatorColor: string = '#F0F0F0F0';
-  @Prop localPitchIndicatorColor: string = "#F0F0F0F0"
   @Prop pitchIndicatorWidth: number = 3;
-  @Prop pitchIndicatorRadius: number = 8;
-  @Prop pitchStickHighlightedColor: string = '#FFF44336';
+  @Prop localPitchIndicatorColor: string = "#F0F0F0F0"
+  @Prop localPitchIndicatorRadius: number = 8;
   @Prop pitchStickHeight: number = 4;
+  @Prop pitchStickRadius: number = 4;
+  @Prop refPitchStickDefaultColor: string = '#99FFFFFF';
+  @Prop highlightedPitchStickColor: string = '#FFF44336';
   @Prop initialScore: number = 0;
-  @Prop movingPixelsPerMs: number = 0.4;
+  @Prop movingPixelsPerMs: number = 0.2;
   @Prop hitScoreThreshold: number = 0.7;
   @Prop startPointHorizontalBias: number = 0.4;
-  @Prop offProgressTimeThreshold: number = 1000;
   @Prop enableParticleEffect: boolean = true;
-  @Prop refPitchStickDefaultColor: string = '#9C27B0';
   // 状态变量
   @State currentScore: number = 0;
   @State cumulativeScore: number = 0;
-  @State localPitch: number = 0;
+  @State localPitch: number = 0; // 原始输入的pitch值（可能有抖动）
   @State inHighlightStatus: boolean = false;
-  @State animatedPitch: number = 0;
+  @State animatedPitch: number = 0; // 平滑后的pitch值（用于UI显示）
   @State animatedProgressMs: number = 0;
   @State preHighlightStatus: boolean = false;
+  // 着色相关状态 - 对应Android版本
+  private pitchHighlightedTime: number = -1; // 当前着色开始时间
   // UI布局相关
   @State centerXOfStartPoint: number = 0;
   @State viewWidth: number = 0;
   @State viewHeight: number = 0;
   @State pitchIndicatorY: number = 0; // 音调指示器的Y坐标
+  @State pitchSticks: PitchStickData[] = []; // 当前可见的pitch条数据
   // 内部变量
   private eventBus: EventBus = EventBus.getInstance();
   private scoringMachine: ScoringMachine | null = null;
@@ -60,7 +64,7 @@ export struct ScoringView {
       this.buildStartLine()
 
       // 参考音调条（根据歌词pitch数据）
-      //this.buildPitchSticks()
+      this.buildPitchSticks()
 
       // 用户音调指示器
       this.buildLocalPitchIndicator()
@@ -153,37 +157,53 @@ export struct ScoringView {
   }
 
   /**
-   * 构建音调条 - 静态示例音调条
+   * 构建音调条 - 对应Android的drawPitchSticks
+   * 根据歌词pitch数据和当前进度动态绘制音调条，支持分段着色
    */
   @Builder
   buildPitchSticks() {
-    // 暂时显示静态的音调条作为示例
-    if (this.viewWidth > 0 && this.viewHeight > 0) {
-      Row() {
-        Rect()
-          .width(60)
-          .height(this.pitchStickHeight)
-          .fill('#9C27B0') // 紫色音调条
-          .borderRadius(2)
-          .margin({ left: 10, right: 5 })
+    if (this.viewWidth > 0 && this.viewHeight > 0 && this.pitchSticks.length > 0) {
+      // 使用ForEach渲染所有可见的pitch条
+      ForEach(this.pitchSticks, (stick: PitchStickData, index: number) => {
+        Stack() {
+          // 1. 绘制基础pitch条（默认颜色）
+          Rect()
+            .width(stick.width)
+            .height(stick.height)
+            .fill(this.refPitchStickDefaultColor)
+            .borderRadius(this.pitchStickRadius)
 
-        Rect()
-          .width(40)
-          .height(this.pitchStickHeight)
-          .fill('#9C27B0')
-          .borderRadius(2)
-          .margin({ left: 5, right: 5 })
+          // 2. 绘制已着色的段落（对应Android的highlightPartMap逻辑）
+          ForEach(stick.highlightSegments, (segment: HighlightSegment, segIndex: number) => {
+            Rect()
+              .width(segment.endX - segment.startX)
+              .height(stick.height)
+              .fill(this.highlightedPitchStickColor)
+              .borderRadius(this.pitchStickRadius)
+              .position({
+                x: segment.startX - stick.x, // 相对于stick的位置
+                y: 0
+              })
+          }, (segment: HighlightSegment, segIndex: number) => `highlight_${index}_${segIndex}_${segment.startTime}`)
 
-        Rect()
-          .width(50)
-          .height(this.pitchStickHeight)
-          .fill('#9C27B0')
-          .borderRadius(2)
-          .margin({ left: 5, right: 10 })
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.Center)
-      .position({ x: 0, y: this.viewHeight / 2 })
+          // 3. 绘制当前正在着色的部分（实时着色）
+          if (stick.isCurrentPitch && stick.isHighlighted) {
+            Rect()
+              .width(this.calculateCurrentHighlightWidth(stick))
+              .height(stick.height)
+              .fill(this.highlightedPitchStickColor)
+              .borderRadius(this.pitchStickRadius)
+              .position({
+                x: this.calculateCurrentHighlightStartX(stick) - stick.x,
+                y: 0
+              })
+          }
+        }
+        .position({
+          x: stick.x,
+          y: stick.y
+        })
+      }, (stick: PitchStickData, index: number) => `pitch_${index}_${stick.x}_${stick.y}`)
     }
   }
 
@@ -195,12 +215,12 @@ export struct ScoringView {
   buildLocalPitchIndicator() {
     if (this.centerXOfStartPoint > 0 && this.viewWidth > 0 && this.viewHeight > 0 && this.pitchIndicatorY >= 0) {
       // 使用Circle作为音调指示器，位置在起始线上，Y坐标根据pitch计算
-      Circle({ width: this.pitchIndicatorRadius * 2, height: this.pitchIndicatorRadius * 2 })
+      Circle({ width: this.localPitchIndicatorRadius * 2, height: this.localPitchIndicatorRadius * 2 })
         .fill(this.localPitchIndicatorColor)
         .strokeWidth(2)
         .position({
-          x: this.centerXOfStartPoint - this.pitchIndicatorRadius,
-          y: this.pitchIndicatorY - this.pitchIndicatorRadius
+          x: this.centerXOfStartPoint - this.localPitchIndicatorRadius,
+          y: this.pitchIndicatorY - this.localPitchIndicatorRadius
         })
     }
   }
@@ -214,7 +234,7 @@ export struct ScoringView {
 
     if (this.scoringMachine == null || !this.scoringMachine.isReady()) {
       // 未初始化时，指示器在底部
-      targetY = this.viewHeight - this.pitchIndicatorRadius;
+      targetY = this.viewHeight - this.localPitchIndicatorRadius;
     } else if (this.animatedPitch >= this.scoringMachine.getMinimumRefPitch() &&
       this.scoringMachine.getMaximumRefPitch() != 0) {
       // 有有效音调值时，根据音调范围计算位置
@@ -228,14 +248,22 @@ export struct ScoringView {
     }
 
     // 边界限制，确保指示器不会超出视图范围
-    if (targetY < this.pitchIndicatorRadius) {
-      targetY += this.pitchIndicatorRadius;
+    if (targetY < this.localPitchIndicatorRadius) {
+      targetY += this.localPitchIndicatorRadius;
     }
-    if (targetY > this.viewHeight - this.pitchIndicatorRadius) {
-      targetY -= this.pitchIndicatorRadius;
+    if (targetY > this.viewHeight - this.localPitchIndicatorRadius) {
+      targetY -= this.localPitchIndicatorRadius;
     }
 
     return targetY;
+  }
+
+  /**
+   * 获取渲染进度 - 对应Android的getRenderProgressMs()
+   * 使用平滑的animatedProgressMs而不是直接的机器进度
+   */
+  private getRenderProgressMs(): number {
+    return Math.round(this.animatedProgressMs);
   }
 
   /**
@@ -262,6 +290,12 @@ export struct ScoringView {
         LogUtils.d(`ScoringView: Lyric data prepared in ScoringMachine with usingInternalScoring: ${usingInternalScoring}`);
       } else {
         LogUtils.e('ScoringView: ScoringMachine is null when receiving SET_LYRIC_DATA event');
+      }
+    });
+
+    this.eventBus.on(ScoringEvents.SET_PROGRESS, (progress: number) => {
+      if (this.scoringMachine) {
+        this.scoringMachine.setLyricProgress(progress);
       }
     });
 
@@ -379,16 +413,26 @@ export struct ScoringView {
         return;
       }
 
-      // 平滑动画更新
-      const tauMs = 120; // 平滑常数
-      const dtMs = 16; // 假设60fps
+      // 指数平滑算法 - 完全对应Android版本的实现
+      // 对应Java: float tauMs = 120f; float alpha = 1f - (float) Math.exp(-dtMs / tauMs);
+      const tauMs = 120; // 平滑常数，对应Java版本的120f
+      const dtMs = 16; // 帧间隔16ms (60fps)
       const alpha = 1 - Math.exp(-dtMs / tauMs);
 
-      // 平滑更新动画音调
+      // 指数平滑更新pitch值 - 对应Java: mAnimatedPitch = mAnimatedPitch + (mLocalPitch - mAnimatedPitch) * alpha
+      const oldAnimatedPitch = this.animatedPitch;
       this.animatedPitch = this.animatedPitch + (this.localPitch - this.animatedPitch) * alpha;
+
+      // 每秒输出一次平滑效果调试信息（避免日志过多）
+      if (Math.floor(Date.now() / 1000) !== Math.floor((Date.now() - dtMs) / 1000)) {
+        LogUtils.d(`ScoringView: Pitch smoothing - local: ${this.localPitch.toFixed(2)}, animated: ${this.animatedPitch.toFixed(2)}, alpha: ${alpha.toFixed(3)}`);
+      }
 
       // 更新音调指示器的Y坐标
       this.pitchIndicatorY = this.calculateYForPitchIndicator();
+
+      // 更新pitch条数据
+      this.updatePitchSticks();
 
       // 平滑更新动画进度
       if (this.scoringMachine) {
@@ -429,14 +473,275 @@ export struct ScoringView {
     this.preHighlightStatus = false;
     this.currentScore = 0;
     this.cumulativeScore = 0;
+    this.pitchSticks = [];
   }
 
   /**
-   * 更新音调和得分
+   * 更新音调和得分 - 对应Android的updatePitchAndScore
+   * 只更新原始pitch值，平滑处理由帧循环负责
    */
   updatePitchAndScore(pitch: number, score: number): void {
+    // 只更新原始pitch值，不直接更新animatedPitch
+    // 平滑处理由帧循环中的指数平滑算法负责
     this.localPitch = pitch;
     this.inHighlightStatus = score >= this.hitScoreThreshold * 100;
+
+    // 启动帧循环以处理平滑动画
+    this.startFrameLoopIfNeeded();
+  }
+
+  /**
+   * 计算当前着色段的宽度 - 对应Android的实时着色逻辑
+   */
+  private calculateCurrentHighlightWidth(stick: PitchStickData): number {
+    if (this.pitchHighlightedTime === -1) {
+      return 0;
+    }
+
+    // 对应Android的40ms一段着色逻辑
+    const INTERVAL_AUDIO_PCM = 40; // 40ms间隔
+    const renderProgress = this.getRenderProgressMs();
+    const highlightEndX = this.centerXOfStartPoint - this.movingPixelsPerMs * INTERVAL_AUDIO_PCM;
+    const highlightStartX =
+      this.centerXOfStartPoint + (this.pitchHighlightedTime - renderProgress) * this.movingPixelsPerMs;
+
+    return Math.max(0, highlightEndX - highlightStartX);
+  }
+
+  /**
+   * 计算当前着色段的起始X坐标
+   */
+  private calculateCurrentHighlightStartX(stick: PitchStickData): number {
+    if (this.pitchHighlightedTime === -1) {
+      return stick.x;
+    }
+
+    const renderProgress = this.getRenderProgressMs();
+    return this.centerXOfStartPoint + (this.pitchHighlightedTime - renderProgress) * this.movingPixelsPerMs;
+  }
+
+  /**
+   * 更新pitch条数据 - 对应Android的drawPitchSticks逻辑
+   * 实现分段着色和持久着色效果
+   */
+  private updatePitchSticks(): void {
+    if (!this.scoringMachine) {
+      LogUtils.d('ScoringView: No scoring machine');
+      this.pitchSticks = [];
+      return;
+    }
+
+    if (!this.scoringMachine.isReady()) {
+      LogUtils.d('ScoringView: Scoring machine not ready');
+      this.pitchSticks = [];
+      return;
+    }
+
+    if (!this.scoringMachine.hasPitchData()) {
+      LogUtils.d('ScoringView: No pitch data available');
+      this.pitchSticks = [];
+      return;
+    }
+
+    const renderProgress = this.getRenderProgressMs();
+    const pitchLines = this.scoringMachine.getPitchLines();
+
+    if (!pitchLines || pitchLines.length === 0) {
+      LogUtils.d('ScoringView: No pitch lines available');
+      this.pitchSticks = [];
+      return;
+    }
+
+    const realPitchMax = this.scoringMachine.getMaximumRefPitch() + 5;
+    const realPitchMin = this.scoringMachine.getMinimumRefPitch() - 5;
+    const stickHeightPerPitchLevel = (this.viewHeight - this.pitchStickHeight) / (realPitchMax - realPitchMin);
+
+    const newPitchSticks: PitchStickData[] = [];
+
+    // 遍历所有pitch行
+    for (let i = 0; i < pitchLines.length; i++) {
+      const line = pitchLines[i];
+      const pitches = line.pitches;
+
+      if (!pitches || pitches.length === 0) {
+        continue;
+      }
+
+      // 检查是否在可见范围内
+      const lineStartTime = line.getStartTime();
+      const lineEndTime = line.getEndTime();
+
+      if (Math.abs(renderProgress - lineEndTime) * this.movingPixelsPerMs >= this.viewWidth &&
+        Math.abs(renderProgress - lineStartTime) * this.movingPixelsPerMs >= this.viewWidth &&
+        !(renderProgress >= lineStartTime && renderProgress <= lineEndTime)) {
+        continue; // 不在可见范围内
+      }
+
+      // 遍历该行的所有pitch
+      for (let pitchIndex = 0; pitchIndex < pitches.length; pitchIndex++) {
+        const pitch = pitches[pitchIndex];
+
+        // 计算pitch条的X坐标和宽度
+        const pixelsAwayFromPilot = (pitch.begin - renderProgress) * this.movingPixelsPerMs;
+        const x = this.centerXOfStartPoint + pixelsAwayFromPilot;
+        const width = this.movingPixelsPerMs * pitch.getDuration();
+        const endX = x + width;
+
+        // 视口裁剪：跳过不可见的pitch条
+        if (endX <= 0) {
+          // 当pitch条移出屏幕时，重置高亮状态
+          pitch.resetHighlight();
+          continue;
+        }
+        if (x >= this.viewWidth) {
+          break;
+        }
+
+        // 计算Y坐标
+        const y = (realPitchMax - pitch.pitch) * stickHeightPerPitchLevel;
+
+        // 判断是否为当前正在演唱的pitch
+        const isCurrentPitch = renderProgress >= pitch.begin && renderProgress <= pitch.end;
+
+        // 处理着色逻辑 - 对应Android的highlightPartMap逻辑
+        this.processHighlightLogic(pitch, isCurrentPitch, renderProgress);
+
+        // 构建着色段数据
+        const highlightSegments = this.buildHighlightSegments(pitch, renderProgress, x, width);
+
+        // 判断是否高亮（基于演唱状态）
+        const isHighlighted = isCurrentPitch && this.inHighlightStatus;
+
+        newPitchSticks.push({
+          x: x,
+          y: y,
+          width: width,
+          height: this.pitchStickHeight,
+          pitch: pitch.pitch,
+          isHighlighted: isHighlighted,
+          isCurrentPitch: isCurrentPitch,
+          highlightSegments: highlightSegments
+        });
+      }
+    }
+
+    this.pitchSticks = newPitchSticks;
+  }
+
+  /**
+   * 处理着色逻辑 - 对应Android的highlightPartMap处理
+   */
+  private processHighlightLogic(pitch: Pitch, isCurrentPitch: boolean, renderProgress: number): void {
+    const INTERVAL_AUDIO_PCM = 40; // 40ms间隔，对应Android的Constants.INTERVAL_AUDIO_PCM
+
+    if (!isCurrentPitch) {
+      // 不是当前pitch时，完成所有未完成的着色段
+      const keys = Array.from(pitch.highlightPartMap.keys());
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const value = pitch.highlightPartMap.get(key);
+        if (value === null) {
+          pitch.highlightPartMap.set(key, { first: key, second: pitch.end });
+        }
+      }
+    }
+
+    if (isCurrentPitch) {
+      if (this.inHighlightStatus) {
+        // 开始新的着色段
+        if (!this.preHighlightStatus) {
+          this.pitchHighlightedTime = renderProgress;
+          if (renderProgress - pitch.begin < INTERVAL_AUDIO_PCM) {
+            this.pitchHighlightedTime = pitch.begin;
+          }
+          this.preHighlightStatus = this.inHighlightStatus;
+        }
+
+        // 记录着色段开始
+        if (!pitch.highlightPartMap.has(this.pitchHighlightedTime)) {
+          pitch.highlightPartMap.set(this.pitchHighlightedTime, null);
+        }
+      } else {
+        // 结束着色段
+        this.preHighlightStatus = false;
+        if (this.pitchHighlightedTime !== -1) {
+          pitch.highlightPartMap.set(this.pitchHighlightedTime, {
+            first: this.pitchHighlightedTime,
+            second: renderProgress
+          });
+          this.pitchHighlightedTime = -1;
+        }
+      }
+    } else {
+      // 不是当前pitch时重置状态
+      if (this.preHighlightStatus) {
+        this.preHighlightStatus = false;
+      }
+      if (this.pitchHighlightedTime !== -1) {
+        this.pitchHighlightedTime = -1;
+      }
+    }
+  }
+
+  /**
+   * 构建着色段数据 - 将highlightPartMap转换为UI可用的HighlightSegment数组
+   */
+  private buildHighlightSegments(pitch: Pitch, renderProgress: number, pitchX: number,
+    pitchWidth: number): HighlightSegment[] {
+    const segments: HighlightSegment[] = [];
+
+    // 只处理已经移动到起始线左侧的pitch条
+    if (pitchX < this.centerXOfStartPoint) {
+      const keys = Array.from(pitch.highlightPartMap.keys());
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const value = pitch.highlightPartMap.get(key);
+        if (value !== null && value !== undefined) {
+          // 完成的着色段
+          const highlightStartTime = value.first;
+          const highlightEndTime = value.second;
+
+          const highlightStartX =
+            this.centerXOfStartPoint + (highlightStartTime - renderProgress) * this.movingPixelsPerMs;
+          const highlightEndX = highlightStartX + this.movingPixelsPerMs * (highlightEndTime - highlightStartTime);
+
+          // 确保着色段在pitch条范围内
+          const clampedStartX = Math.max(highlightStartX, pitchX);
+          const clampedEndX = Math.min(highlightEndX, pitchX + pitchWidth);
+
+          if (clampedEndX > clampedStartX) {
+            segments.push({
+              startX: clampedStartX,
+              endX: clampedEndX,
+              startTime: highlightStartTime,
+              endTime: highlightEndTime
+            });
+          }
+        } else {
+          // 正在进行的着色段（当前正在唱）
+          if (pitch.begin <= renderProgress && renderProgress <= pitch.end) {
+            const highlightStartTime = key;
+            const highlightStartX =
+              this.centerXOfStartPoint + (highlightStartTime - renderProgress) * this.movingPixelsPerMs;
+            const highlightEndX = this.centerXOfStartPoint;
+
+            const clampedStartX = Math.max(highlightStartX, pitchX);
+            const clampedEndX = Math.min(highlightEndX, pitchX + pitchWidth);
+
+            if (clampedEndX > clampedStartX) {
+              segments.push({
+                startX: clampedStartX,
+                endX: clampedEndX,
+                startTime: highlightStartTime,
+                endTime: renderProgress
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return segments;
   }
 
   /**
@@ -445,6 +750,7 @@ export struct ScoringView {
   resetPitchIndicatorAndAnimation(): void {
     this.inHighlightStatus = false;
     this.localPitch = 0;
+    this.pitchHighlightedTime = -1; // 重置着色时间
   }
 
   /**

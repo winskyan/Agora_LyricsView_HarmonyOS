@@ -93,6 +93,8 @@ export class ScoringMachine {
     // 处理音调数据
     if (model.hasPitch) {
       this.processPitchData(model);
+    } else {
+      LogUtils.d('ScoringMachine: Model has no pitch data');
     }
 
     LogUtils.d(`ScoringMachine: Prepared with ${model.lines.length} lines, pitch range: ${this.minimumRefPitch} - ${this.maximumRefPitch}`);
