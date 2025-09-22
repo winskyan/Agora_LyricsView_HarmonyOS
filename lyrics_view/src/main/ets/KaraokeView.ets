@@ -1,5 +1,5 @@
 import { IKaraokeEvent } from './IKaraokeEvent';
-import { IScoringAlgorithm } from './internal/ScoringMachine';
+import { IScoringAlgorithm } from './IScoringAlgorithm';
 import { LyricsParser } from './internal/parser/LyricsParser';
 import { LyricModel } from './model/LyricModel';
 import { EventBus, KaraokeEvents, LyricsEvents, ScoringEvents } from './utils/EventBus';
@@ -269,11 +269,11 @@ export class KaraokeView {
    * @param model                Lyrics model containing timing and text data
    * @param usingInternalScoring Whether to use internal scoring algorithm
    */
-  setLyricData(model: LyricModel, usingInternalScoring: boolean = true): void {
+  setLyricData(model: LyricModel, usingInternalScoring: boolean = false): void {
     LogUtils.d(`KaraokeView setLyricData model lines:${model.lines.length} usingInternalScoring:${usingInternalScoring}`);
     // 通过事件总线通知组件
     this.eventBus.emit(LyricsEvents.SET_LYRIC_DATA, model);
-    this.eventBus.emit(ScoringEvents.SET_LYRIC_DATA, model);
+    this.eventBus.emit(ScoringEvents.SET_LYRIC_DATA, model, usingInternalScoring);
   }
 
   /**
@@ -296,6 +296,9 @@ export class KaraokeView {
     }
 
     LogUtils.d(`setPitch speakerPitch:${speakerPitch.toFixed(2)}Hz, pitchScore:${pitchScore.toFixed(1)}%, progressInMs:${Math.floor(progressInMs)}ms`);
+
+    // 通过事件总线发送音高数据给ScoringView
+    this.eventBus.emit(ScoringEvents.SET_PITCH, speakerPitch, pitchScore, progressInMs);
   }
 
   /**
@@ -328,6 +331,9 @@ export class KaraokeView {
    */
   setScoringAlgorithm(algorithm: IScoringAlgorithm): void {
     LogUtils.d(`setScoringAlgorithm algorithm:${algorithm}`);
+
+    // 通过事件总线发送评分算法给ScoringView
+    this.eventBus.emit(ScoringEvents.SET_SCORING_ALGORITHM, algorithm);
   }
 
   /**
@@ -337,6 +343,9 @@ export class KaraokeView {
    */
   setScoringLevel(level: number): void {
     LogUtils.d(`setScoringLevel level:${level}`);
+
+    // 通过事件总线发送评分难度给ScoringView
+    this.eventBus.emit(ScoringEvents.SET_SCORING_LEVEL, level);
   }
 
   // /**

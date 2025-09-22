@@ -107,6 +107,10 @@ export class ScoringEvents {
   static readonly REQUEST_REFRESH = 'scoring:requestRefresh';
   /** 评分组件准备就绪 */
   static readonly COMPONENT_READY = 'scoring:componentReady';
+  /** 设置评分算法 */
+  static readonly SET_SCORING_ALGORITHM = 'scoring:setScoringAlgorithm';
+  /** 设置评分难度 */
+  static readonly SET_SCORING_LEVEL = 'scoring:setScoringLevel';
 }
 
 /**

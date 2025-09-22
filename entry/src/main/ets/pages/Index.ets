@@ -253,7 +253,7 @@ struct Index {
         const cutResult = LyricsCutter.cut(this.lyricModel, 0, this.lyricModel.duration);
         if (cutResult !== null) {
           this.lyricModel = cutResult;
-          this.karaokeView.setLyricData(this.lyricModel, false);
+          this.karaokeView.setLyricData(this.lyricModel);
         }
       }
 
