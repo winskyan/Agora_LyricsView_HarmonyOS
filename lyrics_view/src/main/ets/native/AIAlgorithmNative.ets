@@ -4,8 +4,10 @@
  * 通过NAPI调用C++算法实现
  */
 
-// 导入Native模块
-import lyricsView from 'liblyricsview.so';
+// 导入Native模块的函数
+import { add, calculatedScore, handlePitch, pitchToTone, reset } from 'liblyrics_view.so';
+
+// 直接导入并使用Native函数，类型声明在Index.d.ts中定义
 
 /**
  * Native AI算法接口类
@@ -21,7 +23,7 @@ export class AIAlgorithmNative {
    */
   static pitchToTone(pitch: number): number {
     try {
-      return lyricsView.pitchToTone(pitch);
+      return pitchToTone(pitch);
     } catch (error) {
       console.error('AIAlgorithmNative.pitchToTone error:', error);
       return 0;
@@ -41,7 +43,7 @@ export class AIAlgorithmNative {
   static calculatedScore(voicePitch: number, stdPitch: number, scoreLevel: number,
     scoreCompensationOffset: number): number {
     try {
-      return lyricsView.calculatedScore(voicePitch, stdPitch, scoreLevel, scoreCompensationOffset);
+      return calculatedScore(voicePitch, stdPitch, scoreLevel, scoreCompensationOffset);
     } catch (error) {
       console.error('AIAlgorithmNative.calculatedScore error:', error);
       return 0;
@@ -59,7 +61,7 @@ export class AIAlgorithmNative {
    */
   static handlePitch(stdPitch: number, voicePitch: number, stdMaxPitch: number): number {
     try {
-      return lyricsView.handlePitch(stdPitch, voicePitch, stdMaxPitch);
+      return handlePitch(stdPitch, voicePitch, stdMaxPitch);
     } catch (error) {
       console.error('AIAlgorithmNative.handlePitch error:', error);
       return voicePitch; // 出错时返回原始值
@@ -72,7 +74,7 @@ export class AIAlgorithmNative {
    */
   static reset(): void {
     try {
-      lyricsView.reset();
+      reset();
     } catch (error) {
       console.error('AIAlgorithmNative.reset error:', error);
     }
@@ -84,7 +86,7 @@ export class AIAlgorithmNative {
    */
   static testConnection(): number {
     try {
-      return lyricsView.add(1, 2); // 应该返回3
+      return add(1, 2); // 应该返回3
     } catch (error) {
       console.error('AIAlgorithmNative.testConnection error:', error);
       return -1;

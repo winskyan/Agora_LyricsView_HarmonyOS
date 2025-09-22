@@ -1,5 +1,6 @@
 import { IScoringAlgorithm } from '../IScoringAlgorithm';
 import { OnScoringListener, ScoringMachine } from '../internal/ScoringMachine';
+import { ParticleConfig, ParticleRenderer, ParticleSystem, Range } from '../internal/particle';
 import { LyricModel } from '../model/LyricModel';
 import { LyricsLineModel } from '../model/LyricsLineModel';
 import { HighlightSegment, Pitch, PitchStickData } from '../model/PitchLineModel';
@@ -26,7 +27,7 @@ export struct ScoringView {
   @Prop highlightedPitchStickColor: string = '#FFF44336';
   @Prop initialScore: number = 0;
   @Prop movingPixelsPerMs: number = 0.2;
-  @Prop hitScoreThreshold: number = 0.7;
+  @Prop hitScoreThreshold: number = 0.5; // 降低阈值到50分，便于测试粒子动画
   @Prop startPointHorizontalBias: number = 0.4;
   @Prop enableParticleEffect: boolean = true;
   // 状态变量
@@ -45,6 +46,9 @@ export struct ScoringView {
   @State viewHeight: number = 0;
   @State pitchIndicatorY: number = 0; // 音调指示器的Y坐标
   @State pitchSticks: PitchStickData[] = []; // 当前可见的pitch条数据
+  // 粒子系统相关
+  @State particleSystem: ParticleSystem | null = null;
+  private emittingInitialized: boolean = false;
   // 内部变量
   private eventBus: EventBus = EventBus.getInstance();
   private scoringMachine: ScoringMachine | null = null;
@@ -68,6 +72,11 @@ export struct ScoringView {
 
       // 用户音调指示器
       this.buildLocalPitchIndicator()
+
+      // 粒子效果层（最顶层）
+      if (this.enableParticleEffect && this.particleSystem) {
+        ParticleRenderer({ particleSystem: $particleSystem })
+      }
     }
     .width('100%')
     .height('100%')
@@ -82,6 +91,7 @@ export struct ScoringView {
     .onAppear(() => {
       LogUtils.d('ScoringView: Component appeared, setting up event listeners');
       this.setupEventListeners();
+      this.initParticleSystem();
 
       // 通知外部组件ScoringView已准备好
       setTimeout(() => {
@@ -92,6 +102,7 @@ export struct ScoringView {
     .onDisAppear(() => {
       LogUtils.d('ScoringView: Component disappearing, cleaning up');
       this.removeEventListeners();
+      this.cleanupParticleSystem();
     })
   }
 
@@ -435,6 +446,9 @@ export struct ScoringView {
       // 更新pitch条数据
       this.updatePitchSticks();
 
+      // 更新粒子发射点位置
+      this.updateParticleEmissionPoint();
+
       // 平滑更新动画进度
       if (this.scoringMachine) {
         const machineProgress = this.scoringMachine.getCurrentPitchProgress();
@@ -486,6 +500,15 @@ export struct ScoringView {
     // 平滑处理由帧循环中的指数平滑算法负责
     this.localPitch = pitch;
     this.inHighlightStatus = score >= this.hitScoreThreshold * 100;
+
+    // 添加详细的调试日志
+    LogUtils.d(`ScoringView: updatePitchAndScore - pitch: ${pitch}, score: ${score}, threshold: ${this.hitScoreThreshold *
+      100}, inHighlightStatus: ${this.inHighlightStatus}`);
+    LogUtils.d(`ScoringView: Particle system state - exists: ${this.particleSystem !==
+      null}, enableParticleEffect: ${this.enableParticleEffect}`);
+
+    // 粒子动画控制 - 对应Android的assureAnimationForPitchIndicator
+    this.assureParticleAnimation(score);
 
     // 启动帧循环以处理平滑动画
     this.startFrameLoopIfNeeded();
@@ -769,5 +792,105 @@ export struct ScoringView {
    */
   requestRefreshUi(): void {
     // UI会自动更新
+  }
+
+  /**
+   * 创建粒子配置
+   */
+  private createParticleConfig(): Partial<ParticleConfig> {
+    const speedRange: Range = { min: 1.0, max: 3.0 }; // 增加速度，使粒子更容易看到
+    const angleRange: Range = { min: 130, max: 230 };
+    const rotationSpeedRange: Range = { min: 90, max: 180 };
+    const scaleRange: Range = { min: 1.0, max: 2.0 }; // 增加大小，使粒子更容易看到
+
+    const config: Partial<ParticleConfig> = {
+      particlesPerSecond: 20, // 增加发射频率，便于测试
+      maxParticles: 24,
+      particleLifetime: 900, // 对应Android的900ms
+      speedRange: speedRange, // 对应Android的setSpeedModuleAndAngleRange
+      angleRange: angleRange, // 对应Android的130, 230度
+      rotationSpeedRange: rotationSpeedRange, // 对应Android的setRotationSpeedRange
+      scaleRange: scaleRange, // 对应Android的setScaleRange
+      fadeOutDuration: 300 // 对应Android的setFadeOut(300)
+    };
+
+    return config;
+  }
+
+  /**
+   * 初始化粒子系统 - 对应Android的initParticleSystem
+   */
+  private initParticleSystem(): void {
+    if (this.enableParticleEffect) {
+      LogUtils.d('ScoringView: Initializing particle system');
+      this.particleSystem = new ParticleSystem(this.createParticleConfig());
+      LogUtils.d('ScoringView: Particle system initialized successfully');
+    }
+  }
+
+  /**
+   * 清理粒子系统
+   */
+  private cleanupParticleSystem(): void {
+    if (this.particleSystem) {
+      LogUtils.d('ScoringView: Cleaning up particle system');
+      this.particleSystem.cancel();
+      this.particleSystem = null;
+      this.emittingInitialized = false;
+    }
+  }
+
+  /**
+   * 确保粒子动画效果 - 对应Android的assureAnimationForPitchIndicator
+   */
+  private assureParticleAnimation(scoreAfterNormalization: number): void {
+    LogUtils.d(`ScoringView: assureParticleAnimation called - score: ${scoreAfterNormalization}, threshold: ${this.hitScoreThreshold *
+      100}`);
+    LogUtils.d(`ScoringView: Particle system check - enableParticleEffect: ${this.enableParticleEffect}, particleSystem exists: ${this.particleSystem !==
+      null}`);
+
+    if (!this.enableParticleEffect || !this.particleSystem) {
+      LogUtils.d(`ScoringView: Particle animation skipped - enableParticleEffect: ${this.enableParticleEffect}, particleSystem: ${this.particleSystem !==
+        null}`);
+      return;
+    }
+
+    // 对应Android的粒子动画逻辑
+    if (scoreAfterNormalization >= this.hitScoreThreshold * 100) {
+      LogUtils.d(`ScoringView: Score above threshold, starting particle animation`);
+      // 分数达到阈值，开始发射粒子
+      if (!this.emittingInitialized) {
+        const emitX = this.centerXOfStartPoint;
+        const emitY = this.pitchIndicatorY;
+
+        LogUtils.d(`ScoringView: Starting particle emission at (${emitX}, ${emitY})`);
+        this.particleSystem.emit(emitX, emitY); // 使用配置中的发射频率
+        this.emittingInitialized = true;
+      } else {
+        // 更新发射点位置 - 对应Android的updateEmitPoint
+        LogUtils.d(`ScoringView: Updating particle emission point to (${this.centerXOfStartPoint}, ${this.pitchIndicatorY})`);
+        this.particleSystem.updateEmitPoint(this.centerXOfStartPoint, this.pitchIndicatorY);
+      }
+
+      // 恢复发射 - 对应Android的resumeEmitting
+      LogUtils.d(`ScoringView: Resuming particle emission`);
+      this.particleSystem.resumeEmitting();
+    } else {
+      LogUtils.d(`ScoringView: Score below threshold, stopping particle animation`);
+      // 分数低于阈值，停止发射粒子
+      if (this.particleSystem) {
+        this.particleSystem.stopEmitting(); // 对应Android的stopEmitting
+      }
+    }
+  }
+
+  /**
+   * 更新粒子发射点位置 - 在帧循环中调用
+   */
+  private updateParticleEmissionPoint(): void {
+    if (this.enableParticleEffect && this.particleSystem && this.inHighlightStatus) {
+      // 平滑更新粒子发射点位置 - 对应Android的帧循环中的粒子位置更新
+      this.particleSystem.updateEmitPoint(this.centerXOfStartPoint, this.pitchIndicatorY);
+    }
   }
 }
