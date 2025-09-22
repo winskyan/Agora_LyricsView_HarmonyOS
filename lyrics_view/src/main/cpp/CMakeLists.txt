@@ -11,5 +11,5 @@ endif()
 include_directories(${NATIVERENDER_ROOT_PATH}
                     ${NATIVERENDER_ROOT_PATH}/include)
 
-add_library(lyrics_view SHARED napi_init.cpp)
+add_library(lyrics_view SHARED napi_init.cpp Algorithm.c)
 target_link_libraries(lyrics_view PUBLIC libace_napi.z.so)
