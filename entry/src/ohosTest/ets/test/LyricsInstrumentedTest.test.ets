@@ -56,7 +56,7 @@ interface MockContext {
  */
 function enableLyricViewLog(context?: common.UIAbilityContext): void {
   if (context) {
-    LogUtils.enableLog(context, true, true);
+    LogUtils.enableLog(true, true);
   }
 }
 

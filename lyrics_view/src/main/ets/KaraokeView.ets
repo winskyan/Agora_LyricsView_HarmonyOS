@@ -16,11 +16,6 @@ export class KaraokeView {
    */
   private mKaraokeEvent?: IKaraokeEvent;
   /**
-   * 应用上下文 - HarmonyOS版本
-   * 对应Android项目中的Context
-   */
-  private mContext?: Context;
-  /**
    * 事件总线实例
    */
   private eventBus: EventBus = EventBus.getInstance();
@@ -33,21 +28,7 @@ export class KaraokeView {
   /**
    * 默认构造函数
    */
-  constructor();
-
-  /**
-   * 构造函数 - 带上下文
-   * @param context 应用上下文
-   */
-  constructor(context: Context);
-
-  constructor(param1?: Context) {
-    if (param1) {
-      this.mContext = param1;
-      LogUtils.d('KaraokeView created with Context');
-    } else {
-      LogUtils.d('KaraokeView created with default constructor');
-    }
+  constructor() {
     this.initialize();
   }
 
@@ -56,11 +37,7 @@ export class KaraokeView {
    */
   private initialize(): void {
     LogUtils.d('KaraokeView initialize');
-    // 启用日志功能（如果有上下文）
-    if (this.mContext) {
-      // 自动使用应用私有目录，类似Android的getExternalFilesDir
-      LogUtils.enableLog(this.mContext, true, true);
-    }
+    LogUtils.enableLog(true, true);
 
     // 设置拖拽事件监听
     this.setupDragEventListeners();

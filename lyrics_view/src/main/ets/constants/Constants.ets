@@ -1,4 +1,5 @@
 export class Constants {
+  public static readonly DOMAIN = 0x1001;
   public static readonly TAG = 'LyricsView';
   public static readonly LOG_FILE_NAME = 'agora.AgoraLyricsView';
   //seconds
