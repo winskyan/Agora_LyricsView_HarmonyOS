@@ -2,7 +2,7 @@ import { IScoringAlgorithm } from '../IScoringAlgorithm';
 import { OnScoringListener, ScoringMachine } from '../internal/ScoringMachine';
 import { LyricModel } from '../model/LyricModel';
 import { LyricsLineModel } from '../model/LyricsLineModel';
-import { Pitch, PitchStickData, HighlightSegment } from '../model/PitchLineModel';
+import { HighlightSegment, Pitch, PitchStickData } from '../model/PitchLineModel';
 import { EventBus, KaraokeEvents, ScoringEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
@@ -58,7 +58,7 @@ export struct ScoringView {
       this.buildBackgroundLines()
 
       // 第2层：渐变遮罩区域（在背景线条之上，在起始线之下）
-      //this.buildOverPastWall()
+      this.buildOverPastWall()
 
       // 第3层：竖直起始线（最上层，确保可见）
       this.buildStartLine()
@@ -131,13 +131,14 @@ export struct ScoringView {
         .width(this.centerXOfStartPoint)
         .height('100%')
         .linearGradient({
-          direction: GradientDirection.Left, // 从左到右的渐变
+          direction: GradientDirection.Right, // 从左到右的渐变
           colors: [
-            ['rgba(255, 255, 255, 0)', 0], // 左边界 - 完全透明白色
-            ['rgba(36, 198, 255, 0.12)', 1]// 右边界 - 12%透明度的蓝色
+            ['#1F24C6FF', 0], // 左边界
+            ['#00FFFFFF', 1]// 右边界
           ]
         })
         .position({ x: 0, y: 0 })
+        .opacity(0.15)
     }
   }
 
