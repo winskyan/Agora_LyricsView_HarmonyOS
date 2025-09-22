@@ -1,5 +1,5 @@
-import { OnScoringListener, ScoringMachine } from '../internal/ScoringMachine';
 import { IScoringAlgorithm } from '../IScoringAlgorithm';
+import { OnScoringListener, ScoringMachine } from '../internal/ScoringMachine';
 import { LyricModel } from '../model/LyricModel';
 import { LyricsLineModel } from '../model/LyricsLineModel';
 import { EventBus, KaraokeEvents, ScoringEvents } from '../utils/EventBus';
@@ -12,8 +12,12 @@ import { LogUtils } from '../utils/LogUtils';
  */
 @Component
 export struct ScoringView {
-  // 配置参数 (对应Android attrs.xml)
-  @Prop pitchIndicatorColor: string = '#FF6B35';
+  @Prop viewBackgroundColor: string = '#ffffbb33'; // 可配置的背景颜色
+  @Prop leadingLinesColor: string = '#4DFFFFFF'
+  @Prop leadingLinesHeight: number = 1
+  @Prop pitchIndicatorColor: string = '#F0F0F0F0';
+  @Prop localPitchIndicatorColor: string = "#F0F0F0F0"
+  @Prop pitchIndicatorWidth: number = 3;
   @Prop pitchIndicatorRadius: number = 8;
   @Prop pitchStickHighlightedColor: string = '#FFF44336';
   @Prop pitchStickHeight: number = 4;
@@ -25,13 +29,18 @@ export struct ScoringView {
   @Prop enableParticleEffect: boolean = true;
   @Prop refPitchStickDefaultColor: string = '#9C27B0';
   // 状态变量
-  @State private currentScore: number = 0;
-  @State private cumulativeScore: number = 0;
-  @State private localPitch: number = 0;
-  @State private inHighlightStatus: boolean = false;
-  @State private animatedPitch: number = 0;
-  @State private animatedProgressMs: number = 0;
-  @State private preHighlightStatus: boolean = false;
+  @State currentScore: number = 0;
+  @State cumulativeScore: number = 0;
+  @State localPitch: number = 0;
+  @State inHighlightStatus: boolean = false;
+  @State animatedPitch: number = 0;
+  @State animatedProgressMs: number = 0;
+  @State preHighlightStatus: boolean = false;
+  // UI布局相关
+  @State centerXOfStartPoint: number = 0;
+  @State viewWidth: number = 0;
+  @State viewHeight: number = 0;
+  @State pitchIndicatorY: number = 0; // 音调指示器的Y坐标
   // 内部变量
   private eventBus: EventBus = EventBus.getInstance();
   private scoringMachine: ScoringMachine | null = null;
@@ -39,66 +48,33 @@ export struct ScoringView {
   private frameTimer: number = -1;
 
   build() {
-    Column() {
-      // 得分显示区域
-      Row() {
-        Text(`当前得分: ${this.currentScore}`)
-          .fontSize(16)
-          .fontColor('#FFFFFF')
-          .margin({ right: 20 })
+    // 主要的音调可视化区域 - 使用相对布局而非绝对定位
+    Stack({ alignContent: Alignment.TopStart }) {
+      // 第1层：背景线条（最底层）
+      this.buildBackgroundLines()
 
-        Text(`累计得分: ${this.cumulativeScore}`)
-          .fontSize(16)
-          .fontColor('#FFFFFF')
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.Center)
-      .padding(10)
+      // 第2层：渐变遮罩区域（在背景线条之上，在起始线之下）
+      //this.buildOverPastWall()
 
-      // 音调指示器区域
-      Row() {
-        Text('音调指示器')
-          .fontSize(14)
-          .fontColor('#CCCCCC')
-          .margin({ right: 10 })
+      // 第3层：竖直起始线（最上层，确保可见）
+      this.buildStartLine()
 
-        // 简化的音调指示器
-        Circle({ width: this.pitchIndicatorRadius * 2, height: this.pitchIndicatorRadius * 2 })
-          .fill(this.inHighlightStatus ? this.pitchStickHighlightedColor : this.pitchIndicatorColor)
-          .opacity(this.localPitch > 0 ? 1 : 0.3)
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.Center)
-      .padding(10)
+      // 参考音调条（根据歌词pitch数据）
+      //this.buildPitchSticks()
 
-      // 音调条显示区域（简化版本）
-      Column() {
-        Text('音调可视化区域')
-          .fontSize(12)
-          .fontColor('#999999')
-          .textAlign(TextAlign.Center)
-
-        // 简化的音调条显示
-        Row() {
-          ForEach([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], (index: number) => {
-            Rect()
-              .width(20)
-              .height(this.pitchStickHeight)
-              .fill(this.refPitchStickDefaultColor)
-              .margin({ left: 2, right: 2 })
-          })
-        }
-        .width('100%')
-        .justifyContent(FlexAlign.Center)
-        .padding(10)
-      }
-      .layoutWeight(1)
-      .width('100%')
-      .justifyContent(FlexAlign.Center)
+      // 用户音调指示器
+      this.buildLocalPitchIndicator()
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#1A1A1A')
+    .backgroundColor(this.viewBackgroundColor) // 可配置的背景颜色，默认#ffffbb33
+    .onAreaChange((oldValue: Area, newValue: Area) => {
+      // 更新视图尺寸和计算起始点位置
+      this.viewWidth = Number(newValue.width);
+      this.viewHeight = Number(newValue.height);
+      this.centerXOfStartPoint = this.viewWidth * this.startPointHorizontalBias;
+      LogUtils.d(`ScoringView: Area changed - width: ${this.viewWidth}, height: ${this.viewHeight}, centerX: ${this.centerXOfStartPoint}`);
+    })
     .onAppear(() => {
       LogUtils.d('ScoringView: Component appeared, setting up event listeners');
       this.setupEventListeners();
@@ -113,6 +89,153 @@ export struct ScoringView {
       LogUtils.d('ScoringView: Component disappearing, cleaning up');
       this.removeEventListeners();
     })
+  }
+
+  /**
+   * 构建背景线条 - 使用相对布局，不依赖绝对坐标
+   */
+  @Builder
+  buildBackgroundLines() {
+    // 方案1：使用Column + justifyContent均匀分布
+    Column() {
+      // 6条线，创建5个等分区域
+      Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
+      Blank() // 自动填充空间
+      Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
+      Blank()
+      Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
+      Blank()
+      Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
+      Blank()
+      Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
+      Blank()
+      Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.SpaceBetween) // 均匀分布
+  }
+
+  /**
+   * 构建渐变遮罩墙 - 对应Android的drawOverPastWall
+   * 从mCenterXOfStartPoint到左边界的线性渐变
+   */
+  @Builder
+  buildOverPastWall() {
+    if (this.centerXOfStartPoint > 0 && this.viewWidth > 0 && this.viewHeight > 0) {
+      Rect()
+        .width(this.centerXOfStartPoint)
+        .height('100%')
+        .linearGradient({
+          direction: GradientDirection.Left, // 从左到右的渐变
+          colors: [
+            ['rgba(255, 255, 255, 0)', 0], // 左边界 - 完全透明白色
+            ['rgba(36, 198, 255, 0.12)', 1]// 右边界 - 12%透明度的蓝色
+          ]
+        })
+        .position({ x: 0, y: 0 })
+    }
+  }
+
+  /**
+   * 构建起始线 - 对应Android的drawStartLine
+   * 在mCenterXOfStartPoint位置绘制竖直线，使用pitchIndicatorColor
+   */
+  @Builder
+  buildStartLine() {
+    if (this.centerXOfStartPoint > 0 && this.viewWidth > 0 && this.viewHeight > 0) {
+      Line()
+        .startPoint([this.centerXOfStartPoint, 0])
+        .endPoint([this.centerXOfStartPoint, this.viewHeight])
+        .stroke(this.pitchIndicatorColor) // 使用pitchIndicatorColor，对应Android实现
+        .strokeWidth(this.pitchIndicatorWidth)
+    }
+  }
+
+  /**
+   * 构建音调条 - 静态示例音调条
+   */
+  @Builder
+  buildPitchSticks() {
+    // 暂时显示静态的音调条作为示例
+    if (this.viewWidth > 0 && this.viewHeight > 0) {
+      Row() {
+        Rect()
+          .width(60)
+          .height(this.pitchStickHeight)
+          .fill('#9C27B0') // 紫色音调条
+          .borderRadius(2)
+          .margin({ left: 10, right: 5 })
+
+        Rect()
+          .width(40)
+          .height(this.pitchStickHeight)
+          .fill('#9C27B0')
+          .borderRadius(2)
+          .margin({ left: 5, right: 5 })
+
+        Rect()
+          .width(50)
+          .height(this.pitchStickHeight)
+          .fill('#9C27B0')
+          .borderRadius(2)
+          .margin({ left: 5, right: 10 })
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.Center)
+      .position({ x: 0, y: this.viewHeight / 2 })
+    }
+  }
+
+  /**
+   * 构建用户音调指示器 - 对应Android的drawLocalPitchIndicator
+   * 在起始线位置绘制圆形指示器，Y坐标根据当前音调计算
+   */
+  @Builder
+  buildLocalPitchIndicator() {
+    if (this.centerXOfStartPoint > 0 && this.viewWidth > 0 && this.viewHeight > 0 && this.pitchIndicatorY >= 0) {
+      // 使用Circle作为音调指示器，位置在起始线上，Y坐标根据pitch计算
+      Circle({ width: this.pitchIndicatorRadius * 2, height: this.pitchIndicatorRadius * 2 })
+        .fill(this.localPitchIndicatorColor)
+        .strokeWidth(2)
+        .position({
+          x: this.centerXOfStartPoint - this.pitchIndicatorRadius,
+          y: this.pitchIndicatorY - this.pitchIndicatorRadius
+        })
+    }
+  }
+
+  /**
+   * 计算音调指示器的Y坐标 - 对应Android的getYForPitchIndicator
+   * 根据当前音调值和音调范围计算在视图中的Y位置
+   */
+  private calculateYForPitchIndicator(): number {
+    let targetY = 0;
+
+    if (this.scoringMachine == null || !this.scoringMachine.isReady()) {
+      // 未初始化时，指示器在底部
+      targetY = this.viewHeight - this.pitchIndicatorRadius;
+    } else if (this.animatedPitch >= this.scoringMachine.getMinimumRefPitch() &&
+      this.scoringMachine.getMaximumRefPitch() != 0) {
+      // 有有效音调值时，根据音调范围计算位置
+      const realPitchMax = this.scoringMachine.getMaximumRefPitch() + 5;
+      const realPitchMin = this.scoringMachine.getMinimumRefPitch() - 5;
+      const itemHeightPerPitchLevel = this.viewHeight / (realPitchMax - realPitchMin);
+      targetY = (realPitchMax - this.animatedPitch) * itemHeightPerPitchLevel;
+    } else if (this.animatedPitch < this.scoringMachine.getMinimumRefPitch()) {
+      // 音调过低时，指示器在底部
+      targetY = this.viewHeight;
+    }
+
+    // 边界限制，确保指示器不会超出视图范围
+    if (targetY < this.pitchIndicatorRadius) {
+      targetY += this.pitchIndicatorRadius;
+    }
+    if (targetY > this.viewHeight - this.pitchIndicatorRadius) {
+      targetY -= this.pitchIndicatorRadius;
+    }
+
+    return targetY;
   }
 
   /**
@@ -149,28 +272,6 @@ export struct ScoringView {
       }
     });
 
-    // 监听播放进度设置事件
-    this.eventBus.on(ScoringEvents.SET_PROGRESS, (progress: number) => {
-      if (this.scoringMachine) {
-        this.scoringMachine.setLyricProgress(progress);
-      }
-    });
-
-    // 监听重置事件
-    this.eventBus.on(ScoringEvents.RESET, () => {
-      LogUtils.d('ScoringView: Received RESET event');
-      this.reset();
-      if (this.scoringMachine) {
-        this.scoringMachine.reset();
-      }
-    });
-
-    // 监听刷新UI事件
-    this.eventBus.on(ScoringEvents.REQUEST_REFRESH, () => {
-      LogUtils.d('ScoringView: Received REQUEST_REFRESH event');
-      this.requestRefreshUi();
-    });
-
     // 监听评分算法设置事件
     this.eventBus.on(ScoringEvents.SET_SCORING_ALGORITHM, (algorithm: IScoringAlgorithm) => {
       LogUtils.d('ScoringView: Received SET_SCORING_ALGORITHM event');
@@ -200,8 +301,6 @@ export struct ScoringView {
   private removeEventListeners(): void {
     LogUtils.d('ScoringView: Removing event listeners');
     this.stopFrameLoop();
-    // 这里可以添加具体的移除逻辑，但由于EventBus是单例，
-    // 我们可能需要保存回调函数的引用来正确移除
   }
 
   /**
@@ -288,6 +387,9 @@ export struct ScoringView {
       // 平滑更新动画音调
       this.animatedPitch = this.animatedPitch + (this.localPitch - this.animatedPitch) * alpha;
 
+      // 更新音调指示器的Y坐标
+      this.pitchIndicatorY = this.calculateYForPitchIndicator();
+
       // 平滑更新动画进度
       if (this.scoringMachine) {
         const machineProgress = this.scoringMachine.getCurrentPitchProgress();
@@ -331,8 +433,6 @@ export struct ScoringView {
 
   /**
    * 更新音调和得分
-   * @param pitch 音调值
-   * @param score 得分值
    */
   updatePitchAndScore(pitch: number, score: number): void {
     this.localPitch = pitch;
@@ -349,7 +449,6 @@ export struct ScoringView {
 
   /**
    * 当整行完成时重置音调指示器和动画
-   * @param score 本行得分
    */
   resetPitchIndicatorAndAnimationWhenFullLineFinished(score: number): void {
     if (score === 0) {

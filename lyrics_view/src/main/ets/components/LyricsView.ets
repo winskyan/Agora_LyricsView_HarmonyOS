@@ -24,14 +24,7 @@ interface DisplayLine {
  */
 @Component
 export struct LyricsView {
-  // Core properties
-  /** The lyrics state machine managing lyrics progression */
-  @State private mLyricMachine: LyricMachine | null = null;
-  /** Index of the currently displayed lyrics line */
-  @State private mIndexOfCurrentLine: number = -1;
-  /** Current timestamp in the lyrics playback */
-  @State private mCurrentTime: number = 0;
-  // Visual configuration properties (corresponding to attrs.xml)
+  @Prop viewBackgroundColor: string = '#CE93D8'; // 可配置的背景颜色
   /** Text size for normal lyrics lines */
   @Prop textSize: number = 16;
   /** Text size for current line */
@@ -69,6 +62,12 @@ export struct LyricsView {
   /** Horizontal alignment of lyrics text (0=center, 1=left, 2=right) */
   @Prop textGravity: number = 0;
   // Internal state
+  /** The lyrics state machine managing lyrics progression */
+  @State private mLyricMachine: LyricMachine | null = null;
+  /** Index of the currently displayed lyrics line */
+  @State private mIndexOfCurrentLine: number = -1;
+  /** Current timestamp in the lyrics playback */
+  @State private mCurrentTime: number = 0;
   @State private mDraggingInProgress: boolean = false;
   @State private mCurrentLineTranslateX: number = 0;
   // 横向滚动相关状态
@@ -1782,6 +1781,7 @@ export struct LyricsView {
     }
     .width('100%')
     .height('90%')
+    .backgroundColor(this.viewBackgroundColor)
     .margin({ top: this.paddingTop })
     .onTouch((event: TouchEvent) => {
       if (!this.enableDragging) {

@@ -431,8 +431,7 @@ struct Index {
           this.ScoringViewBuilder()
         }
         .width('100%')
-        .height(300)
-        .backgroundColor('#E1BEE7')
+        .height(200)
         .margin({ bottom: 20 })
 
         // 歌词视图区域
@@ -450,8 +449,6 @@ struct Index {
         }
         .width('100%')
         .height(300)
-        .backgroundColor('#CE93D8')
-        .layoutWeight(1)
 
         // 回调信息显示
         Row() {
