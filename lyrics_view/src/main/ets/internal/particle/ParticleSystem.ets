@@ -59,6 +59,10 @@ export class ParticleSystem {
   private lastEmitTime: number = 0;
   private particleCounter: number = 0;
   private animationId: number = -1;
+  // 延迟停止相关
+  private stopDelayTimer: number = -1;
+  private shouldStopEmitting: boolean = false;
+  private readonly STOP_DELAY_MS: number = 200; // 200ms延迟，足够生成几个粒子
   // 默认配置 - 对应Android版本的设置
   private static readonly DEFAULT_CONFIG: ParticleConfig = ParticleSystem.createDefaultConfig();
 
@@ -120,8 +124,6 @@ export class ParticleSystem {
     this.isEmitting = true;
     this.lastEmitTime = Date.now();
 
-    LogUtils.d(`ParticleSystem: Started emitting at (${x}, ${y}) with ${this.config.particlesPerSecond} particles/sec this.animationId=${this.animationId}`);
-
     if (this.animationId === -1) {
       this.startAnimation();
     }
@@ -139,28 +141,50 @@ export class ParticleSystem {
    * 恢复发射 - 对应Android的resumeEmitting方法
    */
   resumeEmitting(): void {
+    // 清除延迟停止定时器和标记
+    if (this.stopDelayTimer !== -1) {
+      clearTimeout(this.stopDelayTimer);
+      this.stopDelayTimer = -1;
+    }
+    this.shouldStopEmitting = false;
+
     if (!this.isEmitting) {
       this.isEmitting = true;
       this.lastEmitTime = Date.now();
-      LogUtils.d('ParticleSystem: Resumed emitting');
 
       // 确保动画循环正在运行
       if (this.animationId === -1) {
-        LogUtils.d('ParticleSystem: Starting animation loop from resumeEmitting');
         this.startAnimation();
       }
     } else {
-      LogUtils.d('ParticleSystem: Already emitting, updating emit time');
       this.lastEmitTime = Date.now();
     }
   }
 
   /**
    * 停止发射 - 对应Android的stopEmitting方法
+   * 使用延迟停止机制，避免粒子发射被过快中断
    */
   stopEmitting(): void {
-    this.isEmitting = false;
-    LogUtils.d('ParticleSystem: Stopped emitting');
+    // 如果已经不在发射或已经设置了停止标记，直接返回
+    if (!this.isEmitting || this.shouldStopEmitting) {
+      return;
+    }
+
+    // 设置延迟停止标记
+    this.shouldStopEmitting = true;
+
+    // 清除之前的延迟定时器
+    if (this.stopDelayTimer !== -1) {
+      clearTimeout(this.stopDelayTimer);
+    }
+
+    // 设置延迟停止定时器
+    this.stopDelayTimer = setTimeout(() => {
+      this.isEmitting = false;
+      this.shouldStopEmitting = false;
+      this.stopDelayTimer = -1;
+    }, this.STOP_DELAY_MS);
   }
 
   /**
@@ -169,6 +193,14 @@ export class ParticleSystem {
   cancel(): void {
     this.isEmitting = false;
     this.particles = [];
+
+    // 清除延迟停止定时器
+    if (this.stopDelayTimer !== -1) {
+      clearTimeout(this.stopDelayTimer);
+      this.stopDelayTimer = -1;
+    }
+    this.shouldStopEmitting = false;
+
     if (this.animationId !== -1) {
       clearTimeout(this.animationId);
       this.animationId = -1;
@@ -231,11 +263,8 @@ export class ParticleSystem {
    * 启动动画循环
    */
   private startAnimation(): void {
-    LogUtils.d(`ParticleSystem: Starting animation loop - isEmitting: ${this.isEmitting}, particles: ${this.particles.length}`);
-
     const animate = () => {
       if (this.particles.length === 0 && !this.isEmitting) {
-        LogUtils.d('ParticleSystem: Animation loop stopped - no particles and not emitting');
         this.animationId = -1;
         return;
       }
@@ -253,35 +282,14 @@ export class ParticleSystem {
     const now = Date.now();
     const deltaTime = 16; // 16ms per frame
 
-    // 每秒输出一次状态信息，避免日志过多
-    if (now % 1000 < 16) {
-      LogUtils.d(`ParticleSystem: updateParticles - isEmitting: ${this.isEmitting}, particles: ${this.particles.length}/${this.config.maxParticles}, emitPos: (${this.emitX}, ${this.emitY})`);
-    }
-
     // 发射新粒子
     if (this.isEmitting && this.particles.length < this.config.maxParticles) {
       const timeSinceLastEmit = now - this.lastEmitTime;
       const emitInterval = 1000 / this.config.particlesPerSecond;
 
-      // 添加详细的发射调试信息
-      if (now % 1000 < 16) {
-        LogUtils.d(`ParticleSystem: Emit check - timeSinceLastEmit: ${timeSinceLastEmit}ms, emitInterval: ${emitInterval}ms, particlesPerSecond: ${this.config.particlesPerSecond}`);
-      }
-
       if (timeSinceLastEmit >= emitInterval) {
         this.createParticle();
         this.lastEmitTime = now;
-        LogUtils.d(`ParticleSystem: Created new particle, total count: ${this.particles.length}`);
-      }
-    } else if (this.isEmitting && this.particles.length >= this.config.maxParticles) {
-      // 每秒输出一次，避免日志过多
-      if (now % 1000 < 16) {
-        LogUtils.d(`ParticleSystem: Max particles reached (${this.particles.length}/${this.config.maxParticles})`);
-      }
-    } else if (!this.isEmitting) {
-      // 每秒输出一次，避免日志过多
-      if (now % 1000 < 16) {
-        LogUtils.d(`ParticleSystem: Not emitting - isEmitting: ${this.isEmitting}`);
       }
     }
 
@@ -345,7 +353,6 @@ export class ParticleSystem {
     };
 
     this.particles.push(particle);
-    LogUtils.d(`ParticleSystem: Created particle ${particle.id} at (${particle.x}, ${particle.y}) with angle ${angle}°, speed ${speed}`);
   }
 
   /**

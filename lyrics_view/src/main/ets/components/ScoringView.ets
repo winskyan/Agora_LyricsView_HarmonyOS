@@ -435,11 +435,6 @@ export struct ScoringView {
       const oldAnimatedPitch = this.animatedPitch;
       this.animatedPitch = this.animatedPitch + (this.localPitch - this.animatedPitch) * alpha;
 
-      // 每秒输出一次平滑效果调试信息（避免日志过多）
-      if (Math.floor(Date.now() / 1000) !== Math.floor((Date.now() - dtMs) / 1000)) {
-        LogUtils.d(`ScoringView: Pitch smoothing - local: ${this.localPitch.toFixed(2)}, animated: ${this.animatedPitch.toFixed(2)}, alpha: ${alpha.toFixed(3)}`);
-      }
-
       // 更新音调指示器的Y坐标
       this.pitchIndicatorY = this.calculateYForPitchIndicator();
 
@@ -496,21 +491,12 @@ export struct ScoringView {
    * 只更新原始pitch值，平滑处理由帧循环负责
    */
   updatePitchAndScore(pitch: number, score: number): void {
-    // 只更新原始pitch值，不直接更新animatedPitch
-    // 平滑处理由帧循环中的指数平滑算法负责
     this.localPitch = pitch;
+
     this.inHighlightStatus = score >= this.hitScoreThreshold * 100;
 
-    // 添加详细的调试日志
-    LogUtils.d(`ScoringView: updatePitchAndScore - pitch: ${pitch}, score: ${score}, threshold: ${this.hitScoreThreshold *
-      100}, inHighlightStatus: ${this.inHighlightStatus}`);
-    LogUtils.d(`ScoringView: Particle system state - exists: ${this.particleSystem !==
-      null}, enableParticleEffect: ${this.enableParticleEffect}`);
+    this.assureParticleAnimation(this.inHighlightStatus);
 
-    // 粒子动画控制 - 对应Android的assureAnimationForPitchIndicator
-    this.assureParticleAnimation(score);
-
-    // 启动帧循环以处理平滑动画
     this.startFrameLoopIfNeeded();
   }
 
@@ -843,11 +829,7 @@ export struct ScoringView {
   /**
    * 确保粒子动画效果 - 对应Android的assureAnimationForPitchIndicator
    */
-  private assureParticleAnimation(scoreAfterNormalization: number): void {
-    LogUtils.d(`ScoringView: assureParticleAnimation called - score: ${scoreAfterNormalization}, threshold: ${this.hitScoreThreshold *
-      100}`);
-    LogUtils.d(`ScoringView: Particle system check - enableParticleEffect: ${this.enableParticleEffect}, particleSystem exists: ${this.particleSystem !==
-      null}`);
+  private assureParticleAnimation(inHighlightStatus: boolean): void {
 
     if (!this.enableParticleEffect || !this.particleSystem) {
       LogUtils.d(`ScoringView: Particle animation skipped - enableParticleEffect: ${this.enableParticleEffect}, particleSystem: ${this.particleSystem !==
@@ -855,31 +837,23 @@ export struct ScoringView {
       return;
     }
 
-    // 对应Android的粒子动画逻辑
-    if (scoreAfterNormalization >= this.hitScoreThreshold * 100) {
-      LogUtils.d(`ScoringView: Score above threshold, starting particle animation`);
-      // 分数达到阈值，开始发射粒子
+    if (inHighlightStatus) {
       if (!this.emittingInitialized) {
         const emitX = this.centerXOfStartPoint;
         const emitY = this.pitchIndicatorY;
 
-        LogUtils.d(`ScoringView: Starting particle emission at (${emitX}, ${emitY})`);
         this.particleSystem.emit(emitX, emitY); // 使用配置中的发射频率
         this.emittingInitialized = true;
       } else {
-        // 更新发射点位置 - 对应Android的updateEmitPoint
-        LogUtils.d(`ScoringView: Updating particle emission point to (${this.centerXOfStartPoint}, ${this.pitchIndicatorY})`);
+        // 更新发射点位置
         this.particleSystem.updateEmitPoint(this.centerXOfStartPoint, this.pitchIndicatorY);
       }
 
-      // 恢复发射 - 对应Android的resumeEmitting
-      LogUtils.d(`ScoringView: Resuming particle emission`);
       this.particleSystem.resumeEmitting();
     } else {
-      LogUtils.d(`ScoringView: Score below threshold, stopping particle animation`);
       // 分数低于阈值，停止发射粒子
       if (this.particleSystem) {
-        this.particleSystem.stopEmitting(); // 对应Android的stopEmitting
+        this.particleSystem.stopEmitting();
       }
     }
   }

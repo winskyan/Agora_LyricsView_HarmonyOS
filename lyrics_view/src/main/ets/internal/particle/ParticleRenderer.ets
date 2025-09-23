@@ -33,28 +33,17 @@ export struct ParticleRenderer {
       ForEach(this.particles, (particle: Particle, index: number) => {
         this.buildParticle(particle)
       }, (particle: Particle) => particle.id)
-
-      // 添加调试信息显示
-      if (this.particles.length > 0) {
-        Text(`粒子数: ${this.particles.length}`)
-          .fontSize(12)
-          .fontColor('#FF0000')
-          .backgroundColor('#FFFFFF80')
-          .padding(4)
-          .borderRadius(4)
-          .position({ x: 10, y: 10 })
-      }
     }
     .width('100%')
-      .height('100%')
-      .onAppear(() => {
-        LogUtils.d('ParticleRenderer: Component appeared, starting update loop');
-        this.startUpdateLoop();
-      })
-      .onDisAppear(() => {
-        LogUtils.d('ParticleRenderer: Component disappearing, stopping update loop');
-        this.stopUpdateLoop();
-      })
+    .height('100%')
+    .onAppear(() => {
+      LogUtils.d('ParticleRenderer: Component appeared, starting update loop');
+      this.startUpdateLoop();
+    })
+    .onDisAppear(() => {
+      LogUtils.d('ParticleRenderer: Component disappearing, stopping update loop');
+      this.stopUpdateLoop();
+    })
   }
 
   /**
@@ -121,58 +110,46 @@ export struct ParticleRenderer {
         .position({ x: 0, y: -this.particleSize * particle.scale * 0.4 })
     }
     .opacity(particle.alpha)
-      .rotate({ angle: particle.rotation })
-      .position({
-        x: particle.x - (this.particleSize * particle.scale) / 2,
-        y: particle.y - (this.particleSize * particle.scale) / 2
-      })
+    .rotate({ angle: particle.rotation })
+    .position({
+      x: particle.x - (this.particleSize * particle.scale) / 2,
+      y: particle.y - (this.particleSize * particle.scale) / 2
+    })
   }
 
   /**
    * 启动更新循环
    */
   private startUpdateLoop(): void {
-    if(this.updateTimer !== -1) {
-    return;
-  }
-
-  const updateLoop = () => {
-    if (this.particleSystem) {
-      // 从粒子系统获取最新的粒子数据
-      const newParticles = this.particleSystem.getParticles();
-      const oldCount = this.particles.length;
-      this.particles = [...newParticles];
-
-      // 每秒输出一次粒子数量，避免日志过多
-      if (Date.now() % 1000 < 16) {
-        LogUtils.d(`ParticleRenderer: Updated particles count: ${this.particles.length} (was ${oldCount})`);
-        if (this.particles.length > 0) {
-          const firstParticle = this.particles[0];
-          LogUtils.d(`ParticleRenderer: First particle at (${firstParticle.x}, ${firstParticle.y}), alpha: ${firstParticle.alpha}, scale: ${firstParticle.scale}`);
-        }
-      }
-    } else {
-      this.particles = [];
-      if (Date.now() % 1000 < 16) {
-        LogUtils.d(`ParticleRenderer: No particle system available`);
-      }
+    if (this.updateTimer !== -1) {
+      return;
     }
 
-    // 继续下一帧更新
-    this.updateTimer = setTimeout(updateLoop, 16); // 60fps
-  };
+    const updateLoop = () => {
+      if (this.particleSystem) {
+        // 从粒子系统获取最新的粒子数据
+        const newParticles = this.particleSystem.getParticles();
+        const oldCount = this.particles.length;
+        this.particles = [...newParticles];
+      } else {
+        this.particles = [];
+      }
 
-  updateLoop();
-}
+      // 继续下一帧更新
+      this.updateTimer = setTimeout(updateLoop, 16); // 60fps
+    };
+
+    updateLoop();
+  }
 
   /**
    * 停止更新循环
    */
   private stopUpdateLoop(): void {
-  if(this.updateTimer !== -1) {
-  clearTimeout(this.updateTimer);
-  this.updateTimer = -1;
-}
+    if (this.updateTimer !== -1) {
+      clearTimeout(this.updateTimer);
+      this.updateTimer = -1;
+    }
   }
 }
 
@@ -200,36 +177,36 @@ export struct SimpleParticleRenderer {
       }, (particle: Particle) => particle.id)
     }
     .width('100%')
-      .height('100%')
-      .onAppear(() => {
-        this.startUpdateLoop();
-      })
-      .onDisAppear(() => {
-        this.stopUpdateLoop();
-      })
+    .height('100%')
+    .onAppear(() => {
+      this.startUpdateLoop();
+    })
+    .onDisAppear(() => {
+      this.stopUpdateLoop();
+    })
   }
 
   private startUpdateLoop(): void {
-    if(this.updateTimer !== -1) {
-    return;
+    if (this.updateTimer !== -1) {
+      return;
+    }
+
+    const updateLoop = () => {
+      if (this.particleSystem) {
+        this.particles = [...this.particleSystem.getParticles()];
+      } else {
+        this.particles = [];
+      }
+      this.updateTimer = setTimeout(updateLoop, 16);
+    };
+
+    updateLoop();
   }
 
-  const updateLoop = () => {
-    if (this.particleSystem) {
-      this.particles = [...this.particleSystem.getParticles()];
-    } else {
-      this.particles = [];
-    }
-    this.updateTimer = setTimeout(updateLoop, 16);
-  };
-
-  updateLoop();
-}
-
   private stopUpdateLoop(): void {
-  if(this.updateTimer !== -1) {
-  clearTimeout(this.updateTimer);
-  this.updateTimer = -1;
-}
+    if (this.updateTimer !== -1) {
+      clearTimeout(this.updateTimer);
+      this.updateTimer = -1;
+    }
   }
 }
