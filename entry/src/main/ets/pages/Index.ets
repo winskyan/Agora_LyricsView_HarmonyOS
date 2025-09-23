@@ -76,6 +76,14 @@ struct Index {
       clearInterval(this.timer);
       this.timer = -1;
     }
+
+    // 销毁KaraokeView实例，释放所有资源
+    if (this.karaokeView && !this.karaokeView.getIsDestroyed()) {
+      this.logDebug('Destroying KaraokeView instance');
+      this.karaokeView.destroy();
+      this.karaokeView = null;
+      this.logDebug('KaraokeView destroyed successfully');
+    }
   }
 
   /**

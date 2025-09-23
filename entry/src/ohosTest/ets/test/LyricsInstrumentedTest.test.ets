@@ -156,7 +156,7 @@ export default function lyricsInstrumentedTest() {
         hilog.info(DOMAIN, TAG, 'Context is available for testing');
 
         // 创建KaraokeView实例
-        karaokeView = new KaraokeView(context);
+        karaokeView = new KaraokeView();
         expect(karaokeView).not().assertUndefined();
 
         // 启用日志
@@ -174,7 +174,7 @@ export default function lyricsInstrumentedTest() {
         };
 
         try {
-          karaokeView = new KaraokeView(mockContext as common.UIAbilityContext);
+          karaokeView = new KaraokeView();
           expect(karaokeView).not().assertUndefined();
           hilog.info(DOMAIN, TAG, 'KaraokeView created with mock context');
         } catch (error) {

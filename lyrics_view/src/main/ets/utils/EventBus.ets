@@ -89,6 +89,8 @@ export class LyricsEvents {
   static readonly SEEK_PROGRESS = 'lyrics:seekProgress';
   /** 歌词组件准备就绪 */
   static readonly COMPONENT_READY = 'lyrics:componentReady';
+  /** 销毁歌词组件 */
+  static readonly DESTROY = 'lyrics:destroy';
 }
 
 /**
@@ -111,6 +113,8 @@ export class ScoringEvents {
   static readonly SET_SCORING_ALGORITHM = 'scoring:setScoringAlgorithm';
   /** 设置评分难度 */
   static readonly SET_SCORING_LEVEL = 'scoring:setScoringLevel';
+  /** 销毁评分组件 */
+  static readonly DESTROY = 'scoring:destroy';
 }
 
 /**
@@ -122,4 +126,6 @@ export class KaraokeEvents {
   static readonly COMPONENT_DETECTION_REQUEST = 'DetectionRequest';
   static readonly COMPONENT_LYRICS_VIEW = 'LyricsView';
   static readonly COMPONENT_SCORING_VIEW = 'ScoringView';
+  /** 销毁卡拉OK组件 */
+  static readonly DESTROY = 'karaoke:destroy';
 }
