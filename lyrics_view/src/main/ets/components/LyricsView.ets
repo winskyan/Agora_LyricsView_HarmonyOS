@@ -47,6 +47,8 @@ export struct LyricsView {
   @Prop enableLineWrap: boolean = false;
   /** Whether dragging is enabled */
   @Prop enableDragging: boolean = true;
+  /** Whether to enable opacity fade effect for top and bottom lyrics lines */
+  @Prop enableOpacityEffect: boolean = true;
   /** Whether to show lyrics lines before the current line */
   @Prop enablePreviousLines: boolean = true;
   /** Whether to show lyrics lines after the current line */
@@ -157,6 +159,8 @@ export struct LyricsView {
     }
 
     if (line !== this.mIndexOfCurrentLine) {
+      const oldLine = this.mIndexOfCurrentLine;
+
       // 停止之前行的文本滚动
       this.stopTextScrollAnimation();
 
@@ -327,6 +331,19 @@ export struct LyricsView {
       return;
     }
 
+    // 🎯 拖拽时禁用动画，避免UI混乱
+    if (this.mDraggingInProgress) {
+      LogUtils.d(`LyricsView: Skip animation during drag - from ${fromLine} to ${toLine}`);
+      return;
+    }
+
+    // 🎯 当行跳跃超过1行时（如拖拽后setProgress跳跃），不执行切换动画
+    // 直接让目标行从普通行变为当前行，避免不自然的动画效果
+    const lineJump = Math.abs(toLine - fromLine);
+    if (lineJump > 1) {
+      return;
+    }
+
     this.isAnimating = true;
     this.transitioningFromIndex = fromLine; // 记录原当前行
     this.newCurrentTransitioning = true; // 新当前行开始过渡
@@ -439,9 +456,14 @@ export struct LyricsView {
     const centerY = (this.actualViewHeight / 2) - (currentLineHeight / 2);
 
     if (this.mDraggingInProgress && this.originalCurrentLineIndex >= 0) {
-      // 拖拽时：使用原始当前行作为基准，加上拖拽偏移
-      currentLineIndex = this.originalCurrentLineIndex;
-      additionalOffset = this.dragLineOffset * currentLineHeight;
+      // 🎯 拖拽时实现滚动列表效果：计算虚拟当前行，但不使用动画过渡
+      // 这样可以显示不同的歌词内容，但避免拖拽过程中的UI混乱
+      const virtualCurrentLineIndex = this.originalCurrentLineIndex - this.dragLineOffset;
+      const clampedVirtualIndex = Math.max(0, Math.min(virtualCurrentLineIndex,
+        (lyricsModel?.lines?.length || 1) - 1));
+
+      currentLineIndex = clampedVirtualIndex;
+      additionalOffset = 0; // 使用虚拟当前行重新布局，无需额外偏移
     }
 
     // 动态位置计算：累积每行的实际高度
@@ -479,16 +501,46 @@ export struct LyricsView {
       yPosition = centerY + totalOffset + additionalOffset;
     }
 
-    // 添加边界检查，确保歌词行不会完全移出视图
+    // 边界检查逻辑
     const targetLine = lyricsModel.lines[index];
     const targetLineHeight = targetLine ?
     this.getDynamicLineHeight(targetLine,
       index === this.mIndexOfCurrentLine ? this.currentLineTextSize : this.textSize) :
     this.getLineHeight();
 
-    const minY = -targetLineHeight * 0.5;
-    const maxY = this.actualViewHeight + targetLineHeight * 0.5;
+    // 🎯 修复边界限制：为不同类型的行设置不同的边界范围
+    let minY: number;
+    let maxY: number;
 
+    if (index < currentLineIndex) {
+      // 已唱过的行（上方行）：允许更大的向上扩展范围
+      minY = -this.actualViewHeight * 2; // 允许向上扩展到屏幕高度的2倍
+      maxY = centerY; // 最低不超过中心位置
+    } else if (index > currentLineIndex) {
+      // 未唱的行（下方行）：允许更大的向下扩展范围
+      minY = centerY; // 最高不超过中心位置
+      maxY = this.actualViewHeight * 3; // 允许向下扩展到屏幕高度的3倍
+    } else {
+      // 当前行：使用原来的边界限制
+      minY = -targetLineHeight * 0.5;
+      maxY = this.actualViewHeight + targetLineHeight * 0.5;
+    }
+
+    // 🎯 拖拽时的智能边界控制：
+    // - 原当前行（可能会从中心移到顶部或底部）允许完全移出视图
+    // - 其他行仍然需要边界限制，防止界面混乱
+    if (this.mDraggingInProgress) {
+      if (index === this.originalCurrentLineIndex) {
+        // 原当前行允许移出视图，实现真正的滚动效果
+        return yPosition;
+      } else {
+        // 其他行仍然受边界限制，防止显示混乱
+        const clampedY = Math.max(minY, Math.min(maxY, yPosition));
+        return clampedY;
+      }
+    }
+
+    // 非拖拽时的标准边界检查
     const clampedY = Math.max(minY, Math.min(maxY, yPosition));
 
     return clampedY;
@@ -890,9 +942,15 @@ export struct LyricsView {
    */
   private shouldRenderLine(index: number): boolean {
     // 确定当前参考行索引
-    const currentIndex = this.mDraggingInProgress && this.originalCurrentLineIndex >= 0
-      ? this.originalCurrentLineIndex
-      : this.mIndexOfCurrentLine;
+    let currentIndex = this.mIndexOfCurrentLine;
+
+    if (this.mDraggingInProgress && this.originalCurrentLineIndex >= 0) {
+      // 🎯 拖拽时使用虚拟当前行索引，实现滚动列表效果
+      const lyricsModel = this.mLyricMachine?.getLyricsModel();
+      const virtualCurrentLineIndex = this.originalCurrentLineIndex - this.dragLineOffset;
+      currentIndex = Math.max(0, Math.min(virtualCurrentLineIndex,
+        (lyricsModel?.lines?.length || 1) - 1));
+    }
 
     // 当前行始终渲染
     if (index === currentIndex) {
@@ -944,17 +1002,19 @@ export struct LyricsView {
    */
   @Builder
   EnhancedLyricsLineBuilder(line: LyricsLineModel, index: number) {
-    // 渲染所有行，但使用透明度控制可见性，确保动画连续性
-    if (index === this.mIndexOfCurrentLine && this.newCurrentTransitioning) {
-      // 新当前行正在过渡：使用新当前行过渡效果
-      this.NewCurrentLineTransitionBuilder(line, index)
-    } else if (index === this.mIndexOfCurrentLine) {
-      // 当前行：使用渐进式高亮效果
-      this.ProgressiveHighlightLineBuilder(line, index)
-    } else if (index === this.transitioningFromIndex && this.isAnimating) {
-      this.TransitioningHighlightLineBuilder(line, index)
-    } else {
-      this.NormalLineBuilder(line, index)
+    if (this.isLineVisible(index)) {
+      // 渲染所有行，但使用透明度控制可见性，确保动画连续性
+      if (index === this.mIndexOfCurrentLine && this.newCurrentTransitioning) {
+        // 新当前行正在过渡：使用新当前行过渡效果
+        this.NewCurrentLineTransitionBuilder(line, index)
+      } else if (index === this.mIndexOfCurrentLine) {
+        // 当前行：使用渐进式高亮效果
+        this.ProgressiveHighlightLineBuilder(line, index)
+      } else if (index === this.transitioningFromIndex && this.isAnimating) {
+        this.TransitioningHighlightLineBuilder(line, index)
+      } else {
+        this.NormalLineBuilder(line, index)
+      }
     }
   }
 
@@ -1510,16 +1570,11 @@ export struct LyricsView {
 
     const isVisible = this.isLineVisible(index);
 
-    // 保底机制：如果拖拽时，确保当前行附近的行至少是可见的
+    // 🎯 拖拽时移除保底机制，允许所有行（包括原当前行）正常按位置隐藏
+    // 这样向上滚动时当前行可以正常移出视图顶部
     if (this.mDraggingInProgress) {
-      const currentIndex =
-        this.originalCurrentLineIndex >= 0 ? this.originalCurrentLineIndex : this.mIndexOfCurrentLine;
-      const distance = Math.abs(index - currentIndex);
-
-      // 强制显示当前行附近的几行，即使位置计算有问题
-      if (distance <= 2) {
-        return distance === 0 ? 1.0 : 0.8;
-      }
+      // 拖拽时不使用保底机制，完全依赖isLineVisible的边界判断
+      // 这样原当前行可以正常移出视图范围
     }
 
     // 如果不可见，返回透明
@@ -1528,8 +1583,22 @@ export struct LyricsView {
       return 0.0;
     }
 
+    // 🎯 如果禁用了透明度效果，所有可见行都完全不透明
+    if (!this.enableOpacityEffect) {
+      return 1.0;
+    }
+
     // 可见的行根据距离当前行的远近计算透明度
-    const distance = Math.abs(index - this.mIndexOfCurrentLine);
+    // 🎯 拖拽时使用虚拟当前行索引计算距离
+    let currentIndex = this.mIndexOfCurrentLine;
+    if (this.mDraggingInProgress && this.originalCurrentLineIndex >= 0) {
+      const lyricsModel = this.mLyricMachine?.getLyricsModel();
+      const virtualCurrentLineIndex = this.originalCurrentLineIndex - this.dragLineOffset;
+      currentIndex = Math.max(0, Math.min(virtualCurrentLineIndex,
+        (lyricsModel?.lines?.length || 1) - 1));
+    }
+
+    const distance = Math.abs(index - currentIndex);
     const maxVisibleLines = this.getMaxVisibleLines();
     const maxDistance = Math.floor(maxVisibleLines / 2);
 
@@ -1538,7 +1607,8 @@ export struct LyricsView {
     } else if (distance <= maxDistance) {
       // 使用更平滑的透明度渐变
       const fadeRatio = distance / maxDistance;
-      return Math.max(0.2, 1.0 - (fadeRatio * 0.7)); // 从1.0渐变到0.3
+      const opacity = Math.max(0.2, 1.0 - (fadeRatio * 0.4)); // 从1.0渐变到0.6
+      return opacity;
     } else if (distance <= maxDistance + 1) {
       // 边界行使用很低的透明度，确保平滑过渡
       return 0.1;
@@ -1712,8 +1782,10 @@ export struct LyricsView {
 
       // 限制拖拽偏移量在安全范围内
       this.dragLineOffset = Math.max(-maxDownwardOffset, Math.min(maxUpwardOffset, rawLineOffset));
-      // 统计可见行数（调试用）
-      this.logVisibleLinesCount();
+
+      // 🎯 拖拽调试日志：显示虚拟当前行变化，实现滚动列表效果
+      const virtualCurrentLineIndex = this.originalCurrentLineIndex - this.dragLineOffset;
+      const clampedVirtualIndex = Math.max(0, Math.min(virtualCurrentLineIndex, totalLines - 1));
     } else {
       this.dragLineOffset = 0;
     }
@@ -1738,15 +1810,9 @@ export struct LyricsView {
       const startTime = this.getLineStartTime(clampedIndex);
 
       if (startTime >= 0) {
-        LogUtils.d(`LyricsView: Final drag line ${clampedIndex}, time ${startTime}ms`);
-
         // 通过EventBus通知最终拖拽位置
         this.eventBus.emit(LyricsEvents.DRAG_END, startTime);
-      } else {
-        LogUtils.d('LyricsView: Failed to get start time for final position');
       }
-    } else {
-      LogUtils.d('LyricsView: No lyrics model available');
     }
 
     // 重置拖拽状态
@@ -1820,6 +1886,7 @@ export struct LyricsView {
         .width('100%')
         .height('100%')
         .alignContent(Alignment.TopStart) // 从顶部开始定位
+        .clip(true) // 🎯 裁剪超出边界的歌词内容，防止显示在视图外
       }
     }
     .width('100%')
