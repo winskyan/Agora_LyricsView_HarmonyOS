@@ -332,21 +332,46 @@ export struct LyricsView {
     this.newCurrentTransitioning = true; // 新当前行开始过渡
     this.styleTransitioning = false; // 样式过渡稍后开始
 
-    const lineHeight = this.getLineHeight();
-    const centerY = (this.actualViewHeight / 2) - (lineHeight / 2);
+    // 🎯 修复抖动问题：使用与calculateLineYPosition一致的动态行高计算
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    let currentLineHeight = this.getLineHeight(); // 默认值
+
+    if (lyricsModel && lyricsModel.lines && toLine >= 0 && toLine < lyricsModel.lines.length) {
+      const currentLine = lyricsModel.lines[toLine];
+      currentLineHeight = currentLine ?
+      this.getDynamicLineHeight(currentLine, this.currentLineTextSize) :
+      this.getLineHeight();
+    }
+
+    const centerY = (this.actualViewHeight / 2) - (currentLineHeight / 2);
 
     // === 原当前行过渡设置 ===
     // 原当前行从中心位置开始
     this.transitioningFromY = centerY;
 
-    // 计算原当前行的目标位置
-    // 原当前行(fromLine)在新布局中应该位于上一行位置
-    // 上一行位置 = 中心位置 - 一个行高
-    const oldTargetY = centerY - lineHeight;
+    // 🎯 关键修复：使用与calculateLineYPosition完全一致的逻辑计算过渡行目标位置
+    // 确保动画结束后位置完全匹配，避免跳动
+    let oldTargetY = centerY;
+
+    if (lyricsModel && lyricsModel.lines && fromLine < toLine) {
+      // fromLine将成为上一行，使用与calculateLineYPosition相同的累积计算逻辑
+      let totalOffset = 0;
+      for (let i = toLine - 1; i >= fromLine; i--) {
+        const line = lyricsModel.lines[i];
+        if (line) {
+          const lineHeight = this.getDynamicLineHeight(line, i === toLine ? this.currentLineTextSize : this.textSize);
+          totalOffset += lineHeight;
+        }
+      }
+      oldTargetY = centerY - totalOffset;
+    } else {
+      // 使用原来的简单计算作为兜底
+      oldTargetY = centerY - currentLineHeight;
+    }
 
     // 设置起始位置
     this.transitioningFromY = centerY; // 过渡行起始位置：中心
-    this.newCurrentFromY = centerY + lineHeight; // 新当前行起始位置：下一行
+    this.newCurrentFromY = centerY + currentLineHeight; // 新当前行起始位置：下一行
 
     // 设置目标位置
     this.transitioningToY = oldTargetY; // 过渡行目标位置：上一行
@@ -397,6 +422,11 @@ export struct LyricsView {
       return 0;
     }
 
+    // 🎯 重要说明：过渡行和新当前行的位置由各自的Builder直接控制
+    // TransitioningHighlightLineBuilder 使用 getTransitioningYPosition()
+    // NewCurrentLineTransitionBuilder 使用 getNewCurrentYPosition()
+    // 这里的 calculateLineYPosition 只负责普通行的位置计算
+
     // 统一的位置计算逻辑
     let currentLineIndex = this.mIndexOfCurrentLine;
     let additionalOffset = 0;
@@ -420,6 +450,7 @@ export struct LyricsView {
     if (index === currentLineIndex) {
       // 当前行：在中心位置
       yPosition = centerY + additionalOffset;
+
     } else if (index < currentLineIndex) {
       // 上方的行：累积计算向上的偏移
       let totalOffset = 0;
@@ -921,10 +952,8 @@ export struct LyricsView {
       // 当前行：使用渐进式高亮效果
       this.ProgressiveHighlightLineBuilder(line, index)
     } else if (index === this.transitioningFromIndex && this.isAnimating) {
-      // 正在过渡的原当前行：使用过渡高亮效果
       this.TransitioningHighlightLineBuilder(line, index)
     } else {
-      // 非当前行：普通显示
       this.NormalLineBuilder(line, index)
     }
   }
@@ -1472,6 +1501,10 @@ export struct LyricsView {
   private getLineOpacity(index: number): number {
     // 首先检查是否应该渲染该行
     if (!this.shouldRenderLine(index)) {
+      // 🎯 关键日志：监控原当前行的透明度变化
+      if (Math.abs(Date.now() - this.animationKey) < 3000 && index === this.mIndexOfCurrentLine - 1) {
+        LogUtils.d(`LyricsView: 👻 Line ${index} opacity set to 0.0 - shouldRenderLine returned false`);
+      }
       return 0.0; // 如果开关禁用了该行，完全透明
     }
 
@@ -1491,6 +1524,7 @@ export struct LyricsView {
 
     // 如果不可见，返回透明
     if (!isVisible) {
+      // 已经在上面记录了日志，这里直接返回
       return 0.0;
     }
 
@@ -1651,12 +1685,21 @@ export struct LyricsView {
     const deltaY = touchY - this.initialTouchY;
 
     // 根据Y轴移动距离计算歌词行偏移量
-    // 使用实际的歌词行高度来计算偏移量
-    const lineHeight = this.getLineHeight();
+    // 🎯 使用动态行高确保拖拽计算与渲染一致
+    const lyricsModel = this.mLyricMachine?.getLyricsModel();
+    let lineHeight = this.getLineHeight(); // 默认值
+
+    if (lyricsModel && lyricsModel.lines && this.originalCurrentLineIndex >= 0 &&
+      this.originalCurrentLineIndex < lyricsModel.lines.length) {
+      const currentLine = lyricsModel.lines[this.originalCurrentLineIndex];
+      lineHeight = currentLine ?
+      this.getDynamicLineHeight(currentLine, this.currentLineTextSize) :
+      this.getLineHeight();
+    }
+
     const rawLineOffset = Math.round(deltaY / lineHeight);
 
     // 计算拖拽边界限制
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
     if (lyricsModel && lyricsModel.lines) {
       // 计算更保守的边界限制
       const totalLines = lyricsModel.lines.length;
