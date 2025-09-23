@@ -70,7 +70,7 @@ export class KaraokeView {
     }
 
     LogUtils.d('KaraokeView initialize');
-    LogUtils.initializeLogger(true, true);
+    LogUtils.enableLog(true, true);
 
     // 设置拖拽事件监听
     this.setupDragEventListeners();
