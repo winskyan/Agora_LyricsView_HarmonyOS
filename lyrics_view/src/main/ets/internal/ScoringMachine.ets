@@ -48,7 +48,6 @@ export interface OnScoringListener {
 export class ScoringMachine {
   private lyricsModel: LyricModel | null = null;
   private listener?: OnScoringListener;
-  private currentPitchProgress: number = 0;
   private currentLyricProgress: number = 0;
   private maximumRefPitch: number = 0;
   private minimumRefPitch: number = 100;
@@ -212,39 +211,15 @@ export class ScoringMachine {
    * 设置音调数据
    * @param speakerPitch 当前音调值
    * @param pitchScore 音调得分
-   * @param progressInMs 当前进度（毫秒）
    */
-  setPitch(speakerPitch: number, pitchScore: number, progressInMs: number): void {
-    if (this.usingInternalScoring) {
-      progressInMs = this.currentLyricProgress;
-    }
-
-    if (this.currentPitchProgress >= 0 && progressInMs > 0) {
-      this.deltaOfUpdate = progressInMs - this.currentPitchProgress;
-      if (this.deltaOfUpdate > 100 || this.deltaOfUpdate < 0) {
-        this.deltaOfUpdate = 20; // 重置为默认值
-      }
-    }
-
-    if (progressInMs <= 0) {
-      this.resetStats();
-      this.listener?.resetUi();
-      return;
-    }
-
-    if (progressInMs < this.currentPitchProgress) {
-      this.whenDraggingHappen(progressInMs);
-    }
-
-    this.currentPitchProgress = progressInMs;
-
+  setPitch(speakerPitch: number, pitchScore: number): void {
     if (!this.lyricsModel) {
       this.listener?.resetUi();
       return;
     }
 
     // 处理音调评分
-    this.processPitchScoring(speakerPitch, pitchScore, progressInMs);
+    this.processPitchScoring(speakerPitch, pitchScore, this.currentLyricProgress);
     this.listener?.requestRefreshUi();
   }
 
@@ -285,7 +260,7 @@ export class ScoringMachine {
 
       this.updateScoreForMostRecentLine(progressInMs, newLine[0], indexOfMostRecentLine[0]);
 
-      // 简化的音调处理（没有AI算法）
+      // 简化的音调处理
       const pitchAfterProcess = speakerPitch;
       const scoreAfterNormalization = this.scoringAlgorithm.getPitchScore(pitchAfterProcess, currentRefPitch);
       this.pitchesForLine.set(progressInMs, scoreAfterNormalization);
@@ -428,7 +403,6 @@ export class ScoringMachine {
    * @returns 计算得分
    */
   calculateScoreWithPitch(speakerPitch: number, progressInMs: number): number {
-    this.currentPitchProgress = progressInMs;
     const refPitch = this.getRefPitch(progressInMs);
 
     if (refPitch === 0) {
@@ -519,7 +493,6 @@ export class ScoringMachine {
    * 轻微重置
    */
   private minorReset(): void {
-    this.currentPitchProgress = 0;
     this.currentLyricProgress = 0;
     this.indexOfCurrentLine = 0;
     this.pitchesForLine.clear();
@@ -560,7 +533,7 @@ export class ScoringMachine {
   }
 
   getCurrentPitchProgress(): number {
-    return this.currentPitchProgress !== 0 ? this.currentPitchProgress : this.currentLyricProgress;
+    return this.currentLyricProgress;
   }
 
   getMinimumRefPitch(): number {

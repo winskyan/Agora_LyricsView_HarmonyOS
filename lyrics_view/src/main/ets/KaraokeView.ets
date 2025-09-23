@@ -282,9 +282,8 @@ export class KaraokeView {
    *
    * @param speakerPitch Current pitch value from singer (Hz, typically 80-2000)
    * @param pitchScore   Current pitch score (0.0 to 100.0, float precision)
-   * @param progressInMs Current progress timestamp in milliseconds (integer)
    */
-  setPitch(speakerPitch: number, pitchScore: number, progressInMs: number): void {
+  setPitch(speakerPitch: number, pitchScore: number): void {
     if (this.checkDestroyed()) {
       return;
     }
@@ -295,14 +294,11 @@ export class KaraokeView {
     if (pitchScore < 0 || pitchScore > 100) {
       LogUtils.w(`Invalid pitch score: ${pitchScore}, expected 0.0-100.0`);
     }
-    if (progressInMs < 0) {
-      LogUtils.w(`Invalid progress: ${progressInMs}, expected >= 0`);
-    }
 
     //LogUtils.d(`KaraokeView:setPitch speakerPitch:${speakerPitch.toFixed(2)}, pitchScore:${pitchScore.toFixed(1)}, progressInMs:${Math.floor(progressInMs)}ms`);
 
     // 通过事件总线发送音高数据给ScoringView
-    this.eventBus.emit(ScoringEvents.SET_PITCH, speakerPitch, pitchScore, progressInMs);
+    this.eventBus.emit(ScoringEvents.SET_PITCH, speakerPitch, pitchScore);
   }
 
   /**

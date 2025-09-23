@@ -171,8 +171,8 @@ struct Index {
 
       // 定义要复制的文件列表
       const filesToCopy = [
-        '4875936889260991133.krc',
-        '4875936889260991133.pitch'
+        '6091274963611321451.krc',
+        '6091274963611321451.pitch'
       ];
 
       for (const fileName of filesToCopy) {
@@ -236,8 +236,8 @@ struct Index {
    */
   private async loadCurrentSong() {
     try {
-      const lyricFilePath = `${contextManager.getFilesDir()}/lyrics/4875936889260991133.krc`;
-      const pitchFilePath = `${contextManager.getFilesDir()}/lyrics/4875936889260991133.pitch`;
+      const lyricFilePath = `${contextManager.getFilesDir()}/lyrics/6091274963611321451.krc`;
+      const pitchFilePath = `${contextManager.getFilesDir()}/lyrics/6091274963611321451.pitch`;
 
       this.logDebug(`lyricFilePath: ${lyricFilePath} pitchFilePath: ${pitchFilePath}`);
 
@@ -306,7 +306,7 @@ struct Index {
         this.lastPitch = Math.max(0, Math.min(100, this.lastPitch + change));
 
         // 设置平滑变化的pitch到KaraokeView中
-        this.karaokeView.setPitch(this.lastPitch, 0, this.currentTime);
+        this.karaokeView.setPitch(this.lastPitch, 0);
 
         // 每秒输出一次调试信息（避免日志过多）
         if (this.currentTime % 1000 === 0) {
@@ -428,6 +428,7 @@ struct Index {
     // 使用真实的ScoringView组件，所有逻辑由组件内部处理
     ScoringView({
       // ScoringView的配置参数
+      enableParticleEffect: true
     })
       .width('100%')
       .height('100%')
