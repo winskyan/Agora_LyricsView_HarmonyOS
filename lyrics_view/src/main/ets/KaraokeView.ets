@@ -312,6 +312,10 @@ export class KaraokeView {
       return;
     }
 
+    if (progress < 0) {
+      return;
+    }
+
     //LogUtils.d(`KaraokeView:setProgress progress:${progress}`);
     // 通过事件总线通知组件
     this.eventBus.emit(LyricsEvents.SET_PROGRESS, progress);

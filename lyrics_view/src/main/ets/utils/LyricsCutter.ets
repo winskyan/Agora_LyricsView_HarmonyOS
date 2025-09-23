@@ -15,7 +15,6 @@ interface TimePair {
  * Provides functionality to extract portions of lyrics between specified start and end times.
  */
 export class LyricsCutter {
-
   /**
    * Adjusts the start and end times to match the nearest line boundaries
    *
@@ -121,8 +120,15 @@ export class LyricsCutter {
     }
 
     model.lines = lines;
-    model.preludeEndPosition = lines.length === 0 ? 0 : lines[0].getStartTime();
-    model.duration = lines.length === 0 ? 0 : lines[lines.length - 1].getEndTime() - lines[lines.length - 1].getStartTime();
+    if (lines.length > 0) {
+      if (model.preludeEndPosition < lines[0].getStartTime()) {
+        model.preludeEndPosition = lines[0].getStartTime();
+      }
+    } else {
+      model.preludeEndPosition = 0;
+    }
+    model.duration =
+      lines.length === 0 ? 0 : lines[lines.length - 1].getEndTime() - lines[lines.length - 1].getStartTime();
 
     return model;
   }

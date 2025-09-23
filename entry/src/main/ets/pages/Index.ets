@@ -12,7 +12,7 @@ import {
 } from 'lyrics_view';
 import { contextManager } from '../utils/ContextManager';
 
-const TAG = 'Index';
+const TAG = 'LyricsViewIndex';
 
 class IndexKaraokeEventImpl implements IKaraokeEvent {
   private indexComponent: Index;
@@ -252,6 +252,9 @@ struct Index {
 
       // 1. 使用parseLyrics解析歌词（传入文件路径）
       this.lyricModel = KaraokeView.parseLyrics(lyricFilePath, pitchFilePath, true, 0);
+      if (this.lyricModel) {
+        this.logDebug(`Successfully parsed lyrics with ${this.lyricModel.preludeEndPosition} lines`);
+      }
 
       if (!this.lyricModel) {
         throw new Error('Failed to parse lyrics');
@@ -262,6 +265,9 @@ struct Index {
         const cutResult = LyricsCutter.cut(this.lyricModel, 0, this.lyricModel.duration);
         if (cutResult !== null) {
           this.lyricModel = cutResult;
+          if (this.lyricModel) {
+            this.logDebug(`Successfully parsed lyrics333 with ${this.lyricModel.preludeEndPosition} lines`);
+          }
           this.karaokeView.setLyricData(this.lyricModel);
         }
       }
@@ -353,6 +359,7 @@ struct Index {
     // 同步更新KaraokeView的进度（触发歌词显示更新）
     if (this.lyricModel && this.karaokeView) {
       const preludeEndPosition = this.lyricModel.preludeEndPosition - 1000;
+      this.logDebug(`Skipping prelude to ${this.lyricModel.preludeEndPosition}ms`);
       this.currentTime = preludeEndPosition;
       this.playingProgress = `${preludeEndPosition}ms`;
       this.callBackInfo = '跳过前奏';
