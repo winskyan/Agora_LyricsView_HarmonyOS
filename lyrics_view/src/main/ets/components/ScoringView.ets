@@ -493,9 +493,11 @@ export struct ScoringView {
   updatePitchAndScore(pitch: number, score: number): void {
     this.localPitch = pitch;
 
+    // 基于外部传入的score设置着色状态（对应Android逻辑）
     this.inHighlightStatus = score >= this.hitScoreThreshold * 100;
 
-    this.assureParticleAnimation(this.inHighlightStatus);
+    // 基于外部传入的score确保粒子动画（对应Android的assureAnimationForPitchIndicator）
+    this.assureParticleAnimation(score);
 
     this.startFrameLoopIfNeeded();
   }
@@ -787,17 +789,17 @@ export struct ScoringView {
     const speedRange: Range = { min: 1.0, max: 3.0 }; // 增加速度，使粒子更容易看到
     const angleRange: Range = { min: 130, max: 230 };
     const rotationSpeedRange: Range = { min: 90, max: 180 };
-    const scaleRange: Range = { min: 1.0, max: 2.0 }; // 增加大小，使粒子更容易看到
+    const scaleRange: Range = { min: 0.3, max: 0.5 }; // 调整为更合适的粒子大小
 
     const config: Partial<ParticleConfig> = {
-      particlesPerSecond: 20, // 增加发射频率，便于测试
-      maxParticles: 24,
-      particleLifetime: 900, // 对应Android的900ms
+      particlesPerSecond: 60, // 进一步增加发射频率，确保着色时立即有大量粒子
+      maxParticles: 80, // 进一步增加最大粒子数量
+      particleLifetime: 800, // 延长粒子生命周期到1.5秒，让粒子更持久
       speedRange: speedRange, // 对应Android的setSpeedModuleAndAngleRange
       angleRange: angleRange, // 对应Android的130, 230度
       rotationSpeedRange: rotationSpeedRange, // 对应Android的setRotationSpeedRange
       scaleRange: scaleRange, // 对应Android的setScaleRange
-      fadeOutDuration: 300 // 对应Android的setFadeOut(300)
+      fadeOutDuration: 50 // 延长淡出时间，让粒子更明显
     };
 
     return config;
@@ -829,31 +831,32 @@ export struct ScoringView {
   /**
    * 确保粒子动画效果 - 对应Android的assureAnimationForPitchIndicator
    */
-  private assureParticleAnimation(inHighlightStatus: boolean): void {
-
+  private assureParticleAnimation(scoreAfterNormalization: number): void {
     if (!this.enableParticleEffect || !this.particleSystem) {
-      LogUtils.d(`ScoringView: Particle animation skipped - enableParticleEffect: ${this.enableParticleEffect}, particleSystem: ${this.particleSystem !==
-        null}`);
       return;
     }
 
-    if (inHighlightStatus) {
+    // 对应Android的粒子动画逻辑：基于score阈值判断
+    if (scoreAfterNormalization >= this.hitScoreThreshold * 100) {
+
       if (!this.emittingInitialized) {
+        // 粒子动画位置在当前演唱线（centerXOfStartPoint），对应Android逻辑
         const emitX = this.centerXOfStartPoint;
         const emitY = this.pitchIndicatorY;
 
-        this.particleSystem.emit(emitX, emitY); // 使用配置中的发射频率
+        this.particleSystem.emit(emitX, emitY);
         this.emittingInitialized = true;
       } else {
-        // 更新发射点位置
+        // 更新发射点位置 - 对应Android的updateEmitPoint
         this.particleSystem.updateEmitPoint(this.centerXOfStartPoint, this.pitchIndicatorY);
       }
 
+      // 恢复发射 - 对应Android的resumeEmitting，这会立即创建粒子
       this.particleSystem.resumeEmitting();
     } else {
       // 分数低于阈值，停止发射粒子
       if (this.particleSystem) {
-        this.particleSystem.stopEmitting();
+        this.particleSystem.stopEmitting(); // 对应Android的stopEmitting
       }
     }
   }

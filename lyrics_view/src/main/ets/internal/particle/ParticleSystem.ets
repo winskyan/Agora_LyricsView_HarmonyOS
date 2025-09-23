@@ -62,7 +62,7 @@ export class ParticleSystem {
   // 延迟停止相关
   private stopDelayTimer: number = -1;
   private shouldStopEmitting: boolean = false;
-  private readonly STOP_DELAY_MS: number = 200; // 200ms延迟，足够生成几个粒子
+  private readonly STOP_DELAY_MS: number = 300; // 延长到500ms，确保连续着色时粒子持续生成
   // 默认配置 - 对应Android版本的设置
   private static readonly DEFAULT_CONFIG: ParticleConfig = ParticleSystem.createDefaultConfig();
 
@@ -122,6 +122,12 @@ export class ParticleSystem {
       this.config.particlesPerSecond = particlesPerSecond;
     }
     this.isEmitting = true;
+
+    // 立即创建第一个粒子，不等待发射间隔
+    if (this.particles.length < this.config.maxParticles) {
+      this.createParticle();
+    }
+
     this.lastEmitTime = Date.now();
 
     if (this.animationId === -1) {
@@ -150,6 +156,10 @@ export class ParticleSystem {
 
     if (!this.isEmitting) {
       this.isEmitting = true;
+      // 立即创建第一个粒子，不等待发射间隔
+      if (this.particles.length < this.config.maxParticles) {
+        this.createParticle();
+      }
       this.lastEmitTime = Date.now();
 
       // 确保动画循环正在运行
@@ -157,6 +167,10 @@ export class ParticleSystem {
         this.startAnimation();
       }
     } else {
+      // 如果已经在发射但粒子很少，也立即创建一个粒子
+      if (this.particles.length < 3 && this.particles.length < this.config.maxParticles) {
+        this.createParticle();
+      }
       this.lastEmitTime = Date.now();
     }
   }
