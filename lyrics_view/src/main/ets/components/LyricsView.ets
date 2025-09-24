@@ -22,81 +22,81 @@ interface DisplayLine {
  * Supports features like highlighting current line, scrolling animations,
  * line wrapping, and touch interactions for seeking.
  */
-@Component
+@ComponentV2
 export struct LyricsView {
-  @Prop viewBackgroundColor: string = '#CE93D8'; // 可配置的背景颜色
+  @Param viewBackgroundColor: string = '#CE93D8'; // 可配置的背景颜色
   /** Text size for normal lyrics lines */
-  @Prop textSize: number = 16;
+  @Param textSize: number = 16;
   /** Text size for current line */
-  @Prop currentLineTextSize: number = 20;
+  @Param currentLineTextSize: number = 20;
   /** Text color for current line's normal text */
-  @Prop currentLineTextColor: string = '#FFFFFF';
+  @Param currentLineTextColor: string = '#FFFFFF';
   /** Text color for current line's highlighted portion */
-  @Prop currentLineHighlightedTextColor: string = '#FF6B35';
+  @Param currentLineHighlightedTextColor: string = '#FF6B35';
   /** Text color for previous lyrics lines */
-  @Prop previousLineTextColor: string = '#999999';
+  @Param previousLineTextColor: string = '#999999';
   /** Text color for upcoming lyrics lines */
-  @Prop upcomingLineTextColor: string = '#999999';
+  @Param upcomingLineTextColor: string = '#999999';
   /** Vertical spacing between lyrics lines */
-  @Prop lineSpacing: number = 12;
+  @Param lineSpacing: number = 12;
   /** Top padding for the entire lyrics view */
-  @Prop paddingTop: number = 5;
+  @Param paddingTop: number = 5;
   /** Text to display when no lyrics are available */
-  @Prop labelWhenNoLyrics: string = '暂无歌词';
+  @Param labelWhenNoLyrics: string = '暂无歌词';
   /** Whether to enable automatic line wrapping for long lyrics */
-  @Prop enableLineWrap: boolean = false;
+  @Param enableLineWrap: boolean = false;
   /** Whether dragging is enabled */
-  @Prop enableDragging: boolean = true;
+  @Param enableDragging: boolean = true;
   /** Whether to enable opacity fade effect for top and bottom lyrics lines */
-  @Prop enableOpacityEffect: boolean = true;
+  @Param enableOpacityEffect: boolean = true;
   /** Whether to show lyrics lines before the current line */
-  @Prop enablePreviousLines: boolean = true;
+  @Param enablePreviousLines: boolean = true;
   /** Whether to show lyrics lines after the current line */
-  @Prop enableUpcomingLines: boolean = true;
+  @Param enableUpcomingLines: boolean = true;
   /** Whether to show the prelude end position indicator */
-  @Prop enablePreludeEndPositionIndicator: boolean = true;
+  @Param enablePreludeEndPositionIndicator: boolean = true;
   /** Top padding for the prelude end position indicator */
-  @Prop preludeEndPositionIndicatorPaddingTop: number = 3;
+  @Param preludeEndPositionIndicatorPaddingTop: number = 3;
   /** Radius of the prelude end position indicator dots */
-  @Prop preludeEndPositionIndicatorRadius: number = 4;
+  @Param preludeEndPositionIndicatorRadius: number = 4;
   /** Color of the prelude end position indicator */
-  @Prop preludeEndPositionIndicatorColor: string = '#FF6B35';
+  @Param preludeEndPositionIndicatorColor: string = '#FF6B35';
   /** Horizontal alignment of lyrics text (0=center, 1=left, 2=right) */
-  @Prop textGravity: number = 0;
+  @Param textGravity: number = 0;
   // Internal state
   /** The lyrics state machine managing lyrics progression */
-  @State private mLyricMachine: LyricMachine | null = null;
+  @Local private mLyricMachine: LyricMachine | null = null;
   /** Index of the currently displayed lyrics line */
-  @State private mIndexOfCurrentLine: number = -1;
+  @Local private mIndexOfCurrentLine: number = -1;
   /** Current timestamp in the lyrics playback */
-  @State private mCurrentTime: number = 0;
-  @State private mDraggingInProgress: boolean = false;
-  @State private mCurrentLineTranslateX: number = 0;
+  @Local private mCurrentTime: number = 0;
+  @Local private mDraggingInProgress: boolean = false;
+  @Local private mCurrentLineTranslateX: number = 0;
   // 横向滚动相关状态
   // Actual component dimensions measured dynamically
-  @State private actualViewHeight: number = 400; // 默认值，会被实际测量值覆盖
-  @State private actualViewWidth: number = 300; // 默认值，会被实际测量值覆盖
+  @Local private actualViewHeight: number = 400; // 默认值，会被实际测量值覆盖
+  @Local private actualViewWidth: number = 300; // 默认值，会被实际测量值覆盖
   // 拖拽相关状态
-  @State private initialTouchY: number = 0; // 初始触摸Y坐标
-  @State private dragLineOffset: number = 0; // 拖拽时的歌词行偏移量
-  @State private originalCurrentLineIndex: number = -1; // 拖拽开始时的原始当前行索引
+  @Local private initialTouchY: number = 0; // 初始触摸Y坐标
+  @Local private dragLineOffset: number = 0; // 拖拽时的歌词行偏移量
+  @Local private originalCurrentLineIndex: number = -1; // 拖拽开始时的原始当前行索引
   // 动画状态管理
-  @State private isAnimating: boolean = false;
-  @State private animationKey: number = 0; // 用于强制重新渲染动画
-  @State private transitioningFromIndex: number = -1; // 正在过渡的原当前行索引
-  @State private transitioningFromY: number = 0; // 过渡行的起始Y位置
-  @State private transitioningToY: number = 0; // 过渡行的目标Y位置
-  @State private newCurrentTransitioning: boolean = false; // 新当前行是否正在过渡
-  @State private newCurrentFromY: number = 0; // 新当前行的起始Y位置
-  @State private newCurrentToY: number = 0; // 新当前行的目标Y位置
-  @State private styleTransitioning: boolean = false; // 样式是否正在过渡
+  @Local private isAnimating: boolean = false;
+  @Local private animationKey: number = 0; // 用于强制重新渲染动画
+  @Local private transitioningFromIndex: number = -1; // 正在过渡的原当前行索引
+  @Local private transitioningFromY: number = 0; // 过渡行的起始Y位置
+  @Local private transitioningToY: number = 0; // 过渡行的目标Y位置
+  @Local private newCurrentTransitioning: boolean = false; // 新当前行是否正在过渡
+  @Local private newCurrentFromY: number = 0; // 新当前行的起始Y位置
+  @Local private newCurrentToY: number = 0; // 新当前行的目标Y位置
+  @Local private styleTransitioning: boolean = false; // 样式是否正在过渡
   // 文本滚动相关状态
-  @State private isTextScrolling: boolean = false; // 是否正在滚动文本
-  @State private textScrollTimer: number = -1; // 文本滚动定时器
+  @Local private isTextScrolling: boolean = false; // 是否正在滚动文本
+  @Local private textScrollTimer: number = -1; // 文本滚动定时器
   // Text scroll controller for horizontal scrolling
   private textScroller: Scroller = new Scroller();
   // 当前行的滚动偏移状态（用于调试日志）
-  @State private currentLineScrollOffset: number = 0;
+  @Local private currentLineScrollOffset: number = 0;
   // Event bus instance for global communication
   private eventBus: EventBus = EventBus.getInstance();
 
@@ -239,9 +239,9 @@ export struct LyricsView {
     if (!lyricsModel || !lyricsModel.lines || lyricsModel.lines.length === 0) {
       return;
     }
-    if (lyricsModel.type === LyricType.LRC) {
-      this.enableLineWrap = true;
-    }
+    // if (lyricsModel.type === LyricType.LRC) {
+    //   this.enableLineWrap = true;
+    // }
   }
 
   /**

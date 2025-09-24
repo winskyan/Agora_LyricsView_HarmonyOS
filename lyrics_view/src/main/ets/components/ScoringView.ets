@@ -8,49 +8,49 @@ import { EventBus, KaraokeEvents, ScoringEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
 /**
- * 评分显示组件 - HarmonyOS版本
+ * 评分显示组件 - HarmonyOS版本 (ArkUI V2)
  * 对应Android项目中的ScoringView
  * 用于显示卡拉OK评分信息和音调可视化
  */
-@Component
+@ComponentV2
 export struct ScoringView {
-  @Prop viewBackgroundColor: string = '#ffffbb33'; // 可配置的背景颜色
-  @Prop leadingLinesColor: string = '#4DFFFFFF'
-  @Prop leadingLinesHeight: number = 1
-  @Prop pitchIndicatorColor: string = '#F0F0F0F0';
-  @Prop pitchIndicatorWidth: number = 3;
-  @Prop localPitchIndicatorColor: string = "#F0F0F0F0"
-  @Prop localPitchIndicatorRadius: number = 8;
-  @Prop pitchStickHeight: number = 4;
-  @Prop pitchStickRadius: number = 4;
-  @Prop refPitchStickDefaultColor: string = '#99FFFFFF';
-  @Prop highlightedPitchStickColor: string = '#FFF44336';
-  @Prop initialScore: number = 0;
-  @Prop movingPixelsPerMs: number = 0.2;
-  @Prop hitScoreThreshold: number = 0.7;
-  @Prop startPointHorizontalBias: number = 0.4;
-  @Prop enableParticleEffect: boolean = true;
+  @Param viewBackgroundColor: string = '#ffffbb33'; // 可配置的背景颜色
+  @Param leadingLinesColor: string = '#4DFFFFFF'
+  @Param leadingLinesHeight: number = 1
+  @Param pitchIndicatorColor: string = '#F0F0F0F0';
+  @Param pitchIndicatorWidth: number = 3;
+  @Param localPitchIndicatorColor: string = "#F0F0F0F0"
+  @Param localPitchIndicatorRadius: number = 8;
+  @Param pitchStickHeight: number = 4;
+  @Param pitchStickRadius: number = 4;
+  @Param refPitchStickDefaultColor: string = '#99FFFFFF';
+  @Param highlightedPitchStickColor: string = '#FFF44336';
+  @Param initialScore: number = 0;
+  @Param movingPixelsPerMs: number = 0.2;
+  @Param hitScoreThreshold: number = 0.7;
+  @Param startPointHorizontalBias: number = 0.4;
+  @Param enableParticleEffect: boolean = true;
   // 移除时间补偿机制 - 应该从根本原因解决同步问题
   // 状态变量
-  @State currentScore: number = 0;
-  @State cumulativeScore: number = 0;
-  @State localPitch: number = 0; // 原始输入的pitch值（可能有抖动）
-  @State inHighlightStatus: boolean = false;
-  @State animatedPitch: number = 0; // 平滑后的pitch值（用于UI显示）
-  @State animatedProgressMs: number = 0;
-  @State preHighlightStatus: boolean = false;
+  @Local currentScore: number = 0;
+  @Local cumulativeScore: number = 0;
+  @Local localPitch: number = 0; // 原始输入的pitch值（可能有抖动）
+  @Local inHighlightStatus: boolean = false;
+  @Local animatedPitch: number = 0; // 平滑后的pitch值（用于UI显示）
+  @Local animatedProgressMs: number = 0;
+  @Local preHighlightStatus: boolean = false;
   // 用于跟踪pitch状态变化，实现立即响应逻辑
   private lastLocalPitch: number = 0;
   // 着色相关状态 - 对应Android版本
   private pitchHighlightedTime: number = -1; // 当前着色开始时间
   // UI布局相关
-  @State centerXOfStartPoint: number = 0;
-  @State viewWidth: number = 0;
-  @State viewHeight: number = 0;
-  @State pitchIndicatorY: number = 0; // 音调指示器的Y坐标
-  @State pitchSticks: PitchStickData[] = []; // 当前可见的pitch条数据
+  @Local centerXOfStartPoint: number = 0;
+  @Local viewWidth: number = 0;
+  @Local viewHeight: number = 0;
+  @Local pitchIndicatorY: number = 0; // 音调指示器的Y坐标
+  @Local pitchSticks: PitchStickData[] = []; // 当前可见的pitch条数据
   // 粒子系统相关
-  @State particleSystem: ParticleSystem | null = null;
+  @Local particleSystem: ParticleSystem | null = null;
   private emittingInitialized: boolean = false;
   // 内部变量
   private eventBus: EventBus = EventBus.getInstance();
@@ -78,7 +78,7 @@ export struct ScoringView {
 
       // 粒子效果层（最顶层）
       if (this.enableParticleEffect && this.particleSystem) {
-        ParticleRenderer({ particleSystem: $particleSystem })
+        ParticleRenderer({ particleSystem: this.particleSystem })
       }
     }
     .width('100%')

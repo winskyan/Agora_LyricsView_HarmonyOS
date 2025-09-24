@@ -9,11 +9,11 @@ import { Particle, ParticleSystem } from './ParticleSystem';
  * 粒子渲染组件
  * 使用HarmonyOS的UI组件系统渲染粒子
  */
-@Component
+@ComponentV2
 export struct ParticleRenderer {
-  @Link particleSystem: ParticleSystem | null;
-  @State particles: Particle[] = [];
-  @Prop particleColors: string[] = [
+  @Param particleSystem: ParticleSystem | null = null;
+  @Local particles: Particle[] = [];
+  @Param particleColors: string[] = [
     '#FFD700', // 金色
     '#FF6B35', // 橙色
     '#F7931E', // 橙黄色
@@ -23,7 +23,7 @@ export struct ParticleRenderer {
     '#5BA8F2', // 蓝色
     '#9B59B6'// 紫色
   ];
-  @Prop particleSize: number = 20; // 增加粒子基础大小，便于测试
+  @Param particleSize: number = 20; // 增加粒子基础大小，便于测试
   private updateTimer: number = -1;
 
   build() {
@@ -155,12 +155,12 @@ export struct ParticleRenderer {
 /**
  * 简化版粒子渲染器 - 用于性能敏感的场景
  */
-@Component
+@ComponentV2
 export struct SimpleParticleRenderer {
-  @Link particleSystem: ParticleSystem | null;
-  @State particles: Particle[] = [];
-  @Prop particleColor: string = '#FFD700'; // 统一的粒子颜色
-  @Prop particleSize: number = 8;
+  @Param particleSystem: ParticleSystem | null = null;
+  @Local particles: Particle[] = [];
+  @Param particleColor: string = '#FFD700'; // 统一的粒子颜色
+  @Param particleSize: number = 8;
   private updateTimer: number = -1;
 
   build() {
