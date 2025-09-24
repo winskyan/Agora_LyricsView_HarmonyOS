@@ -1,415 +1,66 @@
-import { hilog } from '@kit.PerformanceAnalysisKit';
-import fs from '@ohos.file.fs';
-import {
-  IKaraokeEvent,
-  KaraokeView,
-  LyricModel,
-  LyricsCutter,
-  LyricsLineModel,
-  LyricsView,
-  ScoringView,
-  Utils
-} from 'lyrics_view';
-import { contextManager } from '../utils/ContextManager';
+import { LyricsView, ScoringView } from 'lyrics_view';
+import { KaraokeViewModel } from '../viewmodels/KaraokeViewModel';
 
-const TAG = 'LyricsViewIndex';
-
-class IndexKaraokeEventImpl implements IKaraokeEvent {
-  private indexComponent: Index;
-
-  constructor(indexComponent: Index) {
-    this.indexComponent = indexComponent;
-  }
-
-  onKaraokeReady(): void {
-    this.indexComponent.handleKaraokeReady();
-  }
-
-  onDragTo(position: number): void {
-    this.indexComponent.handleDragTo(position);
-  }
-
-  onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number,
-    lineCount: number): void {
-    this.indexComponent.handleLineFinished(line, score, cumulativeScore, index, lineCount);
-  }
-}
-
+/**
+ * 标准化 MVVM 架构的 Index 页面 (ArkUI V2)
+ * 职责：纯 UI 层，只负责数据绑定和渲染
+ * 使用 @ComponentV2 + @ObservedV2 响应式系统
+ *
+ * 布局结构：
+ * ┌─────────────────────────┐
+ * │ 头部信息 (40px)          │
+ * ├─────────────────────────┤
+ * │ 评分视图 (200px)         │
+ * ├─────────────────────────┤
+ * │ 歌词视图 (280px)         │
+ * ├─────────────────────────┤
+ * │ 状态信息 (60px)          │
+ * ├─────────────────────────┤
+ * │ 控制按钮 (116px)         │
+ * └─────────────────────────┘
+ */
 @Entry
-@Component
+@ComponentV2
 struct Index {
-  @State lyricsDescription: string = '';
-  @State playingProgress: string = '0ms';
-  @State callBackInfo: string = '';
-  @State currentTime: number = 0;
-  @State isPlaying: boolean = false;
-  @State currentSongIndex: number = 0;
-  @State isOriginalTrack: boolean = false;
-  // 卡拉OK相关
-  private karaokeView: KaraokeView | null = null;
-  @State lyricModel: LyricModel | null = null;
-  // 移除组件引用，采用事件驱动的方式
-  private timer: number = -1;
-  private songList: string[] = ['十年', '月亮代表我的心', '童话'];
-  private lastPitch: number = 50; // 记录上一次的pitch值，用于生成更平滑的变化
+  // ViewModel 实例 - 使用 @ObservedV2 响应式状态管理
+  @Local private viewModel: KaraokeViewModel = new KaraokeViewModel();
 
   aboutToAppear() {
-    this.updateLyricsDescription();
-    this.initKaraokeView();
-  }
-
-  /**
-   * 初始化KaraokeView，在组件实例创建后调用
-   */
-  private initKaraokeView() {
-    try {
-      this.karaokeView = new KaraokeView();
-      this.karaokeView.setKaraokeEvent(new IndexKaraokeEventImpl(this));
-      this.logDebug('KaraokeView initialized successfully');
-    } catch (error) {
-      this.logDebug(`Failed to initialize KaraokeView: ${error}`);
-    }
+    // 初始化 ViewModel
+    this.viewModel.initialize();
   }
 
   aboutToDisappear() {
-    if (this.timer !== -1) {
-      clearInterval(this.timer);
-      this.timer = -1;
+    // 销毁 ViewModel，释放资源
+    this.viewModel.destroy();
+  }
+
+  @Builder
+  HeaderBuilder() {
+    Row() {
+      Text(this.viewModel.songInfo.getDescription())
+        .fontSize(12)
+        .fontColor('#333333')
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
-
-    // 销毁KaraokeView实例，释放所有资源
-    if (this.karaokeView && !this.karaokeView.getIsDestroyed()) {
-      this.logDebug('Destroying KaraokeView instance');
-      this.karaokeView.destroy();
-      this.karaokeView = null;
-      this.logDebug('KaraokeView destroyed successfully');
-    }
+    .width('100%')
+      .height(40)
+      .padding({ left: 16, right: 16 })
+      .justifyContent(FlexAlign.Start)
   }
 
-  /**
-   * 处理卡拉OK准备就绪事件
-   */
-  public handleKaraokeReady() {
-    this.logDebug('Karaoke components are ready');
-    this.callBackInfo = '卡拉OK组件已准备就绪';
-    // 自动加载歌曲
-    this.loadSong();
-  }
-
-  /**
-   * 加载歌曲数据
-   */
-  private async loadSong() {
-    try {
-      await this.copyRawFilesToPrivate();
-      await this.loadCurrentSong();
-      this.callBackInfo = '歌曲加载完成';
-    } catch (error) {
-      this.logDebug(`Failed to load song: ${error}`);
-      this.callBackInfo = `加载失败: ${error}`;
-    }
-  }
-
-  /**
-   * 调试日志输出
-   */
-  private logDebug(message: string): void {
-    hilog.debug(0x0000, TAG, `%{public}s`, message);
-  }
-
-  /**
-   * 确保lyrics目录存在
-   */
-  private async ensureLyricsDirectory(): Promise<string> {
-    try {
-      const lyricsDir = `${contextManager.getFilesDir()}/lyrics`;
-
-      this.logDebug(`App files directory: ${contextManager.getFilesDir()}`);
-      this.logDebug(`Checking lyrics directory: ${lyricsDir}`);
-
-      // 检查目录是否存在
-      if (!fs.accessSync(lyricsDir)) {
-        this.logDebug(`Creating lyrics directory: ${lyricsDir}`);
-        fs.mkdirSync(lyricsDir);
-        this.logDebug(`Successfully created lyrics directory`);
-        this.callBackInfo = `已创建歌词目录`;
-      } else {
-        this.logDebug(`Lyrics directory already exists`);
-        this.callBackInfo = `歌词目录已存在`;
-      }
-
-      return lyricsDir;
-    } catch (error) {
-      this.logDebug(`Failed to ensure lyrics directory: ${error}`);
-      throw new Error(`Failed to ensure lyrics directory: ${error}`);
-    }
-  }
-
-  /**
-   * 将内容写入私有目录文件
-   */
-  private async writePrivateFile(filePath: string, content: string): Promise<void> {
-    try {
-      const file = fs.openSync(filePath, fs.OpenMode.WRITE_ONLY | fs.OpenMode.CREATE);
-      const buffer = Utils.stringToUint8Array(content);
-      fs.writeSync(file.fd, buffer.buffer as ArrayBuffer);
-      fs.closeSync(file);
-
-      this.logDebug(`Successfully wrote file: ${filePath}`);
-    } catch (error) {
-      this.logDebug(`Failed to write file ${filePath}: ${error}`);
-      throw new Error(`Failed to write file ${filePath}: ${error}`);
-    }
-  }
-
-  /**
-   * 从rawfile复制文件到私有目录
-   */
-  private async copyRawFilesToPrivate(): Promise<void> {
-    try {
-      const lyricsDir = await this.ensureLyricsDirectory();
-
-      // 定义要复制的文件列表
-      const filesToCopy = [
-        '6091274963611321451.krc',
-        '6091274963611321451.pitch'
-      ];
-
-      for (const fileName of filesToCopy) {
-        const targetPath = `${lyricsDir}/${fileName}`;
-
-        // 检查文件是否已存在，避免重复复制
-        if (fs.accessSync(targetPath)) {
-          this.logDebug(`File already exists, skipping: ${targetPath}`);
-          continue;
-        }
-
-        try {
-          // 使用Utils直接从rawfile读取内容
-          const content = await Utils.loadRawFileAsString(contextManager.getContext(), fileName);
-          if (!content) {
-            throw new Error(`Failed to load rawfile: ${fileName}`);
-          }
-
-          // 使用Utils写入文件
-          await this.writePrivateFile(targetPath, content);
-
-          this.logDebug(`Successfully copied ${fileName} to ${targetPath}`);
-
-        } catch (error) {
-          this.logDebug(`Failed to copy ${fileName}: ${error}`);
-          // 继续处理其他文件，不中断整个流程
-        }
-      }
-
-      this.callBackInfo = `文件复制完成`;
-
-      // 列出目录内容进行验证
-      await this.listDirectoryContents(lyricsDir);
-
-    } catch (error) {
-      this.logDebug(`Failed to copy raw files: ${error}`);
-      this.callBackInfo = `文件复制失败: ${error}`;
-      throw new Error(`Failed to copy raw files: ${error}`);
-    }
-  }
-
-  /**
-   * 列出目录内容（调试用）
-   */
-  private async listDirectoryContents(dirPath: string): Promise<void> {
-    try {
-      if (fs.accessSync(dirPath)) {
-        const files = fs.listFileSync(dirPath);
-        this.logDebug(`Directory ${dirPath} contains: ${JSON.stringify(files)}`);
-        this.callBackInfo = `目录包含 ${files.length} 个文件`;
-      } else {
-        this.logDebug(`Directory ${dirPath} does not exist`);
-      }
-    } catch (error) {
-      this.logDebug(`Failed to list directory ${dirPath}: ${error}`);
-    }
-  }
-
-  /**
-   * 加载当前歌曲的KRC文件
-   */
-  private async loadCurrentSong() {
-    if (!this.karaokeView) {
-      this.logDebug('KaraokeView not initialized');
-      return;
-    }
-    try {
-      const lyricFilePath = `${contextManager.getFilesDir()}/lyrics/6091274963611321451.krc`;
-      const pitchFilePath = `${contextManager.getFilesDir()}/lyrics/6091274963611321451.pitch`;
-
-      this.logDebug(`lyricFilePath: ${lyricFilePath} pitchFilePath: ${pitchFilePath}`);
-
-      // 验证文件是否存在
-      if (!fs.accessSync(lyricFilePath)) {
-        throw new Error(`KRC file not found: ${lyricFilePath}`);
-      }
-
-      if (!fs.accessSync(pitchFilePath)) {
-        throw new Error(`Pitch file not found: ${pitchFilePath}`);
-      }
-
-      // 1. 使用parseLyrics解析歌词（传入文件路径）
-      this.lyricModel = this.karaokeView.parseLyrics(lyricFilePath, pitchFilePath, true, 0);
-      if (this.lyricModel) {
-        this.logDebug(`Successfully parsed lyrics with ${this.lyricModel.preludeEndPosition} lines`);
-      }
-
-      if (!this.lyricModel) {
-        throw new Error('Failed to parse lyrics');
-      }
-
-      // 2. 如果KaraokeView已初始化，设置歌词数据
-      if (this.karaokeView && this.lyricModel) {
-        const cutResult = LyricsCutter.cut(this.lyricModel, 0, this.lyricModel.duration);
-        if (cutResult !== null) {
-          this.lyricModel = cutResult;
-          if (this.lyricModel) {
-            this.logDebug(`Successfully parsed lyrics333 with ${this.lyricModel.preludeEndPosition} lines`);
-          }
-          this.karaokeView.setLyricData(this.lyricModel);
-        }
-      }
-
-      this.logDebug(`Successfully loaded lyrics with ${this.lyricModel?.lines?.length || 0} lines`);
-
-    } catch (error) {
-      console.error('Failed to load song:', error);
-      this.callBackInfo = `加载失败: ${error}`;
-      this.logDebug(`Failed to load song: ${error}`);
-    }
-  }
-
-  private updateLyricsDescription() {
-    this.lyricsDescription = `当前歌曲: ${this.songList[this.currentSongIndex]} `;
-  }
-
-  private startPlayback() {
-    if (this.isPlaying) {
-      return;
-    }
-
-    if (!this.lyricModel) {
-      this.callBackInfo = '请先加载歌词文件';
-      return;
-    }
-
-    this.isPlaying = true;
-    // 使用20ms间隔的定时器，更精确地模拟播放
-    this.timer = setInterval(() => {
-      this.currentTime += 20; // 每20ms增加20ms
-      this.playingProgress = `${this.currentTime}ms`;
-
-      // 调用KaraokeView的setProgress方法（这会触发LyricMachine.setProgress → LyricsView.requestRefreshUi → updateByProgress）
-      if (this.karaokeView) {
-        this.karaokeView.setProgress(this.currentTime);
-
-        // 生成更平滑的pitch变化，避免剧烈跳跃
-        // 每次变化幅度控制在±10以内，更接近真实唱歌的pitch变化
-        const maxChange = 10; // 最大变化幅度
-        const change = (Math.random() - 0.5) * 2 * maxChange; // -10到+10的变化
-        this.lastPitch = Math.max(0, Math.min(100, this.lastPitch + change));
-
-        // 设置平滑变化的pitch到KaraokeView中
-        this.karaokeView.setPitch(this.lastPitch, 0);
-
-        // 每秒输出一次调试信息（避免日志过多）
-        if (this.currentTime % 1000 === 0) {
-          console.log(`Index: Setting smooth pitch - value: ${this.lastPitch.toFixed(2)},  time: ${this.currentTime}ms`);
-        }
-      }
-
-      // 模拟播放结束（3分钟）
-      if (this.currentTime >= 180000) {
-        this.stopPlayback();
-      }
-    }, 20); // 20ms间隔
-
-    this.callBackInfo = '开始播放';
-  }
-
-  private pausePlayback() {
-    this.isPlaying = false;
-    if (this.timer !== -1) {
-      clearInterval(this.timer);
-      this.timer = -1;
-    }
-    this.callBackInfo = '暂停播放';
-  }
-
-  private stopPlayback() {
-    this.pausePlayback();
-    this.currentTime = 0;
-    this.playingProgress = '0ms';
-    this.callBackInfo = '停止播放';
-  }
-
-  private async switchToNext() {
-    this.stopPlayback();
-    this.currentSongIndex = (this.currentSongIndex + 1) % this.songList.length;
-    this.updateLyricsDescription();
-    this.callBackInfo = `正在加载: ${this.songList[this.currentSongIndex]}`;
-
-    // 重新加载新歌曲的KRC文件
-    await this.loadCurrentSong();
-  }
-
-  private skipIntro() {
-    // 同步更新KaraokeView的进度（触发歌词显示更新）
-    if (this.lyricModel && this.karaokeView) {
-      const preludeEndPosition = this.lyricModel.preludeEndPosition - 1000;
-      this.logDebug(`Skipping prelude to ${this.lyricModel.preludeEndPosition}ms`);
-      this.currentTime = preludeEndPosition;
-      this.playingProgress = `${preludeEndPosition}ms`;
-      this.callBackInfo = '跳过前奏';
-
-      this.karaokeView.setProgress(preludeEndPosition);
-    }
-  }
-
-  private toggleOriginalTrack() {
-    this.isOriginalTrack = !this.isOriginalTrack;
-    this.callBackInfo = this.isOriginalTrack ? '切换到原唱' : '切换到伴奏';
-  }
-
-  private openSettings() {
-    this.callBackInfo = '设置功能待实现';
-  }
-
-  /**
-   * 处理拖拽到指定位置的事件
-   * 这个方法会被IKaraokeEvent.onDragTo调用
-   */
-  public handleDragTo(finalProgress: number) {
-    // 更新当前时间到拖拽的最终位置
-    this.currentTime = finalProgress;
-    this.playingProgress = `${this.currentTime}ms`;
-    this.callBackInfo = `拖拽到: ${this.currentTime}ms`;
-
-    // 同步更新KaraokeView的进度
-    if (this.karaokeView) {
-      this.karaokeView.setProgress(this.currentTime);
-    }
-  }
-
-  /**
-   * 处理歌词行完成事件
-   * 这个方法会被IKaraokeEvent.onLineFinished调用
-   */
-  public handleLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number,
-    lineCount: number) {
-    this.logDebug(`Line ${index} finished with score ${score}`);
-    this.callBackInfo = `第${index + 1}行完成，得分: ${score}`;
+  @Builder
+  ScoringViewBuilder() {
+    ScoringView({
+      enableParticleEffect: true
+    })
+      .width('100%')
+      .height('100%')
   }
 
   @Builder
   LyricsViewBuilder() {
-    // 直接使用LyricsView组件，所有逻辑由组件内部处理
     LyricsView({
       textSize: 16,
       currentLineTextSize: 20,
@@ -435,128 +86,170 @@ struct Index {
   }
 
   @Builder
-  ScoringViewBuilder() {
-    // 使用真实的ScoringView组件，所有逻辑由组件内部处理
-    ScoringView({
-      // ScoringView的配置参数
-      enableParticleEffect: true
-    })
+  StatusBarBuilder() {
+    Column({ space: 8 }) {
+      // 播放进度显示
+      Row() {
+        Text('播放进度: ')
+          .fontSize(12)
+          .fontColor('#666666')
+
+        Text(this.viewModel.playbackState.playingProgress)
+          .fontSize(12)
+          .fontColor('#333333')
+          .fontWeight(FontWeight.Medium)
+      }
       .width('100%')
-      .height('100%')
+        .justifyContent(FlexAlign.Start)
+
+      // 状态信息显示
+      Row() {
+        // 加载指示器
+        if (this.viewModel.uiState.isLoading) {
+          LoadingProgress()
+            .width(16)
+            .height(16)
+            .margin({ right: 8 })
+        }
+
+        // 状态标签
+        Text('状态: ')
+          .fontSize(12)
+          .fontColor('#666666')
+
+        // 状态文本
+        Text(this.viewModel.uiState.callBackInfo || '就绪')
+          .fontSize(12)
+          .fontColor(this.viewModel.uiState.hasError ? '#FF5722' : '#4CAF50')
+          .fontWeight(FontWeight.Medium)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
+      }
+      .width('100%')
+        .justifyContent(FlexAlign.Start)
+        .alignItems(VerticalAlign.Center)
+    }
+    .width('100%')
+      .height(60)
+      .padding({
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: 8
+      })
+      .backgroundColor('#FFFFFF')
+      .borderRadius(8)
+      .margin({ left: 16, right: 16, bottom: 10 })
+      .alignItems(HorizontalAlign.Start)
+      .justifyContent(FlexAlign.Center)
+  }
+
+  @Builder
+  MainControlButtonsBuilder() {
+    Row({ space: 8 }) {
+      Button(this.viewModel.playbackState.isPlaying ? '暂停' : '播放')
+        .fontSize(14)
+        .backgroundColor(this.viewModel.playbackState.isPlaying ? '#FF9800' : '#4CAF50')
+        .enabled(!this.viewModel.uiState.isLoading)
+        .onClick(() => {
+          if (this.viewModel.playbackState.isPlaying) {
+            this.viewModel.pausePlayback();
+          } else {
+            this.viewModel.startPlayback();
+          }
+        })
+
+      Button('切歌')
+        .fontSize(14)
+        .backgroundColor('#2196F3')
+        .enabled(!this.viewModel.uiState.isLoading)
+        .onClick(() => {
+          this.viewModel.switchToNext();
+        })
+
+      Button('跳过前奏')
+        .fontSize(14)
+        .backgroundColor('#9C27B0')
+        .enabled(!this.viewModel.uiState.isLoading && this.viewModel.songInfo.hasLyrics())
+        .onClick(() => {
+          this.viewModel.skipIntro();
+        })
+    }
+    .width('100%')
+      .height(50)
+      .justifyContent(FlexAlign.Center)
+  }
+
+  @Builder
+  SecondaryControlButtonsBuilder() {
+    Row({ space: 8 }) {
+      Button(this.viewModel.playbackState.isOriginalTrack ? '伴唱' : '原唱')
+        .fontSize(14)
+        .backgroundColor('#607D8B')
+        .enabled(!this.viewModel.uiState.isLoading)
+        .onClick(() => {
+          this.viewModel.toggleOriginalTrack();
+        })
+
+      Button('设置')
+        .fontSize(14)
+        .backgroundColor('#795548')
+        .onClick(() => {
+          // 设置功能 - 可以扩展
+          this.viewModel.uiState.setSuccess('设置功能待实现');
+        })
+    }
+    .width('100%')
+      .height(50)
+      .justifyContent(FlexAlign.Center)
+  }
+
+  @Builder
+  ControlButtonsBuilder() {
+    Column({ space: 8 }) {
+      // 主要控制按钮
+      this.MainControlButtonsBuilder()
+
+      // 次要控制按钮
+      this.SecondaryControlButtonsBuilder()
+    }
+    .padding({ bottom: 8 })
   }
 
   build() {
     Stack() {
       Column() {
-        // 歌词描述信息
-        Row() {
-          Text(this.lyricsDescription)
-            .fontSize(12)
-            .fontColor('#333333')
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        .width('100%')
-        .height(40)
-        .padding({ left: 16, right: 16 })
-        .justifyContent(FlexAlign.Start)
+        // 头部信息
+        this.HeaderBuilder()
 
         // 评分视图区域
         Row() {
           this.ScoringViewBuilder()
         }
         .width('100%')
-        .height(200)
-        .margin({ bottom: 20 })
+          .height(200)
+          .margin({ bottom: 20 })
 
-        // 歌词视图区域
-        Stack() {
-          this.LyricsViewBuilder()
-
-          // 播放进度显示
-          Text(this.playingProgress)
-            .fontSize(12)
-            .fontColor('#333333')
-            .backgroundColor('#FFFFFF80')
-            .padding(4)
-            .borderRadius(4)
-            .position({ x: 8, y: 0 })
-        }
-        .width('100%')
-        .height(300)
-
-        // 回调信息显示
+        // 歌词视图区域（纯净，无覆盖层）
         Row() {
-          Text(this.callBackInfo)
-            .fontSize(12)
-            .fontColor('#333333')
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          this.LyricsViewBuilder()
         }
         .width('100%')
-        .height(30)
-        .padding({ left: 16, right: 16 })
-        .justifyContent(FlexAlign.Start)
-        .alignItems(VerticalAlign.Center)
+          .height(280)
+          .margin({ bottom: 10 })
 
-        // 主要控制按钮
-        Row({ space: 8 }) {
-          Button(this.isPlaying ? '暂停' : '播放')
-            .fontSize(14)
-            .backgroundColor(this.isPlaying ? '#FF9800' : '#4CAF50')
-            .onClick(() => {
-              if (this.isPlaying) {
-                this.pausePlayback();
-              } else {
-                this.startPlayback();
-              }
-            })
+        // 状态信息区域（独立区域）
+        this.StatusBarBuilder()
 
-          Button('切歌')
-            .fontSize(14)
-            .backgroundColor('#2196F3')
-            .onClick(() => {
-              this.switchToNext();
-            })
-
-          Button('跳过前奏')
-            .fontSize(14)
-            .backgroundColor('#9C27B0')
-            .onClick(() => {
-              this.skipIntro();
-            })
-        }
-        .width('100%')
-        .height(50)
-        .justifyContent(FlexAlign.Center)
-        .padding({ bottom: 8 })
-
-        // 次要控制按钮
-        Row({ space: 8 }) {
-          Button(this.isOriginalTrack ? '伴唱' : '原唱')
-            .fontSize(14)
-            .backgroundColor('#607D8B')
-            .onClick(() => {
-              this.toggleOriginalTrack();
-            })
-
-          Button('设置')
-            .fontSize(14)
-            .backgroundColor('#795548')
-            .onClick(() => {
-              this.openSettings();
-            })
-        }
-        .width('100%')
-        .height(50)
-        .justifyContent(FlexAlign.Center)
-        .padding({ bottom: 8 })
+        // 控制按钮区域
+        this.ControlButtonsBuilder()
       }
       .width('100%')
-      .height('100%')
+        .height('100%')
     }
     .width('100%')
-    .height('100%')
-    .backgroundColor('#F5F5F5')
+      .height('100%')
+      .backgroundColor('#F5F5F5')
   }
 }
