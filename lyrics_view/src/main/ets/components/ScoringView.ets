@@ -95,12 +95,6 @@ export struct ScoringView {
       LogUtils.d('ScoringView: Component appeared, setting up event listeners');
       this.setupEventListeners();
       this.initParticleSystem();
-
-      // 通知外部组件ScoringView已准备好
-      setTimeout(() => {
-        LogUtils.d('ScoringView: Ready for events, emitting COMPONENT_READY');
-        this.eventBus.emit(ScoringEvents.COMPONENT_READY);
-      }, 10);
     })
     .onDisAppear(() => {
       LogUtils.d('ScoringView: Component disappearing, cleaning up');
@@ -301,18 +295,12 @@ export struct ScoringView {
     // 初始化ScoringMachine
     this.initScoringMachine();
 
-    // 响应组件检测请求
-    this.eventBus.on(KaraokeEvents.COMPONENT_DETECTION, (request: string) => {
-      if (request === KaraokeEvents.COMPONENT_DETECTION_REQUEST) {
-        LogUtils.d('ScoringView: Responding to component detection');
-        this.eventBus.emit(KaraokeEvents.COMPONENT_DETECTION, KaraokeEvents.COMPONENT_SCORING_VIEW);
-      }
-    });
-
     // 监听歌词数据设置事件
     this.eventBus.on(ScoringEvents.SET_LYRIC_DATA, (lyricModel: LyricModel, usingInternalScoring: boolean) => {
       if (this.scoringMachine) {
         this.scoringMachine.prepare(lyricModel, usingInternalScoring);
+        // 启动帧循环用于动画更新
+        this.startFrameLoopIfNeeded();
         LogUtils.d(`ScoringView: Lyric data prepared in ScoringMachine with usingInternalScoring: ${usingInternalScoring}`);
       } else {
         LogUtils.e('ScoringView: ScoringMachine is null when receiving SET_LYRIC_DATA event');
@@ -408,8 +396,6 @@ export struct ScoringView {
 
       LogUtils.d('ScoringView: ScoringMachine created successfully');
 
-      // 启动帧循环用于动画更新
-      this.startFrameLoopIfNeeded();
     } else {
       LogUtils.d('ScoringView: ScoringMachine already exists');
     }
@@ -591,7 +577,6 @@ export struct ScoringView {
     }
 
     if (!this.scoringMachine.isReady()) {
-      LogUtils.d('ScoringView: Scoring machine not ready');
       this.pitchSticks = [];
       return;
     }

@@ -979,18 +979,14 @@ export struct LyricsView {
       return;
     }
 
-    let visibleCount = 0;
-    let renderedCount = 0;
     const visibleLines: number[] = [];
     const renderedLines: number[] = [];
 
     for (let i = 0; i < lyricsModel.lines.length; i++) {
       if (this.shouldRenderLine(i)) {
-        renderedCount++;
         renderedLines.push(i);
 
         if (this.isLineVisible(i)) {
-          visibleCount++;
           visibleLines.push(i);
         }
       }
@@ -1928,12 +1924,6 @@ export struct LyricsView {
     .onAppear(() => {
       LogUtils.d('LyricsView: Component appeared, setting up event listeners');
       this.setupEventListeners();
-
-      // 通知外部组件LyricsView已准备好
-      setTimeout(() => {
-        LogUtils.d('LyricsView: Ready for events, emitting COMPONENT_READY');
-        this.eventBus.emit(LyricsEvents.COMPONENT_READY);
-      }, 10);
     })
     .onDisAppear(() => {
       LogUtils.d('LyricsView: Component disappearing, cleaning up');
@@ -1950,14 +1940,6 @@ export struct LyricsView {
 
     // 初始化LyricMachine
     this.initLyricMachine();
-
-    // 响应组件检测请求
-    this.eventBus.on(KaraokeEvents.COMPONENT_DETECTION, (request: string) => {
-      if (request === KaraokeEvents.COMPONENT_DETECTION_REQUEST) {
-        LogUtils.d('LyricsView: Responding to component detection');
-        this.eventBus.emit(KaraokeEvents.COMPONENT_DETECTION, KaraokeEvents.COMPONENT_LYRICS_VIEW);
-      }
-    });
 
     // 监听歌词数据设置事件
     const setLyricDataHandler = (lyricModel: LyricModel) => {

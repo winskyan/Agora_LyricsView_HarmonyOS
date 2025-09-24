@@ -46,8 +46,6 @@ export class KaraokeViewModel extends BaseViewModel {
       () => this.initializeKaraoke(),
       () => {
         this.uiState.setSuccess('KaraokeView 初始化成功');
-        // 自动加载歌曲
-        this.loadSong();
       },
       (error) => {
         this.uiState.setError(`初始化失败: ${error.message}`);
@@ -160,8 +158,7 @@ export class KaraokeViewModel extends BaseViewModel {
     }
 
     if (!this.songInfo.hasLyrics()) {
-      this.uiState.setError('请先加载歌词文件');
-      return;
+       this.loadSong();
     }
 
     this.playbackService.start();
@@ -271,10 +268,6 @@ class KaraokeEventImpl implements IKaraokeEvent {
 
   constructor(viewModel: KaraokeViewModel) {
     this.viewModel = viewModel;
-  }
-
-  onKaraokeReady(): void {
-    this.viewModel.loadSong();
   }
 
   onDragTo(position: number): void {

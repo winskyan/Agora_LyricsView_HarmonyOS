@@ -87,8 +87,6 @@ export class LyricsEvents {
   static readonly DRAG_END = 'lyrics:dragEnd';
   /** 歌词拖拽事件（兼容旧版本） */
   static readonly SEEK_PROGRESS = 'lyrics:seekProgress';
-  /** 歌词组件准备就绪 */
-  static readonly COMPONENT_READY = 'lyrics:componentReady';
   /** 销毁歌词组件 */
   static readonly DESTROY = 'lyrics:destroy';
 }
@@ -107,8 +105,6 @@ export class ScoringEvents {
   static readonly RESET = 'scoring:reset';
   /** 请求刷新UI */
   static readonly REQUEST_REFRESH = 'scoring:requestRefresh';
-  /** 评分组件准备就绪 */
-  static readonly COMPONENT_READY = 'scoring:componentReady';
   /** 设置评分算法 */
   static readonly SET_SCORING_ALGORITHM = 'scoring:setScoringAlgorithm';
   /** 设置评分难度 */
@@ -121,11 +117,6 @@ export class ScoringEvents {
  * 卡拉OK系统事件常量
  */
 export class KaraokeEvents {
-  /** 组件检测 - 用于自动发现集成的组件 */
-  static readonly COMPONENT_DETECTION = 'karaoke:componentDetection';
-  static readonly COMPONENT_DETECTION_REQUEST = 'DetectionRequest';
-  static readonly COMPONENT_LYRICS_VIEW = 'LyricsView';
-  static readonly COMPONENT_SCORING_VIEW = 'ScoringView';
   /** 销毁卡拉OK组件 */
   static readonly DESTROY = 'karaoke:destroy';
 }
