@@ -93,17 +93,14 @@ export class Pitch {
    * Start time of the pitch segment in milliseconds
    */
   begin: number = 0;
-
   /**
    * End time of the pitch segment in milliseconds
    */
   end: number = 0;
-
   /**
    * Pitch value for this segment
    */
   pitch: number = 0;
-
   /**
    * Map of highlighted parts within this pitch segment
    * Key: Timestamp, Value: TimePair of (start time, end time) for the highlight

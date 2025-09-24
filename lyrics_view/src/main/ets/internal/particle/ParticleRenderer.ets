@@ -1,6 +1,5 @@
 /**
- * 粒子渲染器 - 用于在HarmonyOS中渲染粒子效果
- * 对应Android版本的粒子绘制功能
+ * 粒子渲染器
  */
 
 import { LogUtils } from '../../utils/LogUtils';

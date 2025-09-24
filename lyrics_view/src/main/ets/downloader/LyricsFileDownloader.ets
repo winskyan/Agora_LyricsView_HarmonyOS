@@ -372,7 +372,7 @@ export class LyricsFileDownloader {
    */
   private async handleLyricsFile(requestId: number, lyricFilePath: string, deleteLyricsFile: boolean): Promise<void> {
     try {
-      const fileData = await Utils.readFileToBytes(lyricFilePath);
+      const fileData = await Utils.getFileBytes(lyricFilePath);
       this.notifyLyricsFileDownloadCompleted(requestId, fileData, null);
 
       if (deleteLyricsFile && fs.accessSync(lyricFilePath)) {

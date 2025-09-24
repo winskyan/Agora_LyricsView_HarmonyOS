@@ -6,8 +6,7 @@ import { EventBus, KaraokeEvents, LyricsEvents, ScoringEvents } from './utils/Ev
 import { LogUtils } from './utils/LogUtils';
 
 /**
- * 卡拉OK主控制器 - HarmonyOS版本
- * 对应Android项目中的KaraokeView
+ * 卡拉OK主控制器
  * 管理歌词显示、评分和不同组件之间的同步
  */
 export class KaraokeView {
@@ -216,7 +215,7 @@ export class KaraokeView {
    * @param lyricOffset              Timing offset for lyrics
    * @return Parsed lyrics model
    */
-  static parseLyrics(
+  parseLyrics(
     lyricSource: string | Uint8Array,
     pitchSource?: string | Uint8Array,
     includeCopyrightSentence: boolean = true,
@@ -270,7 +269,7 @@ export class KaraokeView {
       return;
     }
 
-    LogUtils.d(`KaraokeView setLyricData model lines:${model.lines.length} usingInternalScoring:${usingInternalScoring}`);
+    LogUtils.d(`KaraokeView setLyricDatasetLyricData model lines:${model.lines.length} usingInternalScoring:${usingInternalScoring}`);
     // 通过事件总线通知组件
     this.eventBus.emit(LyricsEvents.SET_LYRIC_DATA, model);
     this.eventBus.emit(ScoringEvents.SET_LYRIC_DATA, model, usingInternalScoring);
@@ -337,11 +336,11 @@ export class KaraokeView {
   }
 
   /**
-   * Set custom scoring algorithm
+   * Set custom scoring algorithm,内部打分功能暂不支持
    *
    * @param algorithm Custom scoring algorithm implementation
    */
-  setScoringAlgorithm(algorithm: IScoringAlgorithm): void {
+  private setScoringAlgorithm(algorithm: IScoringAlgorithm): void {
     if (this.checkDestroyed()) {
       return;
     }
@@ -353,11 +352,11 @@ export class KaraokeView {
   }
 
   /**
-   * Set scoring difficulty level
+   * Set scoring difficulty level，暂不支持
    *
    * @param level Scoring difficulty level
    */
-  setScoringLevel(level: number): void {
+  private setScoringLevel(level: number): void {
     if (this.checkDestroyed()) {
       return;
     }

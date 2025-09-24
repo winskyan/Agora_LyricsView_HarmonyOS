@@ -186,7 +186,7 @@ struct Index {
 
         try {
           // 使用Utils直接从rawfile读取内容
-          const content = await Utils.loadAsString(contextManager.getContext(), fileName);
+          const content = await Utils.loadRawFileAsString(contextManager.getContext(), fileName);
           if (!content) {
             throw new Error(`Failed to load rawfile: ${fileName}`);
           }
@@ -235,6 +235,10 @@ struct Index {
    * 加载当前歌曲的KRC文件
    */
   private async loadCurrentSong() {
+    if (!this.karaokeView) {
+      this.logDebug('KaraokeView not initialized');
+      return;
+    }
     try {
       const lyricFilePath = `${contextManager.getFilesDir()}/lyrics/6091274963611321451.krc`;
       const pitchFilePath = `${contextManager.getFilesDir()}/lyrics/6091274963611321451.pitch`;
@@ -251,7 +255,7 @@ struct Index {
       }
 
       // 1. 使用parseLyrics解析歌词（传入文件路径）
-      this.lyricModel = KaraokeView.parseLyrics(lyricFilePath, pitchFilePath, true, 0);
+      this.lyricModel = this.karaokeView.parseLyrics(lyricFilePath, pitchFilePath, true, 0);
       if (this.lyricModel) {
         this.logDebug(`Successfully parsed lyrics with ${this.lyricModel.preludeEndPosition} lines`);
       }

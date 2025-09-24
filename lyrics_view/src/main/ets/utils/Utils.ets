@@ -3,7 +3,7 @@ import fs from '@ohos.file.fs';
 import { LogUtils } from './LogUtils';
 
 /**
- * 工具类 - HarmonyOS版本
+ * 工具类
  * 提供通用的工具方法，包括文件操作、字符串处理、编码转换等
  */
 export class Utils {
@@ -183,58 +183,11 @@ export class Utils {
     return new Uint8Array(bytes);
   }
 
-  // ========== 本地文件操作工具 ==========
-
-  /**
-   * 读取本地文件字节数据（同步）
-   * @param filePath 文件路径
-   * @returns 文件字节数组，如果读取失败返回null
-   */
-  static getFileBytes(filePath: string): Uint8Array | null {
-    try {
-      return Utils.readFileSync(filePath);
-    } catch (error) {
-      LogUtils.e(`getFileBytes error for path ${filePath}: ${error}`);
-      return null;
-    }
-  }
-
-  /**
-   * 读取本地文件字节数据（异步）
-   * @param filePath 文件路径
-   * @returns Promise<Uint8Array | null> 文件字节数组，如果读取失败返回null
-   */
-  static async getFileBytesAsync(filePath: string): Promise<Uint8Array | null> {
-    try {
-      return await Utils.readFileAsync(filePath);
-    } catch (error) {
-      LogUtils.e(`getFileBytesAsync error for path ${filePath}: ${error}`);
-      return null;
-    }
-  }
-
-  /**
-   * 读取本地文件内容为字符串（异步）
-   * @param filePath 文件路径
-   * @returns Promise<string | null> 文件内容字符串，失败返回null
-   */
-  static async readFileAsString(filePath: string): Promise<string | null> {
-    try {
-      const bytes = await Utils.readFileAsync(filePath);
-      if (!bytes) {
-        return null;
-      }
-      return Utils.uint8ArrayToString(bytes);
-    } catch (error) {
-      LogUtils.e(`readFileAsString error for path ${filePath}: ${error}`);
-      return null;
-    }
-  }
 
   /**
    * 同步读取文件的核心实现
    */
-  private static readFileSync(filePath: string): Uint8Array | null {
+  static getFileBytes(filePath: string): Uint8Array | null {
     // 检查文件路径是否有效
     if (!filePath || filePath.trim().length === 0) {
       LogUtils.e('readFileSync: filePath is empty');
@@ -286,31 +239,31 @@ export class Utils {
   /**
    * 异步读取文件的核心实现
    */
-  private static async readFileAsync(filePath: string): Promise<Uint8Array | null> {
+  static async getFileBytesAsync(filePath: string): Promise<Uint8Array | null> {
     // 检查文件路径是否有效
     if (!filePath || filePath.trim().length === 0) {
-      LogUtils.e('readFileAsync: filePath is empty');
+      LogUtils.e('getFileBytesAsync: filePath is empty');
       return null;
     }
 
     // 检查文件是否存在
     const exists = await fs.access(filePath).then(() => true).catch(() => false);
     if (!exists) {
-      LogUtils.e(`readFileAsync: file does not exist: ${filePath}`);
+      LogUtils.e(`getFileBytesAsync: file does not exist: ${filePath}`);
       return null;
     }
 
     // 获取文件状态信息
     const stat = await fs.stat(filePath);
     if (!stat.isFile()) {
-      LogUtils.e(`readFileAsync: path is not a file: ${filePath}`);
+      LogUtils.e(`getFileBytesAsync: path is not a file: ${filePath}`);
       return null;
     }
 
     // 检查文件大小
     const fileSize = stat.size;
     if (fileSize <= 0) {
-      LogUtils.w(`readFileAsync: file is empty: ${filePath}`);
+      LogUtils.w(`getFileBytesAsync: file is empty: ${filePath}`);
       return new Uint8Array(0);
     }
 
@@ -323,11 +276,11 @@ export class Utils {
       const readSize = await fs.read(file.fd, buffer);
 
       if (readSize !== fileSize) {
-        LogUtils.w(`readFileAsync: read size (${readSize}) != file size (${fileSize})`);
+        LogUtils.w(`getFileBytesAsync: read size (${readSize}) != file size (${fileSize})`);
       }
 
       const uint8Array = new Uint8Array(buffer, 0, readSize);
-      LogUtils.d(`readFileAsync: successfully read ${readSize} bytes from ${filePath}`);
+      LogUtils.d(`getFileBytesAsync: successfully read ${readSize} bytes from ${filePath}`);
       return uint8Array;
 
     } finally {
@@ -336,7 +289,23 @@ export class Utils {
     }
   }
 
-  // ========== rawfile资源文件操作工具 ==========
+  /**
+   * 读取本地文件内容为字符串（异步）
+   * @param filePath 文件路径
+   * @returns Promise<string | null> 文件内容字符串，失败返回null
+   */
+  static async getFileStringAsync(filePath: string): Promise<string | null> {
+    try {
+      const bytes = await Utils.getFileBytesAsync(filePath);
+      if (!bytes) {
+        return null;
+      }
+      return Utils.uint8ArrayToString(bytes);
+    } catch (error) {
+      LogUtils.e(`getFileStringAsync error for path ${filePath}: ${error}`);
+      return null;
+    }
+  }
 
   /**
    * 从rawfile目录加载文件内容为字符串
@@ -344,9 +313,9 @@ export class Utils {
    * @param fileName 文件名
    * @returns 文件内容字符串，失败返回null
    */
-  static async loadAsString(context: common.UIAbilityContext, fileName: string): Promise<string | null> {
+  static async loadRawFileAsString(context: common.UIAbilityContext, fileName: string): Promise<string | null> {
     try {
-      const fileData = await Utils.loadAsBytes(context, fileName);
+      const fileData = await Utils.loadRawFileAsBytes(context, fileName);
       if (!fileData) {
         return null;
       }
@@ -366,7 +335,7 @@ export class Utils {
    * @param fileName 文件名
    * @returns 文件内容字节数组，失败返回null
    */
-  static async loadAsBytes(context: common.UIAbilityContext, fileName: string): Promise<Uint8Array | null> {
+  static async loadRawFileAsBytes(context: common.UIAbilityContext, fileName: string): Promise<Uint8Array | null> {
     try {
       const resourceMgr = context.resourceManager;
       const fileData = await resourceMgr.getRawFileContent(fileName);
@@ -375,122 +344,6 @@ export class Utils {
       return fileData;
     } catch (error) {
       LogUtils.e(`loadAsBytes failed: ${fileName}, error: ${error}`);
-      return null;
-    }
-  }
-
-  /**
-   * 检查rawfile文件是否存在
-   * @param context 应用上下文
-   * @param fileName 文件名
-   * @returns 文件是否存在
-   */
-  static async fileExists(context: common.UIAbilityContext, fileName: string): Promise<boolean> {
-    try {
-      const resourceMgr = context.resourceManager;
-      await resourceMgr.getRawFileContent(fileName);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  /**
-   * 获取rawfile文件列表
-   * @param context 应用上下文
-   * @param dirPath 目录路径，空字符串表示根目录
-   * @returns 文件列表
-   */
-  static async listRawFiles(context: common.UIAbilityContext, dirPath: string = ''): Promise<string[]> {
-    try {
-      const resourceMgr = context.resourceManager;
-      const fileList = await resourceMgr.getRawFileList(dirPath);
-
-      LogUtils.d(`listRawFiles success: ${dirPath}, count: ${fileList.length}`);
-      return fileList;
-    } catch (error) {
-      LogUtils.e(`listRawFiles failed: ${dirPath}, error: ${error}`);
-      return [];
-    }
-  }
-
-  /**
-   * 将rawfile文件复制到临时目录
-   * @param context 应用上下文
-   * @param fileName rawfile中的文件名
-   * @returns 临时文件路径，失败返回null
-   */
-  static async copyRawFileToTemp(context: common.UIAbilityContext, fileName: string): Promise<string | null> {
-    try {
-      const fileData = await Utils.loadAsBytes(context, fileName);
-      if (!fileData) {
-        return null;
-      }
-
-      // 在应用缓存目录创建临时文件
-      const tempFilePath = `${context.cacheDir}/${fileName}`;
-
-      try {
-        // 写入文件
-        const file = fs.openSync(tempFilePath, fs.OpenMode.WRITE_ONLY | fs.OpenMode.CREATE);
-        fs.writeSync(file.fd, fileData.buffer as ArrayBuffer);
-        fs.closeSync(file);
-
-        LogUtils.d(`copyRawFileToTemp success: ${fileName} -> ${tempFilePath}`);
-        return tempFilePath;
-      } catch (writeError) {
-        LogUtils.e(`copyRawFileToTemp write failed: ${fileName}, error: ${writeError}`);
-        return null;
-      }
-    } catch (error) {
-      LogUtils.e(`copyRawFileToTemp failed: ${fileName}, error: ${error}`);
-      return null;
-    }
-  }
-
-  // ========== 特殊格式文件处理工具 ==========
-
-  /**
-   * 读取文件内容为字节数组
-   * @param filePath 文件路径
-   * @returns 字节数组，失败返回null
-   */
-  static async readFileToBytes(filePath: string): Promise<Uint8Array | null> {
-    try {
-      return await Utils.readFileAsync(filePath);
-    } catch (error) {
-      LogUtils.e(`readFileToBytes failed: ${filePath}, error: ${error}`);
-      return null;
-    }
-  }
-
-  /**
-   * 读取文件内容为数字数组
-   * 适用于包含数字列表的文本文件
-   * @param filePath 文件路径
-   * @returns 数字数组，失败返回null
-   */
-  static async readFileToDoubleArray(filePath: string): Promise<number[] | null> {
-    try {
-      const content = await Utils.readFileAsString(filePath);
-      if (!content) {
-        return null;
-      }
-
-      const lines = content.split('\n');
-      const numbers: number[] = [];
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed && !isNaN(Number(trimmed))) {
-          numbers.push(Number(trimmed));
-        }
-      }
-
-      LogUtils.d(`readFileToDoubleArray success: ${filePath}, count: ${numbers.length}`);
-      return numbers;
-    } catch (error) {
-      LogUtils.e(`readFileToDoubleArray failed: ${filePath}, error: ${error}`);
       return null;
     }
   }

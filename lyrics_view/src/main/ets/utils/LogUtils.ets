@@ -3,8 +3,7 @@ import { Constants } from '../constants/Constants';
 import { ConsoleLogger, FileLogger, LogManager } from '../internal/logs';
 
 /**
- * 日志工具类 - HarmonyOS版本
- * 对应Android项目中的LogUtils
+ * 日志工具类
  * 集成了新的日志管理系统，支持控制台和文件双重输出
  */
 export class LogUtils {

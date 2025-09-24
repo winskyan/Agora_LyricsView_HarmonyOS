@@ -8,8 +8,7 @@ import { LogUtils } from '../../utils/LogUtils';
 import { Utils } from '../../utils/Utils';
 
 /**
- * 歌词解析器分发器 - HarmonyOS版本
- * 对应Java项目中的LyricPitchParser
+ * 歌词解析器分发器
  * 负责检测歌词格式并分发给对应的专用解析器
  */
 export class LyricsParser {

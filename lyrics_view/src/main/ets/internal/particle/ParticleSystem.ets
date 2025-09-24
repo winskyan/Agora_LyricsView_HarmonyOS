@@ -1,5 +1,4 @@
 /**
- * HarmonyOS粒子系统 - 对应Android的Leonids库
  * 用于在ScoringView中实现粒子动画效果
  */
 

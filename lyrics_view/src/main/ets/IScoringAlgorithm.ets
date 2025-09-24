@@ -24,7 +24,8 @@ export interface IScoringAlgorithm {
    * @param lineJustFinished        The lyrics line model containing timing and text information
    * @return Integer score for the completed line
    */
-  getLineScore(pitchesForLine: Map<number, number>, indexOfLineJustFinished: number, lineJustFinished: LyricsLineModel): number;
+  getLineScore(pitchesForLine: Map<number, number>, indexOfLineJustFinished: number,
+    lineJustFinished: LyricsLineModel): number;
 
   /**
    * Get the maximum possible score that can be achieved for a line.

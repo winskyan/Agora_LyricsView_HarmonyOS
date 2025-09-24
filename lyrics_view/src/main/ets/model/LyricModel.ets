@@ -3,8 +3,7 @@ import { LyricsLineModel } from './LyricsLineModel';
 import { PitchData } from './PitchData';
 
 /**
- * 歌词数据模型 - HarmonyOS版本
- * 对应Android项目中的LyricModel
+ * 歌词数据模型
  * Model class representing lyrics data for a song.
  * Contains song information, lyrics lines, and pitch data for karaoke functionality.
  */

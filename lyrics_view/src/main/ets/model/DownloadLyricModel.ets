@@ -1,7 +1,7 @@
 import { HttpUrlRequest } from '../net/HttpUrlRequest';
 
 /**
- * 歌词下载请求模型类 - HarmonyOS版本
+ * 歌词下载请求模型类
  * 包含下载请求的相关信息，包括URL、文件路径和HTTP请求对象
  */
 export class DownloadLyricModel {
