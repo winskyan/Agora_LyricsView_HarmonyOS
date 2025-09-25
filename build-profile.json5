@@ -42,6 +42,14 @@
     {
       "name": "lyrics_view",
       "srcPath": "./lyrics_view",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
     }
   ]
 }

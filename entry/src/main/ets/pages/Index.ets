@@ -1,5 +1,11 @@
-import { LyricsView, ScoringView } from 'lyrics_view';
+// 根据配置导入
 import { KaraokeViewModel } from '../viewmodels/KaraokeViewModel';
+
+// 条件导入：根据 isSdkMode 决定导入方式
+// 注意：HarmonyOS 中需要在编译时确定导入，所以这里使用静态导入
+import {
+  BuildProfile, IS_SDK_MODE, LyricsView, ScoringView, getModeDescription
+} from 'lyrics_view';
 
 /**
  * 标准化 MVVM 架构的 Index 页面 (ArkUI V2)
@@ -38,16 +44,35 @@ struct Index {
   @Builder
   HeaderBuilder() {
     Row() {
-      Text(this.viewModel.songInfo.getDescription())
-        .fontSize(12)
-        .fontColor('#333333')
-        .maxLines(2)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Column() {
+        Text(this.viewModel.songInfo.getDescription())
+          .fontSize(12)
+          .fontColor('#333333')
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+        Text(`当前模式: ${getModeDescription()}`)
+          .fontSize(10)
+          .fontColor(IS_SDK_MODE ? '#FF6B35' : '#4CAF50')
+          .margin({ top: 2 })
+
+        Text(`版本: ${BuildProfile.HAR_VERSION}`)
+          .fontSize(9)
+          .fontColor('#666666')
+          .margin({ top: 1 })
+
+        Text(`构建: ${BuildProfile.BUILD_MODE_NAME}`)
+          .fontSize(8)
+          .fontColor('#999999')
+          .margin({ top: 1 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
     }
     .width('100%')
-      .height(40)
-      .padding({ left: 16, right: 16 })
-      .justifyContent(FlexAlign.Start)
+    .height(40)
+    .padding({ left: 16, right: 16 })
+    .justifyContent(FlexAlign.Start)
   }
 
   @Builder
@@ -100,7 +125,7 @@ struct Index {
           .fontWeight(FontWeight.Medium)
       }
       .width('100%')
-        .justifyContent(FlexAlign.Start)
+      .justifyContent(FlexAlign.Start)
 
       // 状态信息显示
       Row() {
@@ -127,22 +152,22 @@ struct Index {
           .layoutWeight(1)
       }
       .width('100%')
-        .justifyContent(FlexAlign.Start)
-        .alignItems(VerticalAlign.Center)
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-      .height(60)
-      .padding({
-        left: 16,
-        right: 16,
-        top: 8,
-        bottom: 8
-      })
-      .backgroundColor('#FFFFFF')
-      .borderRadius(8)
-      .margin({ left: 16, right: 16, bottom: 10 })
-      .alignItems(HorizontalAlign.Start)
-      .justifyContent(FlexAlign.Center)
+    .height(60)
+    .padding({
+      left: 16,
+      right: 16,
+      top: 8,
+      bottom: 8
+    })
+    .backgroundColor('#FFFFFF')
+    .borderRadius(8)
+    .margin({ left: 16, right: 16, bottom: 10 })
+    .alignItems(HorizontalAlign.Start)
+    .justifyContent(FlexAlign.Center)
   }
 
   @Builder
@@ -177,8 +202,8 @@ struct Index {
         })
     }
     .width('100%')
-      .height(50)
-      .justifyContent(FlexAlign.Center)
+    .height(50)
+    .justifyContent(FlexAlign.Center)
   }
 
   @Builder
@@ -201,8 +226,8 @@ struct Index {
         })
     }
     .width('100%')
-      .height(50)
-      .justifyContent(FlexAlign.Center)
+    .height(50)
+    .justifyContent(FlexAlign.Center)
   }
 
   @Builder
@@ -228,16 +253,16 @@ struct Index {
           this.ScoringViewBuilder()
         }
         .width('100%')
-          .height(200)
-          .margin({ bottom: 20 })
+        .height(200)
+        .margin({ bottom: 20 })
 
         // 歌词视图区域（纯净，无覆盖层）
         Row() {
           this.LyricsViewBuilder()
         }
         .width('100%')
-          .height(280)
-          .margin({ bottom: 10 })
+        .height(280)
+        .margin({ bottom: 10 })
 
         // 状态信息区域（独立区域）
         this.StatusBarBuilder()
@@ -246,10 +271,10 @@ struct Index {
         this.ControlButtonsBuilder()
       }
       .width('100%')
-        .height('100%')
+      .height('100%')
     }
     .width('100%')
-      .height('100%')
-      .backgroundColor('#F5F5F5')
+    .height('100%')
+    .backgroundColor('#F5F5F5')
   }
 }

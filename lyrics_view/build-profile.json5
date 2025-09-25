@@ -9,7 +9,7 @@
   },
   "buildOptionSet": [
     {
-      "name": "release",
+      "name": "debug",
       "arkOptions": {
         "obfuscation": {
           "ruleOptions": {
@@ -25,11 +25,33 @@
       },
       "nativeLib": {
         "debugSymbol": {
-          "strip": true,
+          "strip": false,
           "exclude": []
         }
       }
     },
+    {
+      "name": "release",
+      "arkOptions": {
+        "obfuscation": {
+          "ruleOptions": {
+            "enable": true,
+            "files": [
+              "./obfuscation-rules.txt"
+            ]
+          },
+          "consumerFiles": [
+            "./consumer-rules.txt"
+          ]
+        }
+      },
+      "nativeLib": {
+        "debugSymbol": {
+          "strip": true,
+          "exclude": []
+        }
+      }
+    }
   ],
   "targets": [
     {

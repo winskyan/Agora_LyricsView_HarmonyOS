@@ -1,10 +1,17 @@
 {
   "name": "lyrics_view",
   "version": "1.0.0",
-  "description": "Please describe the basic information.",
+  "description": "HarmonyOS LyricsView component with karaoke functionality",
   "main": "Index.ets",
-  "author": "",
+  "author": "Agora",
   "license": "Apache-2.0",
+  "keywords": [
+    "lyrics",
+    "karaoke",
+    "harmonyos",
+    "arkts"
+  ],
+  "repository": "https://github.com/AgoraIO-Community/Agora-LyricsView-HarmonyOS",
   "dependencies": {
     "liblyrics_view.so": "file:./src/main/cpp/types/liblyrics_view"
   }

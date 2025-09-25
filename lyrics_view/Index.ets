@@ -34,6 +34,34 @@ export { LyricsCutter } from './src/main/ets/utils/LyricsCutter';
 
 export { Utils } from './src/main/ets/utils/Utils';
 
+// 导出构建信息
+export { default as BuildProfile } from './BuildProfile';
+
+// 导出项目配置
+export {
+  AUTHOR,
+  DESCRIPTION,
+  FULL_HAR_NAME,
+  HAR_NAME,
+  IS_SDK_MODE,
+  IS_SOURCE_MODE,
+  LICENSE,
+  OUTPUT_DIR,
+  PROJECT_NAME,
+  ProjectConfig,
+  REPOSITORY,
+  SDK_MODE,
+  SIGNING_ENABLED,
+  VERSION,
+  VERSION_NAME,
+  getBuildInfo,
+  getConfigSummary,
+  getModeDescription,
+  getSdkInfo,
+  getVersionInfo,
+  isUsingSdk
+} from './src/main/ets/config/ProjectConfig';
+
 // 导出下载器相关类
 export {
   DownloadError,
