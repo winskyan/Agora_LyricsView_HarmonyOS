@@ -2,7 +2,7 @@ import { LyricType } from '../constants/LyricType';
 import { LyricMachine, OnLyricListener } from '../internal/LyricMachine';
 import { LyricModel } from '../model/LyricModel';
 import { LyricsLineModel, Tone } from '../model/LyricsLineModel';
-import { EventBus, KaraokeEvents, LyricsEvents } from '../utils/EventBus';
+import { EventBus, LyricsEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
 /**
@@ -65,9 +65,13 @@ export struct LyricsView {
   @Param textGravity: number = 0;
   // Internal state
   /** The lyrics state machine managing lyrics progression */
-  @Local private mLyricMachine: LyricMachine | null = null;
+  private mLyricMachine: LyricMachine | null = null;
   /** Index of the currently displayed lyrics line */
   @Local private mIndexOfCurrentLine: number = -1;
+  /** 响应式的歌词模型副本 */
+  @Local private lyricsModel: LyricModel | null = null;
+  /** 响应式的歌词行数组 */
+  @Local private lyricsLines: LyricsLineModel[] = [];
   /** Current timestamp in the lyrics playback */
   @Local private mCurrentTime: number = 0;
   @Local private mDraggingInProgress: boolean = false;
@@ -106,6 +110,11 @@ export struct LyricsView {
    */
   requestRefreshUi(): void {
     if (this.mLyricMachine) {
+      // 同步更新响应式状态
+      const currentModel = this.mLyricMachine.getLyricsModel();
+      this.lyricsModel = currentModel;
+      this.lyricsLines = currentModel?.lines || [];
+
       this.updateByProgress(this.mLyricMachine.getCurrentLyricProgress());
     }
   }
@@ -132,9 +141,11 @@ export struct LyricsView {
    * @return true if lyrics are not available or not initialized
    */
   private uninitializedOrNoLyrics(): boolean {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    return !this.mLyricMachine || !lyricsModel ||
-      !lyricsModel.lines || lyricsModel.lines.length === 0;
+    const hasLyricMachine = !!this.mLyricMachine;
+    const hasModel = !!this.lyricsModel;
+    const hasLines = this.lyricsLines.length > 0;
+
+    return !hasLyricMachine || !hasModel || !hasLines;
   }
 
   /**
@@ -316,11 +327,10 @@ export struct LyricsView {
    * Gets the countdown value for prelude indicator
    */
   private getPreludeCountDown(): number {
-    const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    if (!lyricsModel) {
+    if (!this.lyricsModel) {
       return 0;
     }
-    return Math.ceil((lyricsModel.preludeEndPosition - this.mCurrentTime) / 1000);
+    return Math.ceil((this.lyricsModel.preludeEndPosition - this.mCurrentTime) / 1000);
   }
 
   /**
@@ -1822,7 +1832,7 @@ export struct LyricsView {
    */
   @Builder
   PreludeIndicatorBuilder() {
-    if (this.enablePreludeEndPositionIndicator && this.mLyricMachine?.getLyricsModel() &&
+    if (this.enablePreludeEndPositionIndicator && this.lyricsModel &&
       this.getPreludeCountDown() > 0) {
       Row() {
         // Indicator 1
@@ -1864,14 +1874,13 @@ export struct LyricsView {
       // Prelude indicator
       this.PreludeIndicatorBuilder()
 
-      // Main lyrics content
       if (this.uninitializedOrNoLyrics()) {
         this.NoLyricsBuilder()
       } else {
         // 使用 Stack 来支持绝对定位
         Stack() {
-          if (this.mLyricMachine?.getLyricsModel()?.lines) {
-            ForEach(this.mLyricMachine?.getLyricsModel()?.lines, (line: LyricsLineModel, index: number) => {
+          if (this.lyricsLines.length > 0) {
+            ForEach(this.lyricsLines, (line: LyricsLineModel, index: number) => {
               // 根据开关决定是否绘制该行
               if (this.shouldRenderLine(index)) {
                 this.EnhancedLyricsLineBuilder(line, index)
@@ -1945,9 +1954,14 @@ export struct LyricsView {
     const setLyricDataHandler = (lyricModel: LyricModel) => {
       if (this.mLyricMachine) {
         this.mLyricMachine.prepare(lyricModel);
-        // mLyricsModel removed - data now managed by mLyricMachine
+
+        // 立即同步更新响应式状态
+        const currentModel = this.mLyricMachine.getLyricsModel();
+        this.lyricsModel = currentModel;
+        this.lyricsLines = currentModel?.lines || [];
+
         this.forceCheckLineWrap();
-        LogUtils.d(`LyricsView: Lyric data set successfully, getLyricsModel: ${!!this.mLyricMachine.getLyricsModel()}`);
+        LogUtils.d(`LyricsView: Lyric data set successfully, model: ${!!this.lyricsModel}, lines: ${this.lyricsLines.length}`);
       } else {
         LogUtils.e('LyricsView: mLyricMachine is null when receiving SET_LYRIC_DATA event');
       }

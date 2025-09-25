@@ -61,10 +61,13 @@ export class LyricMachine {
     if (!model || !model.lines || model.lines.length === 0) {
       LogUtils.e("Invalid lyrics model, use built-in EMPTY_LYRICS_MODEL");
       this.mLyricsModel = LyricMachine.EMPTY_LYRICS_MODEL;
-      return;
+    } else {
+      this.mLyricsModel = model;
     }
 
-    this.mLyricsModel = model;
+    // 通知UI刷新
+    this.mListener.requestRefreshUi();
+    LogUtils.d(`LyricMachine: prepare completed, model set: ${!!this.mLyricsModel}, lines: ${this.mLyricsModel?.lines?.length || 0}`);
   }
 
   /**
