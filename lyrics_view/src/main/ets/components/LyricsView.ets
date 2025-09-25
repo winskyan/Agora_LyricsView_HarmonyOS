@@ -396,9 +396,16 @@ export struct LyricsView {
       oldTargetY = centerY - currentLineHeight;
     }
 
+    // ArkUI V2 优化：更精确的位置计算，避免重叠
     // 设置起始位置
     this.transitioningFromY = centerY; // 过渡行起始位置：中心
-    this.newCurrentFromY = centerY + currentLineHeight; // 新当前行起始位置：下一行
+
+    // 🎯 V2 修复：新当前行起始位置更精确，避免与过渡行重叠
+    const nextLine = lyricsModel?.lines?.[toLine];
+    const nextLineOffset = nextLine ?
+      this.getDynamicLineHeight(nextLine, this.currentLineTextSize) + this.lineSpacing :
+      this.getLineHeight() + this.lineSpacing;
+    this.newCurrentFromY = centerY + nextLineOffset; // 新当前行起始位置：确保不重叠
 
     // 设置目标位置
     this.transitioningToY = oldTargetY; // 过渡行目标位置：上一行
@@ -406,12 +413,12 @@ export struct LyricsView {
 
     this.animationKey = Date.now(); // 更新动画键值，强制重新渲染
 
-    // 位置动画开始后很快开始样式过渡，创造重叠效果
+    // ArkUI V2 优化：减少延迟，让动画更同步
     setTimeout(() => {
       if (this.isAnimating) {
         this.styleTransitioning = true; // 开始样式过渡
       }
-    }, 150); // 位置动画开始150ms后开始样式过渡
+    }, 50); // V2 优化：减少延迟到50ms，让动画更同步
 
     // 动画完成后清除状态
     setTimeout(() => {
@@ -419,7 +426,7 @@ export struct LyricsView {
       this.transitioningFromIndex = -1; // 清除过渡状态
       this.newCurrentTransitioning = false; // 清除新当前行过渡状态
       this.styleTransitioning = false; // 清除样式过渡状态
-    }, 500); // 总动画时长：150ms延迟 + 300ms样式动画 + 50ms缓冲
+    }, 400); // V2 优化：调整总时长为400ms，与动画时长匹配
   }
 
   /**
@@ -1228,10 +1235,11 @@ export struct LyricsView {
         y: this.getTransitioningScale(index)
       })
       .animation({
-        duration: 300, // 位置和缩放动画
-        curve: Curve.EaseInOut,
+        duration: 350, // ArkUI V2 优化：稍微延长动画时间，让过渡更平滑
+        curve: Curve.EaseOut, // 使用 EaseOut 让动画结尾更自然
         iterations: 1,
-        playMode: PlayMode.Normal
+        playMode: PlayMode.Normal,
+        delay: 0 // 确保没有延迟，立即开始
       })
     } else {
       // 不换行模式：使用Scroll组件避免字体变化时的闪动
@@ -1262,10 +1270,11 @@ export struct LyricsView {
         y: this.getTransitioningScale(index),
       })
       .animation({
-        duration: 300, // 位置和缩放动画
-        curve: Curve.EaseInOut,
+        duration: 350, // ArkUI V2 优化：稍微延长动画时间，让过渡更平滑
+        curve: Curve.EaseOut, // 使用 EaseOut 让动画结尾更自然
         iterations: 1,
-        playMode: PlayMode.Normal
+        playMode: PlayMode.Normal,
+        delay: 0 // 确保没有延迟，立即开始
       })
     }
   }
@@ -1639,21 +1648,14 @@ export struct LyricsView {
   }
 
   /**
-   * 计算过渡行的缩放比例
-   */
-  private getTransitioningLineScale(index: number): number {
-    // 过渡行直接使用目标位置的缩放比例（普通行大小）
-    const distance = Math.abs(index - this.mIndexOfCurrentLine);
-    return Math.max(0.95, 1.0 - (distance * 0.03));
-  }
-
-  /**
    * 获取过渡行的Y位置（使用动画插值）
    */
   private getTransitioningYPosition(): number {
     const currentTime = Date.now();
     const timeSinceAnimation = currentTime - this.animationKey;
-    const isInStartPhase = timeSinceAnimation < 50;
+
+    // ArkUI V2 优化：使用更短的起始阶段，让动画立即开始，避免重叠
+    const isInStartPhase = timeSinceAnimation < 32; // 约1帧的时间，确保动画立即开始
 
     if (isInStartPhase) {
       return this.transitioningFromY; // 起始位置
@@ -1668,7 +1670,9 @@ export struct LyricsView {
   private getTransitioningHighlightLineTextSize(): number {
     const currentTime = Date.now();
     const timeSinceAnimation = currentTime - this.animationKey;
-    const isInStartPhase = timeSinceAnimation < 50;
+
+    // ArkUI V2 优化：与位置动画保持同步
+    const isInStartPhase = timeSinceAnimation < 32;
 
     if (isInStartPhase) {
       return this.currentLineTextSize; // 起始字体大小
@@ -1683,7 +1687,9 @@ export struct LyricsView {
   private getTransitioningHighlightLineTextColor(): string {
     const currentTime = Date.now();
     const timeSinceAnimation = currentTime - this.animationKey;
-    const isInStartPhase = timeSinceAnimation < 50;
+
+    // ArkUI V2 优化：与其他动画保持同步
+    const isInStartPhase = timeSinceAnimation < 32;
 
     if (isInStartPhase) {
       return this.currentLineHighlightedTextColor; // 起始颜色
@@ -1698,22 +1704,7 @@ export struct LyricsView {
   private getTransitioningHighlightLineFontWeight(): FontWeight {
     const currentTime = Date.now();
     const timeSinceAnimation = currentTime - this.animationKey;
-    const isInStartPhase = timeSinceAnimation < 50;
-
-    if (isInStartPhase) {
-      return FontWeight.Bold;
-    } else {
-      return FontWeight.Normal;
-    }
-  }
-
-  /**
-   * 获取过渡行的字体颜色（使用动画插值）
-   */
-  private getTransitioningHighlightLineScale(): FontWeight {
-    const currentTime = Date.now();
-    const timeSinceAnimation = currentTime - this.animationKey;
-    const isInStartPhase = timeSinceAnimation < 50;
+    const isInStartPhase = timeSinceAnimation < 32;
 
     if (isInStartPhase) {
       return FontWeight.Bold;
@@ -1728,7 +1719,9 @@ export struct LyricsView {
   private getTransitioningScale(index: number): number {
     const currentTime = Date.now();
     const timeSinceAnimation = currentTime - this.animationKey;
-    const isInStartPhase = timeSinceAnimation < 50;
+
+    // ArkUI V2 优化：与其他动画保持完全同步，避免重叠
+    const isInStartPhase = timeSinceAnimation < 32;
 
     if (isInStartPhase) {
       // 起始阶段：保持当前行大小（1.0倍）
