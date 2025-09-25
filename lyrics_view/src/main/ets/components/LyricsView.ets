@@ -1206,16 +1206,16 @@ export struct LyricsView {
       // 换行模式：支持多行显示
       Row() {
         Text(this.getLineText(line))
-          .fontSize(this.textSize) // 使用普通行字体大小
-          .fontColor(this.getNormalLineColor(index)) // 使用普通行颜色
-          .fontWeight(FontWeight.Normal) // 使用普通行字重
+          .fontSize(this.getTransitioningHighlightLineTextSize()) // 保持当前行字体大小，通过缩放实现大小变化
+          .fontColor(this.getTransitioningHighlightLineTextColor()) // 使用动态颜色
+          .fontWeight(this.getTransitioningHighlightLineFontWeight()) // 保持当前行字重
           .textAlign(this.getTextAlign())
           .width('100%')
           .maxLines(3) // 最多3行
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .width('100%')
-      .height(this.getDynamicLineHeight(line, this.textSize))
+      .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
       .justifyContent(this.getRowJustifyContent())
       .alignItems(VerticalAlign.Center)
       .position({
@@ -1224,11 +1224,11 @@ export struct LyricsView {
       })
       .opacity(this.getLineOpacity(index))
       .scale({
-        x: this.getTransitioningLineScale(index),
-        y: this.getTransitioningLineScale(index)
+        x: this.getTransitioningScale(index),
+        y: this.getTransitioningScale(index)
       })
       .animation({
-        duration: 400, // 位置和缩放动画
+        duration: 300, // 位置和缩放动画
         curve: Curve.EaseInOut,
         iterations: 1,
         playMode: PlayMode.Normal
@@ -1238,10 +1238,10 @@ export struct LyricsView {
       Scroll() {
         Stack() {
           Text(this.getLineText(line))
-            .fontSize(this.textSize) // 使用普通行字体大小
-            .fontColor(this.getNormalLineColor(index)) // 使用普通行颜色
-            .fontWeight(FontWeight.Normal) // 使用普通行字重
-            .textAlign(this.getTextAlign()) // 左对齐
+            .fontSize(this.getTransitioningHighlightLineTextSize()) // 保持当前行字体大小，通过缩放实现大小变化
+            .fontColor(this.getTransitioningHighlightLineTextColor()) // 使用动态颜色
+            .fontWeight(this.getTransitioningHighlightLineFontWeight()) // 保持当前行字重
+            .textAlign(this.getTextAlign())
             .maxLines(1) // 单行显示
             .textOverflow({ overflow: TextOverflow.None }) // 不显示省略号
             .width('auto') // 让文本自然宽度
@@ -1258,11 +1258,11 @@ export struct LyricsView {
       })
       .opacity(this.getLineOpacity(index))
       .scale({
-        x: this.getTransitioningLineScale(index),
-        y: this.getTransitioningLineScale(index)
+        x: this.getTransitioningScale(index),
+        y: this.getTransitioningScale(index),
       })
       .animation({
-        duration: 400, // 位置和缩放动画
+        duration: 300, // 位置和缩放动画
         curve: Curve.EaseInOut,
         iterations: 1,
         playMode: PlayMode.Normal
@@ -1345,6 +1345,7 @@ export struct LyricsView {
       })
       .animation({
         duration: 400, // 位置和缩放动画
+        delay: this.getAnimationDelay(index),
         curve: Curve.EaseInOut,
         iterations: 1,
         playMode: PlayMode.Normal
@@ -1408,6 +1409,7 @@ export struct LyricsView {
       })
       .animation({
         duration: 400, // 位置和缩放动画
+        delay: this.getAnimationDelay(index),
         curve: Curve.EaseInOut,
         iterations: 1,
         playMode: PlayMode.Normal
@@ -1649,14 +1651,91 @@ export struct LyricsView {
    * 获取过渡行的Y位置（使用动画插值）
    */
   private getTransitioningYPosition(): number {
-    // 在动画刚开始时返回起始位置，然后快速切换到目标位置触发动画
-    // 使用animationKey来判断是否是新动画的开始
     const currentTime = Date.now();
     const timeSinceAnimation = currentTime - this.animationKey;
     const isInStartPhase = timeSinceAnimation < 50;
-    const position = isInStartPhase ? this.transitioningFromY : this.transitioningToY;
 
-    return position;
+    if (isInStartPhase) {
+      return this.transitioningFromY; // 起始位置
+    } else {
+      return this.transitioningToY; // 目标位置，让动画系统处理插值
+    }
+  }
+
+  /**
+   * 获取过渡行的字体大小（使用动画插值）
+   */
+  private getTransitioningHighlightLineTextSize(): number {
+    const currentTime = Date.now();
+    const timeSinceAnimation = currentTime - this.animationKey;
+    const isInStartPhase = timeSinceAnimation < 50;
+
+    if (isInStartPhase) {
+      return this.currentLineTextSize; // 起始字体大小
+    } else {
+      return this.textSize; // 目标字体大小，让动画系统处理插值
+    }
+  }
+
+  /**
+   * 获取过渡行的字体颜色（使用动画插值）
+   */
+  private getTransitioningHighlightLineTextColor(): string {
+    const currentTime = Date.now();
+    const timeSinceAnimation = currentTime - this.animationKey;
+    const isInStartPhase = timeSinceAnimation < 50;
+
+    if (isInStartPhase) {
+      return this.currentLineHighlightedTextColor; // 起始颜色
+    } else {
+      return this.previousLineTextColor; // 目标颜色，让动画系统处理插值
+    }
+  }
+
+  /**
+   * 获取过渡行的字体颜色（使用动画插值）
+   */
+  private getTransitioningHighlightLineFontWeight(): FontWeight {
+    const currentTime = Date.now();
+    const timeSinceAnimation = currentTime - this.animationKey;
+    const isInStartPhase = timeSinceAnimation < 50;
+
+    if (isInStartPhase) {
+      return FontWeight.Bold;
+    } else {
+      return FontWeight.Normal;
+    }
+  }
+
+  /**
+   * 获取过渡行的字体颜色（使用动画插值）
+   */
+  private getTransitioningHighlightLineScale(): FontWeight {
+    const currentTime = Date.now();
+    const timeSinceAnimation = currentTime - this.animationKey;
+    const isInStartPhase = timeSinceAnimation < 50;
+
+    if (isInStartPhase) {
+      return FontWeight.Bold;
+    } else {
+      return FontWeight.Normal;
+    }
+  }
+
+  /**
+   * 获取过渡行的缩放比例（平滑过渡）
+   */
+  private getTransitioningScale(index: number): number {
+    const currentTime = Date.now();
+    const timeSinceAnimation = currentTime - this.animationKey;
+    const isInStartPhase = timeSinceAnimation < 50;
+
+    if (isInStartPhase) {
+      // 起始阶段：保持当前行大小（1.0倍）
+      return this.getLineScale(this.mIndexOfCurrentLine);
+    } else {
+      return this.getLineScale(index);
+    }
   }
 
   /**
