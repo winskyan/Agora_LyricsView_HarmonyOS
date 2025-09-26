@@ -1,8 +1,7 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { KaraokeView, LyricModel, LyricsCutter } from 'lyrics_view';
-import { FileService } from './FileService';
+import fs from '@ohos.file.fs';
 
-const TAG = 'LyricsService';
+import { KaraokeView, LyricModel, LyricsCutter } from 'lyrics_view';
 
 /**
  * 歌词统计信息接口
@@ -15,14 +14,13 @@ export interface LyricsStats {
 
 /**
  * 歌词服务
- * 负责歌词数据的加载和处理
+ * 负责歌词数据的加载和处理，支持从rawfile和MCC两种方式加载
  */
 export class LyricsService {
-  private fileService: FileService;
+  protected readonly TAG: string = 'LyricsView-LyricsService';
   private karaokeView: KaraokeView | null = null;
 
   constructor() {
-    this.fileService = new FileService();
   }
 
   /**
@@ -32,47 +30,77 @@ export class LyricsService {
     this.karaokeView = karaokeView;
   }
 
+
   /**
-   * 加载歌词数据
+   * 从MCC加载歌词数据（新增方式）
+   * @param lyricUrl - 歌词文件路径
+   * @param pitchUrl - 音高文件路径
+   * @param songOffsetBegin - 歌曲开始偏移时间(ms)
+   * @param songOffsetEnd - 歌曲结束偏移时间(ms)
+   * @param lyricOffset - 歌词偏移时间(ms)
    */
-  async loadLyrics(): Promise<LyricModel | null> {
+  async loadLyricsFromMcc(
+    lyricUrl: string,
+    pitchUrl: string,
+    songOffsetBegin: number,
+    songOffsetEnd: number,
+    lyricOffset: number
+  ): Promise<LyricModel | null> {
     try {
-      // 确保文件已准备好
-      if (!this.fileService.checkFilesExist()) {
-        await this.fileService.prepareFiles();
+      this.logDebug(`Loading lyrics from MCC: ${lyricUrl}`);
+      this.logDebug(`Loading pitch from MCC: ${pitchUrl}`);
+      this.logDebug(`Song offset: begin=${songOffsetBegin}, end=${songOffsetEnd}, lyricOffset=${lyricOffset}`);
+
+      // 检查文件是否存在
+      if (!await this.checkFileExists(lyricUrl)) {
+        throw new Error(`Lyric file not found: ${lyricUrl}`);
       }
-
-      const lyricFilePath = this.fileService.getLyricFilePath();
-      const pitchFilePath = this.fileService.getPitchFilePath();
-
-      this.logDebug(`Loading lyrics from: ${lyricFilePath}`);
-      this.logDebug(`Loading pitch from: ${pitchFilePath}`);
 
       // 使用 KaraokeView 解析歌词
       if (!this.karaokeView) {
         throw new Error('KaraokeView not initialized');
       }
 
-      const lyricModel = this.karaokeView.parseLyrics(lyricFilePath, pitchFilePath, true, 0);
+      // 解析歌词，应用偏移量
+      const lyricModel: LyricModel | null = this.karaokeView.parseLyrics(lyricUrl, pitchUrl, true, lyricOffset);
 
       if (!lyricModel) {
-        throw new Error('Failed to parse lyrics');
+        throw new Error('Failed to parse lyrics from MCC');
       }
 
-      this.logDebug(`Successfully parsed lyrics with ${lyricModel.lines?.length || 0} lines`);
+      this.logDebug(`Successfully parsed MCC lyrics with ${lyricModel.lines?.length || 0} lines`);
 
-      // 裁剪歌词（如果需要）
-      const cutResult = LyricsCutter.cut(lyricModel, 0, lyricModel.duration);
-      if (cutResult !== null) {
-        this.logDebug(`Successfully cut lyrics, duration: ${cutResult.duration}ms`);
-        return cutResult;
+      // 如果有歌曲偏移，需要裁剪歌词
+      if (songOffsetBegin > 0 || songOffsetEnd > 0) {
+        const startTime = songOffsetBegin;
+        const endTime: number = songOffsetEnd > 0 ? songOffsetEnd : (lyricModel.duration || 0);
+
+        const cutResult: LyricModel | null = LyricsCutter.cut(lyricModel, startTime, endTime);
+        if (cutResult !== null) {
+          this.logDebug(`Successfully cut MCC lyrics, duration: ${cutResult.duration}ms`);
+          return cutResult;
+        }
       }
 
       return lyricModel;
 
     } catch (error) {
-      this.logDebug(`Failed to load lyrics: ${error}`);
+      this.logDebug(`Failed to load lyrics from MCC: ${error}`);
       return null;
+    }
+  }
+
+  /**
+   * 检查文件是否存在
+   * @param filePath - 文件路径
+   */
+  private async checkFileExists(filePath: string): Promise<boolean> {
+    try {
+      const stat = await fs.stat(filePath);
+      return stat.isFile();
+    } catch (error) {
+      this.logDebug(`File check failed: ${filePath}, error: ${error}`);
+      return false;
     }
   }
 
@@ -109,6 +137,6 @@ export class LyricsService {
    * 调试日志
    */
   private logDebug(message: string): void {
-    hilog.debug(0x0000, TAG, `%{public}s`, message);
+    hilog.debug(0x0000, this.TAG, `%{public}s`, message);
   }
 }

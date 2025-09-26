@@ -1,7 +1,7 @@
 /**
  * 项目配置常量
  * 此文件由 scripts/generate-config.js 自动生成，请勿手动修改
- * 生成时间: 2025-09-25T11:39:45.753Z
+ * 生成时间: 2025-09-26T09:31:27.272Z
  * 源文件: project-config.json
  * 
  * 此文件会被导出到 lyrics_view 模块，供其他模块使用
@@ -28,13 +28,13 @@ export const REPOSITORY = 'https://github.com/AgoraIO-Community/Agora-LyricsView
 
 // ========== SDK 配置 ==========
 /** SDK 模式开关 */
-export const SDK_MODE = true;
+export const SDK_MODE = false;
 
 /** 是否为 SDK 模式 */
-export const IS_SDK_MODE = true;
+export const IS_SDK_MODE = false;
 
 /** 是否为源码模式 */
-export const IS_SOURCE_MODE = false;
+export const IS_SOURCE_MODE = true;
 
 // ========== 构建配置 ==========
 /** HAR 包名称 */

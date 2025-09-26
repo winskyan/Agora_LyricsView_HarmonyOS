@@ -6,6 +6,21 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "lyrics_view": "file:../lyrics_view"
+    "lyrics_view": "file:../lyrics_view",
+    "@shengwang/rtc-full": "file:./libs/AgoraRtcSdk.har"
+  },
+  "devDependencies": {},
+  "peerDependencies": {},
+  "har": {
+    "dependencies": [
+      {
+        "name": "lyrics_view",
+        "path": "../lyrics_view"
+      },
+      {
+        "name": "@shengwang/rtc-full",
+        "path": "./libs/AgoraRtcSdk.har"
+      }
+    ]
   }
 }

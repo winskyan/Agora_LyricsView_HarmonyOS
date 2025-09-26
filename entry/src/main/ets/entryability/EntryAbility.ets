@@ -33,7 +33,7 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
     // 加载 MVVM 架构的页面
-    windowStage.loadContent('pages/Index', (err) => {
+    windowStage.loadContent('pages/MccIndex', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
         return;

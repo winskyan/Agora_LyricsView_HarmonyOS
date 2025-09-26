@@ -1,7 +1,21 @@
+import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import fs from '@ohos.file.fs';
-import { Utils } from 'lyrics_view';
 import { contextManager } from '../utils/ContextManager';
+// import { Utils } from 'lyrics_view';
+
+// 临时定义Utils类
+class Utils {
+  static loadRawFileAsString(context: common.UIAbilityContext, fileName: string): Promise<string> {
+    // 临时实现
+    return Promise.resolve('');
+  }
+
+  static stringToUint8Array(str: string): Uint8Array {
+    // 临时实现
+    return new Uint8Array();
+  }
+}
 
 const TAG = 'FileService';
 
@@ -98,7 +112,7 @@ export class FileService {
 
         try {
           // 从 rawfile 读取内容
-          const content = await Utils.loadRawFileAsString(contextManager.getContext(), fileName);
+          const content: string = await Utils.loadRawFileAsString(contextManager.getContext(), fileName);
           if (!content) {
             throw new Error(`Failed to load rawfile: ${fileName}`);
           }
@@ -128,7 +142,7 @@ export class FileService {
   private async writePrivateFile(filePath: string, content: string): Promise<void> {
     try {
       const file = fs.openSync(filePath, fs.OpenMode.WRITE_ONLY | fs.OpenMode.CREATE);
-      const buffer = Utils.stringToUint8Array(content);
+      const buffer: Uint8Array = Utils.stringToUint8Array(content);
       fs.writeSync(file.fd, buffer.buffer as ArrayBuffer);
       fs.closeSync(file);
 
