@@ -1513,7 +1513,7 @@ export struct LyricsView {
 
   /**
    * 计算当前行的高亮进度（0-1之间）
-   * 基于字符级别的精确进度计算
+   * 基于时间的精确进度计算，避免中文字符计算偏快
    */
   private calculateLineProgress(line: LyricsLineModel): number {
     if (!line.tones || line.tones.length === 0) {
@@ -1529,27 +1529,15 @@ export struct LyricsView {
       return 1;
     }
 
-    // 基于字符级别的进度计算
-    let totalChars = 0;
-    let playedChars = 0;
+    // 基于时间的进度计算，更准确地反映播放进度
+    const lineDuration = lineEndTime - lineStartTime;
+    const playedTime = this.mCurrentTime - lineStartTime;
 
-    for (const tone of line.tones) {
-      const charLength = tone.word.length;
-      totalChars += charLength;
-
-      if (this.mCurrentTime >= tone.begin) {
-        if (this.mCurrentTime >= tone.end) {
-          // 整个字符都已播放
-          playedChars += charLength;
-        } else {
-          // 字符正在播放中，计算部分进度
-          const toneProgress = (this.mCurrentTime - tone.begin) / (tone.end - tone.begin);
-          playedChars += charLength * toneProgress;
-        }
-      }
+    if (lineDuration <= 0) {
+      return 1;
     }
 
-    return totalChars > 0 ? Math.min(1, playedChars / totalChars) : 0;
+    return Math.min(1, playedTime / lineDuration);
   }
 
   /**

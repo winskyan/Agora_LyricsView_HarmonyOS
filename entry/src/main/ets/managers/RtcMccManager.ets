@@ -155,7 +155,8 @@ export class RtcMccManager {
   };
   private mccScoreEventHandler: IScoreEventHandler = {
     onPitch: (internalSongCode: number, rawScoreData: RawScoreData) => {
-      ExampleLogUtils.logDebug(RtcMccManager.TAG, `onPitch songCode:${internalSongCode} rawScoreData:${rawScoreData}`);
+      ExampleLogUtils.logDebug(RtcMccManager.TAG,
+        `onPitch songCode:${internalSongCode} rawScoreData.speakerPitch:${rawScoreData.speakerPitch} rawScoreData.pitchScore:${rawScoreData.pitchScore}`);
       Promise.resolve().then(() => {
         this.callback?.onMusicPitchScore?.(BigInt(internalSongCode), rawScoreData.speakerPitch, rawScoreData.pitchScore,
           Number(rawScoreData.progressInMs));
@@ -345,7 +346,7 @@ export class RtcMccManager {
 
     this.config = new MusicContentCenterConfiguration();
     this.config.eventHandler = this.mccEventHandler;
-    //this.config.scoreEventHandler = this.mccScoreEventHandler;
+    this.config.scoreEventHandler = this.mccScoreEventHandler;
 
     const ret: number = this.musicCenter.initialize(this.config);
     if (ret !== 0) {
