@@ -124,6 +124,7 @@ export struct LyricsView {
    * Clears all loaded lyrics and internal state.
    */
   reset(): void {
+
     this.resetInternal();
   }
 
@@ -237,9 +238,10 @@ export struct LyricsView {
   private resetInternal(): void {
     this.mCurrentTime = 0;
     this.mCurrentLineTranslateX = 0;
+    this.mIndexOfCurrentLine = -1;
 
-    // 停止文本滚动动画
-    this.stopTextScrollAnimation();
+    this.lyricsModel = null;
+    this.lyricsLines = [];
   }
 
   /**
@@ -2088,7 +2090,6 @@ export struct LyricsView {
         }
 
         resetUi(): void {
-          LogUtils.d('LyricsView: resetUi called');
           this.lyricsView.reset();
         }
 

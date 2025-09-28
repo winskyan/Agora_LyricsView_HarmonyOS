@@ -105,6 +105,7 @@ export class MusicManager implements IMccCallback {
         this.musicResources = MusicResourcePool.getVendor2MusicList();
         break;
     }
+    this.playMusic();
   }
 
   /**

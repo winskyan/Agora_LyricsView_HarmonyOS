@@ -269,6 +269,8 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     // 先停止当前播放
     this.stopPlayback();
 
+    this.karaokeView?.reset();
+
     // 切换服务类型
     this.currentVendorId =
       this.currentVendorId === MusicContentCenterVendorId.DEFAULT ? MusicContentCenterVendorId.VENDOR_2 :

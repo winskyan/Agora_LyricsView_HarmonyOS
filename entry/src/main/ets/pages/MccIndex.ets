@@ -82,7 +82,7 @@ struct MccIndex {
       upcomingLineTextColor: '#FFFFFF',
       lineSpacing: 15,
       paddingTop: 15,
-      labelWhenNoLyrics: '正在加载歌词...',
+      labelWhenNoLyrics: '暂无歌词',
       enableLineWrap: false,
       enableDragging: true,
       enablePreviousLines: true,
@@ -109,20 +109,6 @@ struct MccIndex {
         Text(this.viewModel.playbackState.playingProgress)
           .fontSize(12)
           .fontColor('#333333')
-          .fontWeight(FontWeight.Medium)
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.Start)
-
-      // 频道信息显示
-      Row() {
-        Text('频道: ')
-          .fontSize(12)
-          .fontColor('#666666')
-
-        Text(this.viewModel.getChannelId() || '未连接')
-          .fontSize(12)
-          .fontColor(this.viewModel.isChannelJoined() ? '#4CAF50' : '#FF5722')
           .fontWeight(FontWeight.Medium)
       }
       .width('100%')
