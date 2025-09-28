@@ -20,6 +20,7 @@ import {
   RtcStats,
   SrcInfo
 } from "@shengwang/rtc-full";
+import { Utils } from 'lyrics_view';
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { ExampleConstants } from '../utils/ExampleConstants';
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
@@ -372,7 +373,7 @@ export class RtcMccManager {
       appKey: this.ysdAppKey,
       token: this.ysdToken,
       userId: this.ysdUserId,
-      deviceId: "341B43975E830CEB9F9925643F343B9C",
+      deviceId: Utils.generateDeviceId(),
       urlTokenExpireTime: 15 * 60,
       chargeMode: 2,
       channelId: this.channelId,

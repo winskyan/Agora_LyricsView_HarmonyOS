@@ -10,6 +10,51 @@ export class Utils {
   // ========== 字符串处理工具 ==========
 
   /**
+   * 生成指定长度的随机字符串
+   * @param length 字符串长度
+   * @param charset 字符集，默认为大写字母和数字
+   * @returns 随机字符串
+   */
+  static generateRandomString(length: number, charset?: string): string {
+    // 默认字符集：大写字母和数字（适合生成设备ID等）
+    const defaultCharset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const chars = charset || defaultCharset;
+
+    if (length <= 0) {
+      return '';
+    }
+
+    if (chars.length === 0) {
+      throw new Error('Charset cannot be empty');
+    }
+
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * chars.length);
+      result += chars.charAt(randomIndex);
+    }
+
+    return result;
+  }
+
+  /**
+   * 生成32位随机设备ID
+   * @returns 32位大写字母和数字组成的设备ID
+   */
+  static generateDeviceId(): string {
+    return Utils.generateRandomString(32);
+  }
+
+  /**
+   * 生成指定长度的十六进制随机字符串
+   * @param length 字符串长度
+   * @returns 十六进制随机字符串
+   */
+  static generateRandomHex(length: number): string {
+    return Utils.generateRandomString(length, '0123456789ABCDEF');
+  }
+
+  /**
    * 移除字符串开头的BOM标记
    * @param str 输入字符串
    * @returns 移除BOM后的字符串
