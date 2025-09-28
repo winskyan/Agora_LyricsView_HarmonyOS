@@ -129,8 +129,8 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
         if ((rtcTokenReceived && rtmTokenReceived && ysdTokenReceived) || hasError) {
           if (!hasError) {
             ExampleLogUtils.logDebug(this.TAG, 'All tokens received, initializing MusicManager');
-            this.musicManager.init(context, this.appId, KeyCenter.CHANNEL_NAME, KeyCenter.RTC_TOKEN,
-              KeyCenter.RTM_TOKEN,
+            this.musicManager.init(context, this.appId, KeyCenter.CHANNEL_NAME, this.rtcToken,
+              this.rtmToken,
               this.userId,
               this.ysdAppId, this.ysdAppKey, this.ysdUserId, this.ysdToken, this)
               .then(() => resolve())

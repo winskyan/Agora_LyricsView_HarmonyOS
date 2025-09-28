@@ -1,5 +1,6 @@
-import { ExampleLogUtils } from './ExmapleLogUtils';
+import { BuildConfig } from './BuildConfig';
 import { ExampleConstants } from './ExampleConstants';
+import { ExampleLogUtils } from './ExmapleLogUtils';
 import { TokenHttpClient, TokenHttpResponse } from './TokenHttpClient';
 
 /**
@@ -73,20 +74,17 @@ export interface YSDTokenCallback {
 export class KeyCenter {
   private static readonly TAG: string = ExampleConstants.APP_TAG + '-KeyCenter';
   private static readonly USER_MAX_UID: number = 10000;
-  // 从local.properties读取的配置（实际项目中应该从配置文件读取）
-  public static readonly APP_ID: string = '695752b975654e44bea00137d084c71c'; // 替换为实际APP_ID
-  private static readonly APP_CERTIFICATE: string = 'a82ea1f27ed64704b31629a7f19e1b37'; // 替换为实际APP_CERTIFICATE
-
-  public static readonly RTC_TOKEN =
-    "006695752b975654e44bea00137d084c71cIADj9o+moPGTZf3zWU7AsMJaJdATPqfhuhRzZpInxZiLBkMRD0lh03IJIgAYH3wAhy3aaAQAAQCDLdpoAgCDLdpoAwCDLdpoBACDLdpo";
-  public static readonly RTM_TOKEN =
-    "006695752b975654e44bea00137d084c71cIADLZ3gttnr5WVKDYGW+lx4ZVqXMUa0SMsf/b/rwFssBwGHTcgkAAAAAEACY6m4+Vy3aaAEA6ANXLdpo";
+  // 从 BuildConfig 读取配置（构建时从 local.properties 生成）
+  public static readonly APP_ID: string = BuildConfig.APP_ID;
+  private static readonly APP_CERTIFICATE: string = BuildConfig.APP_CERTIFICATE;
+  public static readonly RTC_TOKEN: string = BuildConfig.RTC_TOKEN;
+  public static readonly RTM_TOKEN: string = BuildConfig.RTM_TOKEN;
   // 音速达(Vendor2)配置
-  public static readonly VENDOR_2_APP_ID: string = '203321';
-  public static readonly VENDOR_2_APP_KEY: string = '4059144a3ace4a23a351ca3f96e6693d';
-  public static readonly VENDOR_2_TOKEN_HOST: string = 'https://yapi-test.tuwan.com/yinsuda/getUserData?uid=';
+  public static readonly VENDOR_2_APP_ID: string = BuildConfig.VENDOR_2_APP_ID;
+  public static readonly VENDOR_2_APP_KEY: string = BuildConfig.VENDOR_2_APP_KEY;
+  public static readonly VENDOR_2_TOKEN_HOST: string = BuildConfig.VENDOR_2_TOKEN_HOST;
   // 频道名称
-  public static readonly CHANNEL_NAME: string = 'Karaoke-Example-Test-HarmonyOS';
+  public static readonly CHANNEL_NAME: string = BuildConfig.CHANNEL_NAME;
   // 用户UID缓存
   private static USER_RTC_UID: number = 123456;
 
@@ -110,11 +108,20 @@ export class KeyCenter {
 
   /**
    * 生成RTC Token
-   * 如果没有APP_CERTIFICATE，返回APP_ID作为token
-   * 否则调用服务端API生成token
+   * 优先级：预定义的RTC_TOKEN > 服务端API生成 > APP_ID作为fallback
    */
   public static async getRtcToken(channelId: string, uid: number, callback: TokenCallback): Promise<void> {
     ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: channelId=${channelId}, uid=${uid}`)
+
+    // 如果定义了RTC_TOKEN常量，直接返回
+    if (KeyCenter.RTC_TOKEN && KeyCenter.RTC_TOKEN.trim() !== '') {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: using predefined RTC_TOKEN`)
+      callback.onTokenGenerated({
+        success: true,
+        token: KeyCenter.RTC_TOKEN
+      });
+      return;
+    }
 
     // 如果没有证书，直接返回APP_ID
     if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
@@ -140,9 +147,20 @@ export class KeyCenter {
 
   /**
    * 生成RTM Token
+   * 优先级：预定义的RTM_TOKEN > 服务端API生成 > APP_ID作为fallback
    */
   public static async getRtmToken(uid: number, callback: TokenCallback): Promise<void> {
     ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: uid=${uid}`)
+
+    // 如果定义了RTM_TOKEN常量，直接返回
+    if (KeyCenter.RTM_TOKEN && KeyCenter.RTM_TOKEN.trim() !== '') {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: using predefined RTM_TOKEN`)
+      callback.onTokenGenerated({
+        success: true,
+        token: KeyCenter.RTM_TOKEN
+      });
+      return;
+    }
 
     // 如果没有证书，直接返回APP_ID
     if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
@@ -372,11 +390,6 @@ export class KeyCenter {
    * 获取配置信息（用于调试）
    */
   public static getConfigInfo(): Record<string, Object> {
-    const configInfo: Record<string, Object> = {} as Record<string, Object>;
-    configInfo['appId'] = KeyCenter.APP_ID;
-    configInfo['hasCertificate'] = !!(KeyCenter.APP_CERTIFICATE && KeyCenter.APP_CERTIFICATE.trim() !== '');
-    configInfo['channelName'] = KeyCenter.CHANNEL_NAME;
-    configInfo['userUid'] = KeyCenter.getUserUid();
-    return configInfo;
+    return BuildConfig.getConfigInfo();
   }
 }
