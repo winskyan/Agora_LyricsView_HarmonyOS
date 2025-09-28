@@ -1,5 +1,4 @@
 import { common } from '@kit.AbilityKit';
-import http from '@ohos.net.http';
 import {
   CacheStatistics,
   ChannelMediaOptions,
@@ -81,6 +80,9 @@ export class RtcMccManager {
   private channelId: string = "";
   private token: string = "";
   private userId: string = "";
+  private appId: string = "";
+  private ysdUserId: string = "";
+  private ysdToken: string = "";
   private localUid: number = 0;
   // 回调接口
   private callback: IMccCallback | null = null;
@@ -217,11 +219,17 @@ export class RtcMccManager {
    * @param userId - 用户ID
    * @param callback - 回调接口
    */
-  async init(context: common.UIAbilityContext, appId: string, token: string, userId: string,
-    callback: IMccCallback): Promise<void> {
-    this.token = token;
+  async init(context: common.UIAbilityContext, appId: string, rtcToken: string, userId: string,
+    ysdUserId: string, ysdToken: string, callback: IMccCallback): Promise<void> {
+    this.appId = appId;
+    this.token = rtcToken;
     this.userId = userId;
+    this.ysdUserId = ysdUserId;
+    this.ysdToken = ysdToken;
     this.callback = callback;
+
+    ExampleLogUtils.logDebug(RtcMccManager.TAG,
+      `init - appId:${appId}, userId:${userId}, ysdUserId:${ysdUserId}`);
 
     try {
       await this.initRtcEngine(context, appId);
@@ -318,19 +326,15 @@ export class RtcMccManager {
 
     ExampleLogUtils.logDebug(RtcMccManager.TAG, 'Adding MCC vendors after join channel success');
 
-    try {
-      // 先获取访问数据
-      await this.fetchAccessData();
-    } catch (error) {
-      ExampleLogUtils.logError(RtcMccManager.TAG, `Failed to fetch access data: ${JSON.stringify(error)}`);
-      // 继续执行，使用默认配置
-    }
+    // 音速达数据已通过init方法传入，无需再次获取
+    ExampleLogUtils.logDebug(RtcMccManager.TAG,
+      `Using YSD data - userId:${this.ysdUserId}, token:${this.ysdToken?.substring(0, 10)}...`);
 
     // 添加Vendor1 (默认供应商)
     const vendor1Config: IVendor1Config = {
-      appId: "b792b33fc5f046ffa22776bf8d140e4d",
-      token: "006b792b33fc5f046ffa22776bf8d140e4dIAB6nlAEWFCe0Xq8os3u2jEYPK+/T8spfLqGL7P32/RnJMJzkjAAAAAAEACF5MW4GZ3UaAEA6AMZndRo",
-      userId: "123123",
+      appId: this.ysdToken,
+      token: this.token,
+      userId: this.userId,
       domain: "api-test.agora.io",
       channelId: this.channelId,
       channelUserId: "123123"
@@ -341,12 +345,12 @@ export class RtcMccManager {
     ExampleLogUtils.logDebug(RtcMccManager.TAG,
       `add vendor1 ret:${addVendorRet} config:${JSON.stringify(vendor1Config)}`);
 
-    // 添加Vendor2 (第三方供应商)
+    // 添加Vendor2 (第三方供应商) - 使用传入的YSD数据
     const vendor2Config: IVendor2Config = {
       appId: "203321",
       appKey: "4059144a3ace4a23a351ca3f96e6693d",
-      token: this.token || "",
-      userId: this.userId || "",
+      token: this.ysdToken,
+      userId: this.ysdUserId,
       deviceId: "341B43975E830CEB9F9925643F343B9C",
       urlTokenExpireTime: 15 * 60,
       chargeMode: 2,
@@ -361,41 +365,6 @@ export class RtcMccManager {
     ExampleLogUtils.logDebug(RtcMccManager.TAG, 'MCC vendors added successfully');
   }
 
-  /**
-   * 获取访问数据
-   */
-  private async fetchAccessData(): Promise<void> {
-    try {
-      const httpRequest = http.createHttp();
-      const response = await httpRequest.request('https://yapi-test.tuwan.com/yinsuda/getUserData?uid=1', {
-        method: http.RequestMethod.GET,
-        header: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.responseCode === 200) {
-        const result: YSDApiResponse = JSON.parse(response.result as string);
-        ExampleLogUtils.logDebug(RtcMccManager.TAG, `fetchAccessData response:` + JSON.stringify(result));
-
-        if (result.error === 0) {
-          this.userId = result.data.yinsuda_uid;
-          this.token = result.data.token;
-          ExampleLogUtils.logDebug(RtcMccManager.TAG,
-            `fetchAccessData success - userId:${this.userId} token:${this.token}`);
-        } else {
-          ExampleLogUtils.logDebug(RtcMccManager.TAG, `fetchAccessData error:${result.error}`);
-        }
-      } else {
-        ExampleLogUtils.logDebug(RtcMccManager.TAG,
-          `fetchAccessData failed with response code:${response.responseCode}`);
-      }
-
-      httpRequest.destroy();
-    } catch (error) {
-      ExampleLogUtils.logDebug(RtcMccManager.TAG, `fetchAccessData error:` + JSON.stringify(error));
-    }
-  }
 
   /**
    * 处理歌词结果

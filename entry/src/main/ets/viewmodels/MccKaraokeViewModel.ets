@@ -1,3 +1,5 @@
+import { common } from '@kit.AbilityKit';
+import { MusicContentCenterVendorId } from "@shengwang/rtc-full";
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { MusicManager, PlaybackStatus } from '../managers/MusicManager';
 import { PlaybackState } from '../models/PlaybackState';
@@ -5,9 +7,9 @@ import { SongInfo } from '../models/SongInfo';
 import { UIState } from '../models/UIState';
 import { LyricsService } from '../services/LyricsService';
 import { ContextManager } from '../utils/ContextManager';
+import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
+import { KeyCenter, TokenCallback, TokenResponse, YSDTokenCallback, YSDTokenResponse } from '../utils/KeyCenter';
 import { BaseViewModel } from './BaseViewModel';
-import { MusicContentCenterVendorId } from "@shengwang/rtc-full";
-import { ExampleLogUtils } from '../utils/ExmapleLogUtils'
 
 import {
   IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel
@@ -29,10 +31,12 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   public musicManager: MusicManager;
   // KaraokeView 实例
   private karaokeView: KaraokeView | null = null;
-  // 配置信息
-  private readonly APP_ID = "aab8b8f5a8cd4469a63042fcfafe7063";
-  private readonly RTC_TOKEN = "";
-  private readonly USER_ID = "123456";
+  // 配置信息 - 从KeyCenter获取
+  public appId: string = KeyCenter.APP_ID;
+  public rtcToken: string = "";
+  public userId: string = "";
+  public ysdUserId: string = "";
+  public ysdToken: string = "";
   // 当前服务类型
   private currentVendorId: MusicContentCenterVendorId = MusicContentCenterVendorId.DEFAULT;
 
@@ -73,18 +77,15 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     // 3. 设置歌词服务
     this.lyricsService.setKaraokeView(this.karaokeView);
 
-    // 4. 初始化音乐管理器
+    // 4. 获取Token并初始化音乐管理器
     const context = ContextManager.getInstance().getContext();
     if (!context) {
       throw new Error('Application context not available');
     }
 
-    await this.musicManager.init(context, this.APP_ID, this.RTC_TOKEN, this.USER_ID, this);
+    await this.initializeWithTokens(context);
 
-    // 5. 加入频道
-    this.musicManager.joinChannel();
-
-    // 6. 更新歌曲信息
+    // 5. 更新歌曲信息
     this.updateCurrentSongInfo();
 
     ExampleLogUtils.logDebug(this.TAG, 'MCC Karaoke initialized successfully');
@@ -100,6 +101,58 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 
     const eventHandler: IKaraokeEvent = new MccKaraokeEventImpl(this);
     this.karaokeView.setKaraokeEvent(eventHandler);
+  }
+
+  /**
+   * 获取Token并初始化音乐管理器
+   */
+  private async initializeWithTokens(context: common.UIAbilityContext): Promise<void> {
+    ExampleLogUtils.logDebug(this.TAG, 'Starting token initialization');
+
+    // 获取用户ID
+    this.userId = KeyCenter.getUserUid().toString();
+    const channelName = KeyCenter.CHANNEL_NAME;
+
+    ExampleLogUtils.logDebug(this.TAG, `Using userId: ${this.userId}, channel: ${channelName}`);
+
+    return new Promise((resolve, reject) => {
+      let rtcTokenReceived = false;
+      let ysdTokenReceived = false;
+      let hasError = false;
+
+      const checkComplete = () => {
+        if ((rtcTokenReceived && ysdTokenReceived) || hasError) {
+          if (!hasError) {
+            ExampleLogUtils.logDebug(this.TAG, 'All tokens received, initializing MusicManager');
+            this.musicManager.init(context, this.appId, this.rtcToken, this.userId,
+              this.ysdUserId, this.ysdToken, this)
+              .then(() => resolve())
+              .catch((error: Error) => reject(error));
+          }
+        }
+      };
+
+      // 获取RTC Token
+      const rtcTokenCallback = new RtcTokenCallbackImpl(this, () => {
+        rtcTokenReceived = true;
+      }, checkComplete);
+      KeyCenter.getRtcToken(channelName, KeyCenter.getUserUid(), rtcTokenCallback);
+
+      // 获取音速达Token
+      const ysdTokenCallback = new YSDTokenCallbackImpl(this, () => {
+        ysdTokenReceived = true;
+      }, checkComplete);
+      KeyCenter.getYSDToken(KeyCenter.getUserUid(), ysdTokenCallback);
+
+      // 设置超时
+      setTimeout(() => {
+        if (!rtcTokenReceived || !ysdTokenReceived) {
+          hasError = true;
+          ExampleLogUtils.logError(this.TAG, 'Token initialization timeout');
+          reject(new Error('Token initialization timeout'));
+        }
+      }, 15000); // 15秒超时
+    });
   }
 
   /**
@@ -424,5 +477,57 @@ class MccKaraokeEventImpl implements IKaraokeEvent {
   onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number, total: number): void {
     console.log(`MccKaraokeEventImpl onLineFinished: line=${index}, score=${score}, total=${cumulativeScore}`);
     // 可以在这里处理行完成事件
+  }
+}
+
+class RtcTokenCallbackImpl implements TokenCallback {
+  private viewModel: MccKaraokeViewModel;
+  private rtcTokenReceived: () => void;
+  private checkComplete: () => void;
+
+  constructor(viewModel: MccKaraokeViewModel, rtcTokenReceived: () => void, checkComplete: () => void) {
+    this.viewModel = viewModel;
+    this.rtcTokenReceived = rtcTokenReceived;
+    this.checkComplete = checkComplete;
+  }
+
+  onTokenGenerated(response: TokenResponse): void {
+    if (response.success && response.token) {
+      this.viewModel.rtcToken = response.token;
+      ExampleLogUtils.logDebug('RtcTokenCallbackImpl', `RTC Token received: ${response.token.substring(0, 20)}...`);
+    } else {
+      ExampleLogUtils.logError('RtcTokenCallbackImpl', `RTC Token failed: ${response.error}`);
+      this.viewModel.rtcToken = this.viewModel.appId; // Fallback to APP_ID
+    }
+    this.rtcTokenReceived();
+    this.checkComplete();
+  }
+}
+
+class YSDTokenCallbackImpl implements YSDTokenCallback {
+  private viewModel: MccKaraokeViewModel;
+  private ysdTokenReceived: () => void;
+  private checkComplete: () => void;
+
+  constructor(viewModel: MccKaraokeViewModel, ysdTokenReceived: () => void, checkComplete: () => void) {
+    this.viewModel = viewModel;
+    this.ysdTokenReceived = ysdTokenReceived;
+    this.checkComplete = checkComplete;
+  }
+
+  onYSDTokenGenerated(response: YSDTokenResponse): void {
+    if (response.success && response.ysdUserId && response.ysdToken) {
+      this.viewModel.ysdUserId = response.ysdUserId;
+      this.viewModel.ysdToken = response.ysdToken;
+      ExampleLogUtils.logDebug('YSDTokenCallbackImpl',
+        `YSD Token received - userId: ${response.ysdUserId}, token: ${response.ysdToken.substring(0, 20)}...`);
+    } else {
+      ExampleLogUtils.logError('YSDTokenCallbackImpl', `YSD Token failed: ${response.error}`);
+      // 使用默认值
+      this.viewModel.ysdUserId = "default_ysd_user";
+      this.viewModel.ysdToken = "default_ysd_token";
+    }
+    this.ysdTokenReceived();
+    this.checkComplete();
   }
 }

@@ -1,10 +1,10 @@
 import { common } from '@kit.AbilityKit';
 import { Constants, MusicContentCenterVendorId } from "@shengwang/rtc-full";
 import { IMccCallback } from '../interfaces/IMccCallback';
+import { ExampleConstants } from '../utils/ExampleConstants';
+import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 import { MusicResource, MusicResourcePool } from '../utils/MusicResourcePool';
 import { RtcMccManager } from './RtcMccManager';
-import { ExampleConstants } from '../utils/ExampleConstants'
-import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 
 /**
  * 播放状态枚举
@@ -55,14 +55,14 @@ export class MusicManager implements IMccCallback {
    * @param userId - 用户ID
    * @param callback - 回调接口
    */
-  async init(context: common.UIAbilityContext, appId: string, token: string, userId: string,
-    callback: IMccCallback): Promise<void> {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager init`);
+  async init(context: common.UIAbilityContext, appId: string, rtcToken: string, userId: string,
+    ysdUserId: string, ysdToken: string, callback: IMccCallback): Promise<void> {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager init - userId: ${userId}, ysdUserId: ${ysdUserId}`);
     this.callback = callback;
     this.initData();
 
     this.rtcMccManager = new RtcMccManager();
-    await this.rtcMccManager.init(context, appId, token, userId, this);
+    await this.rtcMccManager.init(context, appId, rtcToken, userId, ysdUserId, ysdToken, this);
 
     ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager init completed`);
   }
