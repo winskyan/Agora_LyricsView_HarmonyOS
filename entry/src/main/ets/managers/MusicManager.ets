@@ -51,18 +51,26 @@ export class MusicManager implements IMccCallback {
    * 初始化音乐管理器
    * @param context - 应用上下文
    * @param appId - Agora App ID
-   * @param token - RTC Token
+   * @param rtcToken - RTC Token
+   * @param rtmToken - RTM Token
    * @param userId - 用户ID
+   * @param ysdAppId - 音速达App ID
+   * @param ysdAppKey - 音速达App Key
+   * @param ysdUserId - 音速达用户ID
+   * @param ysdToken - 音速达Token
    * @param callback - 回调接口
    */
-  async init(context: common.UIAbilityContext, appId: string, rtcToken: string, userId: string,
-    ysdUserId: string, ysdToken: string, callback: IMccCallback): Promise<void> {
+  async init(context: common.UIAbilityContext, appId: string, channelId: string, rtcToken: string, rtmToken: string,
+    userId: string,
+    ysdAppId: string, ysdAppKey: string, ysdUserId: string, ysdToken: string, callback: IMccCallback): Promise<void> {
     ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager init - userId: ${userId}, ysdUserId: ${ysdUserId}`);
     this.callback = callback;
     this.initData();
 
     this.rtcMccManager = new RtcMccManager();
-    await this.rtcMccManager.init(context, appId, rtcToken, userId, ysdUserId, ysdToken, this);
+    await this.rtcMccManager.init(context, appId, channelId, rtcToken, rtmToken, userId, ysdAppId, ysdAppKey, ysdUserId,
+      ysdToken,
+      this);
 
     ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager init completed`);
   }
@@ -119,6 +127,12 @@ export class MusicManager implements IMccCallback {
   playMusic(): void {
     ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager playMusic`);
 
+    if (this.status === PlaybackStatus.PAUSED || this.status === PlaybackStatus.PLAYING) {
+      this.pauseOrResumeMusic();
+      return;
+    }
+
+
     if (this.musicResources.length === 0) {
       console.error(`${MusicManager.TAG} no music resources available`);
       return;
@@ -163,15 +177,6 @@ export class MusicManager implements IMccCallback {
       currentMusic.songCode,
       currentMusic.songOptionJson
     );
-  }
-
-  /**
-   * 通过歌曲代码打开音乐
-   */
-  private openMusicBySongCode(internalSongCode: bigint): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager openMusicBySongCode:${internalSongCode}`);
-    this.setPlayMode(this.musicPlayMode);
-    // 音乐播放器会在RtcMccManager中自动打开和播放
   }
 
   /**
@@ -269,6 +274,8 @@ export class MusicManager implements IMccCallback {
     if (this.currentSongIndex >= this.musicResources.length) {
       this.currentSongIndex = 0;
     }
+
+    this.playMusic();
   }
 
   /**
@@ -291,12 +298,16 @@ export class MusicManager implements IMccCallback {
 
     this.positionUpdateTimer = setInterval(() => {
       if (this.status === PlaybackStatus.PLAYING) {
-        if (this.playPosition === -1 || this.playPosition % 1000 < MusicManager.MUSIC_POSITION_UPDATE_INTERVAL) {
-          this.playPosition = this.rtcMccManager?.getPlayPosition() || 0;
-          this.playPosition += this.songOffsetBegin;
-        } else {
-          this.playPosition += MusicManager.MUSIC_POSITION_UPDATE_INTERVAL;
-        }
+        this.playPosition = this.rtcMccManager?.getPlayPosition() || 0;
+        this.playPosition += this.songOffsetBegin;
+
+        // if (this.playPosition === -1 || this.playPosition % 1000 < MusicManager.MUSIC_POSITION_UPDATE_INTERVAL) {
+        //   this.playPosition = this.rtcMccManager?.getPlayPosition() || 0;
+        //   this.playPosition += this.songOffsetBegin;
+        //   this.playPosition += MusicManager.MUSIC_POSITION_UPDATE_INTERVAL;
+        // } else {
+        //   this.playPosition += MusicManager.MUSIC_POSITION_UPDATE_INTERVAL;
+        // }
 
         this.callback?.onMusicPositionChange?.(this.playPosition);
       }
@@ -422,6 +433,14 @@ export class MusicManager implements IMccCallback {
     this.startDisplayLrc();
 
     this.callback?.onMusicPlaying?.();
+  }
+
+  onMusicPause(): void {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `onMusicPaused`);
+
+    this.status = PlaybackStatus.PAUSED;
+
+    this.callback?.onMusicPause?.();
   }
 
   /**

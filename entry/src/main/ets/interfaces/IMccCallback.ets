@@ -69,6 +69,8 @@ export interface IMccCallback {
    */
   onMusicPlaying?(): void;
 
+  onMusicPause?(): void;
+
   /**
    * 音乐停止播放回调
    */

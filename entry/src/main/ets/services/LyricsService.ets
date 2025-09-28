@@ -19,6 +19,7 @@ export interface LyricsStats {
 export class LyricsService {
   protected readonly TAG: string = 'LyricsView-LyricsService';
   private karaokeView: KaraokeView | null = null;
+  private lyricModel: LyricModel | null = null;
 
   constructor() {
   }
@@ -47,9 +48,7 @@ export class LyricsService {
     lyricOffset: number
   ): Promise<LyricModel | null> {
     try {
-      this.logDebug(`Loading lyrics from MCC: ${lyricUrl}`);
-      this.logDebug(`Loading pitch from MCC: ${pitchUrl}`);
-      this.logDebug(`Song offset: begin=${songOffsetBegin}, end=${songOffsetEnd}, lyricOffset=${lyricOffset}`);
+      this.logDebug(`Loading loadLyricsFromMcc lyricUrl: ${lyricUrl} pitchUrl: ${pitchUrl} begin=${songOffsetBegin}, end=${songOffsetEnd}, lyricOffset=${lyricOffset}`);
 
       // 检查文件是否存在
       if (!await this.checkFileExists(lyricUrl)) {
@@ -82,6 +81,7 @@ export class LyricsService {
         }
       }
 
+      this.lyricModel = lyricModel;
       return lyricModel;
 
     } catch (error) {
@@ -131,6 +131,13 @@ export class LyricsService {
       preludeEnd: lyricModel.preludeEndPosition || 0
     };
     return stats;
+  }
+
+  getPreludeEndPosition(): number {
+    if (this.lyricModel) {
+      return this.lyricModel.preludeEndPosition;
+    }
+    return 0;
   }
 
   /**

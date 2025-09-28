@@ -45,7 +45,7 @@ interface IVendor1Config {
   appId: string;
   token: string;
   userId: string;
-  domain: string;
+  domain: string,
   channelId: string;
   channelUserId: string;
 }
@@ -77,10 +77,13 @@ export class RtcMccManager {
   private musicPlayer: IAgoraMusicPlayer | null = null;
   private config: MusicContentCenterConfiguration | null = null;
   // 配置信息
-  private channelId: string = "";
-  private token: string = "";
-  private userId: string = "";
   private appId: string = "";
+  private rtcToken: string = "";
+  private rtmToken: string = "";
+  private channelId: string = "";
+  private userId: string = "";
+  private ysdAppId: string = "";
+  private ysdAppKey: string = "";
   private ysdUserId: string = "";
   private ysdToken: string = "";
   private localUid: number = 0;
@@ -100,7 +103,9 @@ export class RtcMccManager {
       if (state === Constants.MusicContentCenterState.PRELOAD_OK && percent === 100) {
         this.handleLyricResult(internalSongCode, payload);
       }
-      this.callback?.onMusicPreloadResult?.(internalSongCode, percent);
+      Promise.resolve().then(() => {
+        this.callback?.onMusicPreloadResult?.(internalSongCode, percent);
+      });
     },
 
     onMusicCollectionResult: (requestId: string, page: number, pageSize: number, total: number, list: Music[],
@@ -133,7 +138,8 @@ export class RtcMccManager {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `onStartScoreResult songCode:${internalSongCode} state:${state} reason:${reason}`);
 
-      if (state === 0 && reason === 0) { // START_SCORE_COMPLETED = 0, REASON_OK = 0
+      if (state === Constants.MusicContentCenterState.START_SCORE_COMPLETED &&
+        reason === 0) { // START_SCORE_COMPLETED = 0, REASON_OK = 0
         // 设置评分等级
         this.musicCenter?.setScoreLevel(5);
         // 打开音乐播放器
@@ -150,28 +156,39 @@ export class RtcMccManager {
 
       switch (state) {
         case Constants.MediaPlayerState.OPEN_COMPLETED:
-          this.callback?.onMusicPlaying?.();
-          this.musicPlayer?.play();
+          Promise.resolve().then(() => {
+            this.callback?.onMusicPlaying?.();
+            this.musicPlayer?.play();
+          });
           break;
         case Constants.MediaPlayerState.PLAYING:
-          this.callback?.onMusicPlaying?.();
           break;
         case Constants.MediaPlayerState.PAUSED:
+          Promise.resolve().then(() => {
+            ExampleLogUtils.logDebug(RtcMccManager.TAG, "onPlayerStateChanged: PAUSED");
+            this.callback?.onMusicPause?.();
+          });
           break;
         case Constants.MediaPlayerState.STOPPED:
-          this.callback?.onMusicStop?.();
+          Promise.resolve().then(() => {
+            ExampleLogUtils.logDebug(RtcMccManager.TAG, "onPlayerStateChanged: STOPPED");
+            this.callback?.onMusicStop?.();
+          });
           break;
         case Constants.MediaPlayerState.PLAYBACK_ALL_LOOPS_COMPLETED:
-          this.callback?.onMusicStop?.();
+          Promise.resolve().then(() => {
+            this.callback?.onMusicStop?.();
+          });
           break;
         case Constants.MediaPlayerState.FAILED:
-          this.callback?.onMusicError?.(reason);
+          Promise.resolve().then(() => {
+            this.callback?.onMusicError?.(reason);
+          });
           break;
       }
     },
 
     onPositionChanged: (positionMs: number, timestampMs: number) => {
-      // 位置变化在MusicManager中处理
     },
 
     onPlayerEvent: (eventCode: Constants.MediaPlayerEvent, elapsedTime: number, message: string) => {
@@ -219,11 +236,18 @@ export class RtcMccManager {
    * @param userId - 用户ID
    * @param callback - 回调接口
    */
-  async init(context: common.UIAbilityContext, appId: string, rtcToken: string, userId: string,
+  async init(context: common.UIAbilityContext, appId: string, channelId: string, rtcToken: string, rtmToken: string,
+    userId: string,
+    ysdAppId: string,
+    ysdAppKey: string,
     ysdUserId: string, ysdToken: string, callback: IMccCallback): Promise<void> {
     this.appId = appId;
-    this.token = rtcToken;
+    this.channelId = channelId;
+    this.rtcToken = rtcToken;
+    this.rtmToken = rtmToken;
     this.userId = userId;
+    this.ysdAppId = ysdAppId;
+    this.ysdAppKey = ysdAppKey;
     this.ysdUserId = ysdUserId;
     this.ysdToken = ysdToken;
     this.callback = callback;
@@ -282,9 +306,6 @@ export class RtcMccManager {
     this.rtcEngine = RtcEngine.create(rtcEngineConfig);
     this.rtcEngine.enableAudio();
     this.rtcEngine.setDefaultAudioRoutetoSpeakerphone(true);
-
-    // 生成频道ID
-    this.channelId = `music_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
   }
 
   /**
@@ -301,9 +322,9 @@ export class RtcMccManager {
       throw Error(`MCC initialize failed with code: ${ret}`);
     }
 
-    // 创建音乐播放器
-    this.musicPlayer = this.musicCenter.createMusicPlayer();
-    this.musicPlayer?.registerPlayerObserver(this.mediaPlayerObserver);
+    // // 创建音乐播放器
+    // this.musicPlayer = this.musicCenter.createMusicPlayer();
+    // this.musicPlayer?.registerPlayerObserver(this.mediaPlayerObserver);
 
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `MCC initialized successfully`);
   }
@@ -332,12 +353,12 @@ export class RtcMccManager {
 
     // 添加Vendor1 (默认供应商)
     const vendor1Config: IVendor1Config = {
-      appId: this.ysdToken,
-      token: this.token,
+      appId: this.appId,
+      token: this.rtmToken,
       userId: this.userId,
-      domain: "api-test.agora.io",
+      domain: 'api.agora.io',
       channelId: this.channelId,
-      channelUserId: "123123"
+      channelUserId: this.userId
     };
 
     let addVendorRet: number =
@@ -347,20 +368,24 @@ export class RtcMccManager {
 
     // 添加Vendor2 (第三方供应商) - 使用传入的YSD数据
     const vendor2Config: IVendor2Config = {
-      appId: "203321",
-      appKey: "4059144a3ace4a23a351ca3f96e6693d",
+      appId: this.ysdAppId,
+      appKey: this.ysdAppKey,
       token: this.ysdToken,
       userId: this.ysdUserId,
       deviceId: "341B43975E830CEB9F9925643F343B9C",
       urlTokenExpireTime: 15 * 60,
       chargeMode: 2,
       channelId: this.channelId,
-      channelUserId: "123123"
+      channelUserId: this.userId
     };
 
     addVendorRet = this.musicCenter.addVendor(MusicContentCenterVendorId.VENDOR_2, JSON.stringify(vendor2Config));
     ExampleLogUtils.logDebug(RtcMccManager.TAG,
       `add vendor2 ret:${addVendorRet} config:${JSON.stringify(vendor2Config)}`);
+
+    // 创建音乐播放器
+    this.musicPlayer = this.musicCenter.createMusicPlayer();
+    this.musicPlayer?.registerPlayerObserver(this.mediaPlayerObserver);
 
     ExampleLogUtils.logDebug(RtcMccManager.TAG, 'MCC vendors added successfully');
   }
@@ -381,14 +406,17 @@ export class RtcMccManager {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `handleLyricResult songCode:${internalSongCode} lyricPath:${lyricPath}`);
 
-      this.callback?.onMusicLyricRequest?.(
-        internalSongCode,
-        lyricPath,
-        pitchPath,
-        songOffsetBegin,
-        songOffsetEnd,
-        lyricOffset
-      );
+      // 使用Promise.resolve()确保在下一个事件循环中执行回调，避免在RTC回调线程中直接调用接口
+      Promise.resolve().then(() => {
+        this.callback?.onMusicLyricRequest?.(
+          internalSongCode,
+          lyricPath,
+          pitchPath,
+          songOffsetBegin,
+          songOffsetEnd,
+          lyricOffset
+        );
+      });
     } catch (error) {
       ExampleLogUtils.logError(RtcMccManager.TAG, `handleLyricResult error:` + JSON.stringify(error))
     }
@@ -412,7 +440,8 @@ export class RtcMccManager {
     this.rtcEngine.setAudioScenario(Constants.AudioScenarioType.DEFAULT);
     this.rtcEngine.setDefaultAudioRoutetoSpeakerphone(true);
 
-    const ret: number = this.rtcEngine.joinChannelWithOptions("", this.channelId, 123123, option);
+    const ret: number =
+      this.rtcEngine.joinChannelWithOptions(this.rtcToken, this.channelId, parseInt(this.userId, 10), option);
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `joinChannel ret:${ret} channel:${this.channelId}`);
   }
 
@@ -474,6 +503,11 @@ export class RtcMccManager {
 
       const ret: number = this.musicCenter.startScore(internalSongCode);
       ExampleLogUtils.logDebug(RtcMccManager.TAG, `startScore ret:${ret} internalSongCode:${internalSongCode}`);
+
+
+      this.musicCenter?.setScoreLevel(5);
+      // // 打开音乐播放器
+      this.openMusicBySongCode(internalSongCode);
     } catch (error) {
       console.error(`${RtcMccManager.TAG} startScore error:`, JSON.stringify(error));
     }

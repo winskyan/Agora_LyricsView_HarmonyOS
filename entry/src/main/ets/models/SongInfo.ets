@@ -1,15 +1,4 @@
-// import { LyricModel } from 'lyrics_view';
-
-// 临时定义LyricModel类型
-interface LyricsLineModel {
-  // 临时定义
-}
-
-interface LyricModel {
-  lines?: LyricsLineModel[];
-  duration?: number;
-  preludeEndPosition?: number;
-}
+import { LyricModel } from 'lyrics_view';
 
 /**
  * 歌曲信息模型

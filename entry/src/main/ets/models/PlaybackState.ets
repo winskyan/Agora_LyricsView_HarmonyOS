@@ -11,7 +11,7 @@ export class PlaybackState {
   /** 是否正在播放 */
   @Trace isPlaying: boolean = false;
   /** 是否为原唱模式 */
-  @Trace isOriginalTrack: boolean = false;
+  @Trace isOriginalTrack: boolean = true;
   /** 上一次的 pitch 值 */
   @Trace lastPitch: number = 50;
 

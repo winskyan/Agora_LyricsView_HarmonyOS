@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit';
-import { MusicContentCenterVendorId } from "@shengwang/rtc-full";
+import { Constants, MusicContentCenterVendorId } from "@shengwang/rtc-full";
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { MusicManager, PlaybackStatus } from '../managers/MusicManager';
 import { PlaybackState } from '../models/PlaybackState';
@@ -34,7 +34,10 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   // 配置信息 - 从KeyCenter获取
   public appId: string = KeyCenter.APP_ID;
   public rtcToken: string = "";
+  public rtmToken: string = "";
   public userId: string = "";
+  public ysdAppId: string = KeyCenter.VENDOR_2_APP_ID;
+  public ysdAppKey: string = KeyCenter.VENDOR_2_APP_KEY;
   public ysdUserId: string = "";
   public ysdToken: string = "";
   // 当前服务类型
@@ -56,6 +59,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
       () => this.initializeMccKaraoke(),
       () => {
         this.uiState.setSuccess('MCC KaraokeView 初始化成功');
+        this.musicManager.joinChannel();
       },
       (error) => {
         this.uiState.setError(`初始化失败: ${error.message}`);
@@ -117,15 +121,18 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 
     return new Promise((resolve, reject) => {
       let rtcTokenReceived = false;
+      let rtmTokenReceived = false;
       let ysdTokenReceived = false;
       let hasError = false;
 
       const checkComplete = () => {
-        if ((rtcTokenReceived && ysdTokenReceived) || hasError) {
+        if ((rtcTokenReceived && rtmTokenReceived && ysdTokenReceived) || hasError) {
           if (!hasError) {
             ExampleLogUtils.logDebug(this.TAG, 'All tokens received, initializing MusicManager');
-            this.musicManager.init(context, this.appId, this.rtcToken, this.userId,
-              this.ysdUserId, this.ysdToken, this)
+            this.musicManager.init(context, this.appId, KeyCenter.CHANNEL_NAME, KeyCenter.RTC_TOKEN,
+              KeyCenter.RTM_TOKEN,
+              this.userId,
+              this.ysdAppId, this.ysdAppKey, this.ysdUserId, this.ysdToken, this)
               .then(() => resolve())
               .catch((error: Error) => reject(error));
           }
@@ -138,6 +145,12 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
       }, checkComplete);
       KeyCenter.getRtcToken(channelName, KeyCenter.getUserUid(), rtcTokenCallback);
 
+      // 获取RTM Token
+      const rtmTokenCallback = new RtmTokenCallbackImpl(this, () => {
+        rtmTokenReceived = true;
+      }, checkComplete);
+      KeyCenter.getRtmToken(KeyCenter.getUserUid(), rtmTokenCallback);
+
       // 获取音速达Token
       const ysdTokenCallback = new YSDTokenCallbackImpl(this, () => {
         ysdTokenReceived = true;
@@ -146,7 +159,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 
       // 设置超时
       setTimeout(() => {
-        if (!rtcTokenReceived || !ysdTokenReceived) {
+        if (!rtcTokenReceived || !rtmTokenReceived || !ysdTokenReceived) {
           hasError = true;
           ExampleLogUtils.logError(this.TAG, 'Token initialization timeout');
           reject(new Error('Token initialization timeout'));
@@ -161,8 +174,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   private updateCurrentSongInfo(): void {
     const currentMusic = this.musicManager.getCurrentMusicInfo();
     if (currentMusic) {
-      // Update song info - using available API
-      // this.songInfo.updateInfo(...) // API may not exist, implement alternative
+      this.songInfo.name = currentMusic.songName;
     }
   }
 
@@ -182,7 +194,12 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    */
   startPlayback(): void {
     ExampleLogUtils.logDebug(this.TAG, 'startPlayback');
-    this.uiState.setLoading(true, '正在加载音乐...');
+    if (this.musicManager.isPaused()) {
+      this.uiState.setLoading(false, '正在播放音乐...');
+      this.playbackState.isPlaying = true;
+    } else {
+      this.uiState.setLoading(true, '正在加载音乐...');
+    }
     this.musicManager.playMusic();
   }
 
@@ -190,7 +207,6 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 暂停播放
    */
   pausePlayback(): void {
-    ExampleLogUtils.logDebug(this.TAG, 'pausePlayback');
     this.musicManager.pauseOrResumeMusic();
   }
 
@@ -222,13 +238,12 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     ExampleLogUtils.logDebug(this.TAG, 'skipIntro');
     // 跳转到歌词开始位置
     if (this.karaokeView) {
-      // const preludeEnd = this.karaokeView.getPreludeEndPosition(); // API may not exist
-      const preludeEnd = 0; // placeholder
+      const preludeEnd = this.lyricsService.getPreludeEndPosition();
       if (preludeEnd > 0) {
         this.musicManager.seekMusic(preludeEnd);
-        // this.uiState.setSuccess(`已跳过前奏，跳转到 ${preludeEnd}ms`); // API may not exist
+        this.uiState.setSuccess(`已跳过前奏，跳转到 ${preludeEnd}ms`);
       } else {
-        // this.uiState.setInfo('当前歌曲没有前奏'); // API may not exist
+        this.uiState.callBackInfo = '当前歌曲没有前奏';
       }
     }
   }
@@ -239,10 +254,10 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   toggleOriginalTrack(): void {
     ExampleLogUtils.logDebug(this.TAG, 'toggleOriginalTrack');
     this.musicManager.switchPlayOriginal();
-    // this.playbackState.setOriginalTrack(this.musicManager.isOriginalMode()); // API may not exist
+    this.playbackState.isOriginalTrack = this.musicManager.isOriginalMode();
 
     const mode = this.musicManager.isOriginalMode() ? '原唱' : '伴唱';
-    // this.uiState.setSuccess(`已切换到${mode}模式`); // API may not exist
+    this.uiState.setSuccess(`已切换到${mode}模式`);
   }
 
   /**
@@ -280,8 +295,6 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     songOffsetEnd: number,
     lyricOffset: number
   ): void {
-    ExampleLogUtils.logDebug(this.TAG, `onMusicLyricRequest: songCode=${songCode}, lyricUrl=${lyricUrl}`);
-
     // 异步加载歌词
     this.loadLyricsFromMcc(lyricUrl, pitchUrl, songOffsetBegin, songOffsetEnd, lyricOffset);
   }
@@ -297,33 +310,34 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     lyricOffset: number
   ): Promise<void> {
     try {
-      // this.uiState.setLoading('正在加载歌词...'); // API may not exist
+      this.uiState.setLoading(true, '正在加载歌词...');
 
-      // const lyricModel: LyricModel | null = await this.lyricsService.loadLyricsFromMcc( // 暂时注释，避免结构类型错误
-      //   lyricUrl,
-      //   pitchUrl,
-      //   songOffsetBegin,
-      //   songOffsetEnd,
-      //   lyricOffset
-      // );
-      const lyricModel: LyricModel | null = null; // 临时占位符
+      const lyricModel: LyricModel | null = await this.lyricsService.loadLyricsFromMcc(
+        lyricUrl,
+        pitchUrl,
+        songOffsetBegin,
+        songOffsetEnd,
+        lyricOffset
+      );
 
       if (lyricModel && this.karaokeView) {
+
+        this.songInfo.setLyricModel(lyricModel)
+
         // 设置歌词数据
-        // this.karaokeView.setLyricModel(lyricModel); // API may not exist
+        this.karaokeView.setLyricData(lyricModel);
 
         // 更新歌曲信息
-        // this.songInfo.updateDuration(lyricModel.duration); // API may not exist
+        // this.songInfo(lyricModel.duration); // API may not exist
 
-        // this.uiState.setSuccess('歌词加载成功'); // API may not exist
-        // ExampleLogUtils.logDebug(this.TAG, `Lyrics loaded successfully, duration: ${lyricModel.duration}ms`); // 暂时注释，避免类型错误
-        ExampleLogUtils.logDebug(this.TAG, `Lyrics loaded successfully`);
+        this.uiState.setSuccess('歌词加载成功');
+        ExampleLogUtils.logDebug(this.TAG, `Lyrics loaded successfully, duration: ${lyricModel.duration}ms`);
       } else {
         throw new Error('Failed to load lyrics from MCC');
       }
     } catch (error) {
       console.error('Failed to load lyrics from MCC', JSON.stringify(error));
-      // this.uiState.setError(`歌词加载失败: ${error.message}`); // API may not exist
+      this.uiState.setError(`歌词加载失败: ${error.message}`);
     }
   }
 
@@ -332,14 +346,13 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    */
   onMusicPreloadResult(songCode: bigint, percent: number): void {
     ExampleLogUtils.logDebug(this.TAG, `onMusicPreloadResult: songCode=${songCode}, percent=${percent}`);
-    // this.uiState.setLoading(`音乐加载中... ${percent}%`); // API may not exist
+    this.uiState.setLoading(true, `音乐加载中... ${percent}%`);
   }
 
   /**
    * 音乐播放位置变化回调
    */
   onMusicPositionChange(position: number): void {
-    // 更新播放进度
     this.playbackState.updateProgress(position);
 
     // 更新歌词进度
@@ -385,9 +398,13 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 音乐开始播放回调
    */
   onMusicPlaying(): void {
-    ExampleLogUtils.logDebug(this.TAG, 'onMusicPlaying');
     this.playbackState.setPlayingState(true);
-    // this.uiState.setSuccess('音乐播放中...'); // API may not exist
+    this.uiState.setSuccess('音乐播放中...');
+  }
+
+  onMusicPause(): void {
+    this.playbackState.setPlayingState(false);
+    this.uiState.callBackInfo = '音乐已暂停';
   }
 
   /**
@@ -396,7 +413,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   onMusicStop(): void {
     ExampleLogUtils.logDebug(this.TAG, 'onMusicStop');
     this.playbackState.setPlayingState(false);
-    // this.uiState.setInfo('音乐已停止'); // API may not exist
+    this.uiState.callBackInfo = '音乐已停止';
   }
 
   /**
@@ -405,7 +422,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   onMusicError(error: number): void {
     ExampleLogUtils.logError(this.TAG, `onMusicError: error=${error}`);
     this.playbackState.setPlayingState(false);
-    // this.uiState.setError(`播放错误: ${error}`); // API may not exist
+    this.uiState.setError(`播放错误: ${error}`);
   }
 
   // ==================== 状态查询方法 ====================
@@ -470,12 +487,13 @@ class MccKaraokeEventImpl implements IKaraokeEvent {
   }
 
   onDragTo(position: number): void {
-    console.log(`MccKaraokeEventImpl onDragTo: ${position}`);
+    ExampleLogUtils.logDebug('LyricsView-MccKaraokeEventImpl', `onDragTo: ${position}`);
     this.viewModel.musicManager.seekMusic(position);
   }
 
   onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number, total: number): void {
-    console.log(`MccKaraokeEventImpl onLineFinished: line=${index}, score=${score}, total=${cumulativeScore}`);
+    ExampleLogUtils.logDebug('LyricsView-MccKaraokeEventImpl',
+      `onLineFinished: line=${line}, score=${score}, total=${cumulativeScore}`);
     // 可以在这里处理行完成事件
   }
 }
@@ -494,12 +512,38 @@ class RtcTokenCallbackImpl implements TokenCallback {
   onTokenGenerated(response: TokenResponse): void {
     if (response.success && response.token) {
       this.viewModel.rtcToken = response.token;
-      ExampleLogUtils.logDebug('RtcTokenCallbackImpl', `RTC Token received: ${response.token.substring(0, 20)}...`);
+      ExampleLogUtils.logDebug('LyricsView-RtcTokenCallbackImpl',
+        `RTC Token received: ${response.token.substring(0, 20)}...`);
     } else {
-      ExampleLogUtils.logError('RtcTokenCallbackImpl', `RTC Token failed: ${response.error}`);
+      ExampleLogUtils.logError('LyricsView-RtcTokenCallbackImpl', `RTC Token failed: ${response.error}`);
       this.viewModel.rtcToken = this.viewModel.appId; // Fallback to APP_ID
     }
     this.rtcTokenReceived();
+    this.checkComplete();
+  }
+}
+
+class RtmTokenCallbackImpl implements TokenCallback {
+  private viewModel: MccKaraokeViewModel;
+  private rtmTokenReceived: () => void;
+  private checkComplete: () => void;
+
+  constructor(viewModel: MccKaraokeViewModel, rtmTokenReceived: () => void, checkComplete: () => void) {
+    this.viewModel = viewModel;
+    this.rtmTokenReceived = rtmTokenReceived;
+    this.checkComplete = checkComplete;
+  }
+
+  onTokenGenerated(response: TokenResponse): void {
+    if (response.success && response.token) {
+      this.viewModel.rtmToken = response.token;
+      ExampleLogUtils.logDebug('LyricsView-RtmTokenCallbackImpl',
+        `RTM Token received: ${response.token.substring(0, 20)}...`);
+    } else {
+      ExampleLogUtils.logError('LyricsView-RtmTokenCallbackImpl', `RTM Token failed: ${response.error}`);
+      this.viewModel.rtmToken = this.viewModel.appId; // Fallback to APP_ID
+    }
+    this.rtmTokenReceived();
     this.checkComplete();
   }
 }
@@ -519,13 +563,13 @@ class YSDTokenCallbackImpl implements YSDTokenCallback {
     if (response.success && response.ysdUserId && response.ysdToken) {
       this.viewModel.ysdUserId = response.ysdUserId;
       this.viewModel.ysdToken = response.ysdToken;
-      ExampleLogUtils.logDebug('YSDTokenCallbackImpl',
+      ExampleLogUtils.logDebug('LyricsView-YSDTokenCallbackImpl',
         `YSD Token received - userId: ${response.ysdUserId}, token: ${response.ysdToken.substring(0, 20)}...`);
     } else {
-      ExampleLogUtils.logError('YSDTokenCallbackImpl', `YSD Token failed: ${response.error}`);
+      ExampleLogUtils.logError('LyricsView-YSDTokenCallbackImpl', `YSD Token failed: ${response.error}`);
       // 使用默认值
-      this.viewModel.ysdUserId = "default_ysd_user";
-      this.viewModel.ysdToken = "default_ysd_token";
+      this.viewModel.ysdUserId = "";
+      this.viewModel.ysdToken = "";
     }
     this.ysdTokenReceived();
     this.checkComplete();

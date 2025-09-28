@@ -1,3 +1,5 @@
+import { ExampleLogUtils } from './ExmapleLogUtils';
+import { ExampleConstants } from './ExampleConstants';
 import { TokenHttpClient, TokenHttpResponse } from './TokenHttpClient';
 
 /**
@@ -69,23 +71,24 @@ export interface YSDTokenCallback {
  * 负责生成RTC Token和管理用户ID、频道名等
  */
 export class KeyCenter {
-  private static readonly TAG: string = 'KeyCenter';
+  private static readonly TAG: string = ExampleConstants.APP_TAG + '-KeyCenter';
   private static readonly USER_MAX_UID: number = 10000;
-
   // 从local.properties读取的配置（实际项目中应该从配置文件读取）
   public static readonly APP_ID: string = '695752b975654e44bea00137d084c71c'; // 替换为实际APP_ID
   private static readonly APP_CERTIFICATE: string = 'a82ea1f27ed64704b31629a7f19e1b37'; // 替换为实际APP_CERTIFICATE
 
+  public static readonly RTC_TOKEN =
+    "006695752b975654e44bea00137d084c71cIADj9o+moPGTZf3zWU7AsMJaJdATPqfhuhRzZpInxZiLBkMRD0lh03IJIgAYH3wAhy3aaAQAAQCDLdpoAgCDLdpoAwCDLdpoBACDLdpo";
+  public static readonly RTM_TOKEN =
+    "006695752b975654e44bea00137d084c71cIADLZ3gttnr5WVKDYGW+lx4ZVqXMUa0SMsf/b/rwFssBwGHTcgkAAAAAEACY6m4+Vy3aaAEA6ANXLdpo";
   // 音速达(Vendor2)配置
   public static readonly VENDOR_2_APP_ID: string = '203321';
   public static readonly VENDOR_2_APP_KEY: string = '4059144a3ace4a23a351ca3f96e6693d';
   public static readonly VENDOR_2_TOKEN_HOST: string = 'https://yapi-test.tuwan.com/yinsuda/getUserData?uid=';
-
   // 频道名称
   public static readonly CHANNEL_NAME: string = 'Karaoke-Example-Test-HarmonyOS';
-
   // 用户UID缓存
-  private static USER_RTC_UID: number = -1;
+  private static USER_RTC_UID: number = 123456;
 
   /**
    * 获取用户UID
@@ -111,11 +114,11 @@ export class KeyCenter {
    * 否则调用服务端API生成token
    */
   public static async getRtcToken(channelId: string, uid: number, callback: TokenCallback): Promise<void> {
-    console.log(`${KeyCenter.TAG} getRtcToken: channelId=${channelId}, uid=${uid}`);
+    ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: channelId=${channelId}, uid=${uid}`)
 
     // 如果没有证书，直接返回APP_ID
     if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
-      console.log(`${KeyCenter.TAG} No APP_CERTIFICATE, using APP_ID as token`);
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: using APP_ID as token`)
       callback.onTokenGenerated({
         success: true,
         token: KeyCenter.APP_ID
@@ -127,7 +130,7 @@ export class KeyCenter {
       // 调用服务端API生成token
       await KeyCenter.generateTokenFromServer(channelId, uid, 'rtc', callback);
     } catch (error) {
-      console.error(`${KeyCenter.TAG} getRtcToken error:`, JSON.stringify(error));
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: failed to generate RTC token: ${JSON.stringify(error)}`)
       callback.onTokenGenerated({
         success: false,
         error: `Failed to generate RTC token: ${JSON.stringify(error)}`
@@ -139,11 +142,11 @@ export class KeyCenter {
    * 生成RTM Token
    */
   public static async getRtmToken(uid: number, callback: TokenCallback): Promise<void> {
-    console.log(`${KeyCenter.TAG} getRtmToken: uid=${uid}`);
+    ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: uid=${uid}`)
 
     // 如果没有证书，直接返回APP_ID
     if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
-      console.log(`${KeyCenter.TAG} No APP_CERTIFICATE, using APP_ID as token`);
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: using APP_ID as token`)
       callback.onTokenGenerated({
         success: true,
         token: KeyCenter.APP_ID
@@ -155,7 +158,7 @@ export class KeyCenter {
       // 调用服务端API生成token
       await KeyCenter.generateTokenFromServer('', uid, 'rtm', callback);
     } catch (error) {
-      console.error(`${KeyCenter.TAG} getRtmToken error:`, JSON.stringify(error));
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: failed to generate RTM token: ${JSON.stringify(error)}`)
       callback.onTokenGenerated({
         success: false,
         error: `Failed to generate RTM token: ${JSON.stringify(error)}`
@@ -169,12 +172,12 @@ export class KeyCenter {
    * @param callback 回调接口
    */
   public static async getYSDToken(uid: number, callback: YSDTokenCallback): Promise<void> {
-    console.log(`${KeyCenter.TAG} getYSDToken: uid=${uid}`);
+    ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: uid=${uid}`)
 
     try {
       // 构建请求URL
       const requestUrl = `${KeyCenter.VENDOR_2_TOKEN_HOST}${uid}`;
-      console.log(`${KeyCenter.TAG} Requesting YSD token from: ${requestUrl}`);
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: requestUrl=${requestUrl}`)
 
       // 发送GET请求
       const requestHeaders: Record<string, string> = {
@@ -184,15 +187,13 @@ export class KeyCenter {
       const response: TokenHttpResponse = await TokenHttpClient.get(requestUrl, requestHeaders);
 
       if (response.success && response.data) {
-        console.log(`${KeyCenter.TAG} YSD token response:`, response.data);
+        ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: response=${response.data}`)
 
         try {
           const ysdResponse: YSDApiResponse = JSON.parse(response.data);
 
           if (ysdResponse.error === 0 && ysdResponse.data) {
-            console.log(`${KeyCenter.TAG} YSD token generated successfully`);
-            console.log(`${KeyCenter.TAG} YSD UserId: ${ysdResponse.data.yinsuda_uid}`);
-            console.log(`${KeyCenter.TAG} YSD Token: ${ysdResponse.data.token.substring(0, 20)}...`);
+            ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: YSD API response: ${ysdResponse}`)
 
             callback.onYSDTokenGenerated({
               success: true,
@@ -200,21 +201,22 @@ export class KeyCenter {
               ysdToken: ysdResponse.data.token
             });
           } else {
-            console.error(`${KeyCenter.TAG} YSD API error: ${ysdResponse.error}`);
+            ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: YSD API error: ${ysdResponse.error}`)
             callback.onYSDTokenGenerated({
               success: false,
               error: `YSD API error: ${ysdResponse.error}`
             });
           }
         } catch (parseError) {
-          console.error(`${KeyCenter.TAG} Failed to parse YSD response:`, JSON.stringify(parseError));
+          ExampleLogUtils.logDebug(KeyCenter.TAG,
+            `getYSDToken: Failed to parse YSD response: ${JSON.stringify(parseError)}`)
           callback.onYSDTokenGenerated({
             success: false,
             error: `Failed to parse YSD response: ${JSON.stringify(parseError)}`
           });
         }
       } else {
-        console.error(`${KeyCenter.TAG} YSD HTTP request failed:`, response.error);
+        ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: HTTP error: ${JSON.stringify(response.error)}`)
         callback.onYSDTokenGenerated({
           success: false,
           error: response.error || 'Unknown HTTP error'
@@ -222,7 +224,7 @@ export class KeyCenter {
       }
 
     } catch (error) {
-      console.error(`${KeyCenter.TAG} getYSDToken error:`, JSON.stringify(error));
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: Network error: ${JSON.stringify(error)}`)
       callback.onYSDTokenGenerated({
         success: false,
         error: `Network error: ${JSON.stringify(error)}`
@@ -248,7 +250,7 @@ export class KeyCenter {
 
       if (tokenType === 'rtc') {
         // RTC Token请求
-        requestUrl = `${baseUrl}/rtc`;
+        requestUrl = `${baseUrl}`;
         requestBody = JSON.stringify({
           appId: KeyCenter.APP_ID,
           appCertificate: KeyCenter.APP_CERTIFICATE,
@@ -273,7 +275,7 @@ export class KeyCenter {
       const base64Credentials = KeyCenter.base64Encode(credentials);
       const authHeader = `Basic ${base64Credentials}`;
 
-      console.log(`${KeyCenter.TAG} Requesting token from: ${requestUrl}`);
+      ExampleLogUtils.logDebug(KeyCenter.TAG, ` HTTP Basic Auth Header: ${authHeader}`);
 
       // 使用TokenHttpClient发送请求
       const headers: Record<string, string> = {
@@ -285,7 +287,7 @@ export class KeyCenter {
       const response: TokenHttpResponse = await TokenHttpClient.postForToken(requestUrl, headers, requestBody);
 
       if (response.success && response.data) {
-        console.log(`${KeyCenter.TAG} Token response:`, response.data);
+        ExampleLogUtils.logDebug(KeyCenter.TAG, ` Token request URL: ${requestUrl}`);
 
         try {
           const tokenResponse: AgoraTokenResponse = JSON.parse(response.data);
@@ -302,14 +304,14 @@ export class KeyCenter {
             });
           }
         } catch (parseError) {
-          console.error(`${KeyCenter.TAG} Failed to parse response:`, JSON.stringify(parseError));
+          ExampleLogUtils.logError(KeyCenter.TAG, ` Failed to parse response:` + JSON.stringify(parseError));
           callback.onTokenGenerated({
             success: false,
             error: `Failed to parse server response: ${JSON.stringify(parseError)}`
           });
         }
       } else {
-        console.error(`${KeyCenter.TAG} HTTP request failed:`, response.error);
+        ExampleLogUtils.logError(KeyCenter.TAG, ` HTTP request failed:` + JSON.stringify(response.error));
         callback.onTokenGenerated({
           success: false,
           error: response.error || 'Unknown HTTP error'
@@ -317,7 +319,7 @@ export class KeyCenter {
       }
 
     } catch (error) {
-      console.error(`${KeyCenter.TAG} generateTokenFromServer error:`, JSON.stringify(error));
+      ExampleLogUtils.logError(KeyCenter.TAG, ` generateTokenFromServer error:` + JSON.stringify(error));
       callback.onTokenGenerated({
         success: false,
         error: `Network error: ${JSON.stringify(error)}`
