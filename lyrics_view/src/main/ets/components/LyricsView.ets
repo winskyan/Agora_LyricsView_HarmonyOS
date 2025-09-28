@@ -103,6 +103,7 @@ export struct LyricsView {
   @Local private currentLineScrollOffset: number = 0;
   // Event bus instance for global communication
   private eventBus: EventBus = EventBus.getInstance();
+  @Local private linePaddingLeftRight: number = 10;
 
   /**
    * Requests a refresh of the UI.
@@ -1126,9 +1127,9 @@ export struct LyricsView {
       .width('100%')
       .alignItems(HorizontalAlign.Center)
     }
-    .width('100%')
+    .width(this.actualViewWidth)
     .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
-    .position({ x: 0, y: this.calculateLineYPosition(index) })
+    .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
     .opacity(this.getLineOpacity(index))
     .scale({
       x: this.getLineScale(index),
@@ -1188,9 +1189,9 @@ export struct LyricsView {
     }
     .scrollable(ScrollDirection.Horizontal) // 水平滚动
     .scrollBar(BarState.Off) // 隐藏滚动条
-    .width('100%')
+    .width(this.actualViewWidth)
     .height(this.getLineHeight())
-    .position({ x: 0, y: this.calculateLineYPosition(index) })
+    .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
     .opacity(this.getLineOpacity(index))
     .scale({
       x: this.getLineScale(index),
@@ -1223,12 +1224,12 @@ export struct LyricsView {
           .maxLines(3) // 最多3行
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
-      .width('100%')
+      .width(this.actualViewWidth)
       .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
       .justifyContent(this.getRowJustifyContent())
       .alignItems(VerticalAlign.Center)
       .position({
-        x: 0,
+        x: this.linePaddingLeftRight,
         y: this.getTransitioningYPosition() // 使用动画插值位置
       })
       .opacity(this.getLineOpacity(index))
@@ -1260,10 +1261,10 @@ export struct LyricsView {
       }
       .scrollable(ScrollDirection.Horizontal) // 水平滚动
       .scrollBar(BarState.Off) // 隐藏滚动条
-      .width('100%')
+      .width(this.actualViewWidth)
       .height(this.getLineHeight())
       .position({
-        x: 0,
+        x: this.linePaddingLeftRight,
         y: this.getTransitioningYPosition() // 使用动画插值位置
       })
       .opacity(this.getLineOpacity(index))
@@ -1342,11 +1343,11 @@ export struct LyricsView {
           playMode: PlayMode.Normal
         })
       }
-      .width('100%')
+      .width(this.actualViewWidth)
       .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
       .alignContent(this.getAlignment())
       .position({
-        x: 0,
+        x: this.linePaddingLeftRight,
         y: this.getNewCurrentYPosition() // 使用新当前行的位置
       })
       .opacity(this.getLineOpacity(index))
@@ -1407,10 +1408,10 @@ export struct LyricsView {
       }
       .scrollable(ScrollDirection.Horizontal) // 水平滚动
       .scrollBar(BarState.Off) // 隐藏滚动条
-      .width('100%')
+      .width(this.actualViewWidth)
       .height(this.getLineHeight())
       .position({
-        x: 0,
+        x: this.linePaddingLeftRight,
         y: this.getNewCurrentYPosition() // 使用新当前行的位置
       })
       .opacity(this.getLineOpacity(index))
@@ -1457,11 +1458,11 @@ export struct LyricsView {
         .maxLines(3) // 最多3行
         .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
-    .width('100%')
+    .width(this.actualViewWidth)
     .height(this.getDynamicLineHeight(line, this.textSize))
     .justifyContent(this.getRowJustifyContent())
     .alignItems(VerticalAlign.Center)
-    .position({ x: 0, y: this.calculateLineYPosition(index) })
+    .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
     .opacity(this.getLineOpacity(index))
     .scale({
       x: this.getLineScale(index),
@@ -1491,11 +1492,11 @@ export struct LyricsView {
         .textOverflow({ overflow: TextOverflow.None }) // 不显示省略号
         .width('auto') // 让文本自然宽度
     }
-    .width('100%')
+    .width(this.actualViewWidth)
     .height(this.getLineHeight())
     .alignContent(this.getAlignment())
     .clip(true) // 裁剪超出部分，不显示省略号
-    .position({ x: 0, y: this.calculateLineYPosition(index) })
+    .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
     .opacity(this.getLineOpacity(index))
     .scale({
       x: this.getLineScale(index),
@@ -2000,7 +2001,7 @@ export struct LyricsView {
         // 高度变化后，位置会自动重新计算，不需要手动滚动
       }
       if (newValue.width && typeof newValue.width === 'number') {
-        this.actualViewWidth = newValue.width;
+        this.actualViewWidth = newValue.width - this.linePaddingLeftRight * 2;
         LogUtils.d(`LyricsView: Component width measured: ${this.actualViewWidth}`);
       }
     })

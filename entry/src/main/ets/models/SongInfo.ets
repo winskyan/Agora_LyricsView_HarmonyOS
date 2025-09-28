@@ -7,7 +7,7 @@ import { LyricModel } from 'lyrics_view';
 @ObservedV2
 export class SongInfo {
   /** 歌曲列表 */
-  @Trace songList: string[] = ['十年', '月亮代表我的心', '童话'];
+  @Trace songList: string[] = [];
   /** 当前歌曲索引 */
   @Trace currentIndex: number = 0;
   /** 当前歌曲名称 */
@@ -59,7 +59,7 @@ export class SongInfo {
    * 获取歌曲描述信息
    */
   getDescription(): string {
-    return `当前歌曲: ${this.name} (${this.currentIndex + 1}/${this.songList.length})`;
+    return `当前歌曲: ${this.name}`;
   }
 
   /**
