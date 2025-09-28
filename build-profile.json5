@@ -1,6 +1,20 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\{YourUsername}\\.ohos\\config\\auto_debug_LyricsView_HarmonyOS_com.example.lyricsview_70086000.cer",
+          "storePassword": "0000001B9C4C8B2F6CC69F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B9C4C8B2F6CC69F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F8F",
+          "profile": "C:\\Users\\{YourUsername}\\.ohos\\config\\auto_debug_LyricsView_HarmonyOS_com.example.lyricsview_70086000.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\{YourUsername}\\.ohos\\config\\auto_debug_LyricsView_HarmonyOS_com.example.lyricsview_70086000.p12"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",

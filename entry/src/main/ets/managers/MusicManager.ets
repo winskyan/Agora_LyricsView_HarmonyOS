@@ -3,6 +3,8 @@ import { Constants, MusicContentCenterVendorId } from "@shengwang/rtc-full";
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { MusicResource, MusicResourcePool } from '../utils/MusicResourcePool';
 import { RtcMccManager } from './RtcMccManager';
+import { ExampleConstants } from '../utils/ExampleConstants'
+import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 
 /**
  * 播放状态枚举
@@ -23,7 +25,7 @@ export enum PlaybackStatus {
  * 负责协调音乐播放状态、歌词同步和UI更新
  */
 export class MusicManager implements IMccCallback {
-  private static readonly TAG = "MusicManager";
+  private static readonly TAG = ExampleConstants.APP_TAG + "-MusicManager";
   private static readonly MUSIC_POSITION_UPDATE_INTERVAL = 20; // 20ms更新间隔
 
   // 核心组件
@@ -55,13 +57,14 @@ export class MusicManager implements IMccCallback {
    */
   async init(context: common.UIAbilityContext, appId: string, token: string, userId: string,
     callback: IMccCallback): Promise<void> {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager init`);
     this.callback = callback;
     this.initData();
 
     this.rtcMccManager = new RtcMccManager();
     await this.rtcMccManager.init(context, appId, token, userId, this);
 
-    console.log(`${MusicManager.TAG} init completed`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager init completed`);
   }
 
   /**
@@ -78,18 +81,18 @@ export class MusicManager implements IMccCallback {
    * @param serviceType - 服务类型
    */
   updateMusicVendor(vendorId: MusicContentCenterVendorId): void {
-    console.log(`${MusicManager.TAG} updateMusicVendor:${vendorId}`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `updateMusicVendor:${vendorId}`);
 
     this.currentSongIndex = 0;
 
     switch (vendorId) {
       case MusicContentCenterVendorId.DEFAULT:
-        this.lyricType = 0; // LYRIC_SOURCE_XML = 0
+        this.lyricType = Constants.LyricSourceType.XML;
         this.musicPlayMode = Constants.MusicPlayMode.ORIGINAL;
         this.musicResources = MusicResourcePool.getVendor1MusicList();
         break;
       case MusicContentCenterVendorId.VENDOR_2:
-        this.lyricType = 1; // LYRIC_SOURCE_KRC = 1
+        this.lyricType = Constants.LyricSourceType.KRC;
         this.musicPlayMode = Constants.MusicPlayMode.ORIGINAL;
         this.musicResources = MusicResourcePool.getVendor2MusicList();
         break;
@@ -114,7 +117,7 @@ export class MusicManager implements IMccCallback {
    * 播放音乐
    */
   playMusic(): void {
-    console.log(`${MusicManager.TAG} playMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager playMusic`);
 
     if (this.musicResources.length === 0) {
       console.error(`${MusicManager.TAG} no music resources available`);
@@ -129,7 +132,8 @@ export class MusicManager implements IMccCallback {
 
     // 根据供应商设置歌词类型
     if (currentMusic.vendorId === MusicContentCenterVendorId.VENDOR_2) {
-      this.lyricType = 1; // LYRIC_SOURCE_KRC = 1
+      //TODO LyricType 0: xml 1: lrc 2: lrc with pitches 3: krc
+      this.lyricType = Constants.LyricSourceType.KRC; // LYRIC_SOURCE_KRC = 1
     }
 
     this.status = PlaybackStatus.LOADING;
@@ -145,7 +149,7 @@ export class MusicManager implements IMccCallback {
    * 开始播放（通过评分系统）
    */
   private openMusic(): void {
-    console.log(`${MusicManager.TAG} openMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager openMusic`);
 
     if (this.musicResources.length === 0) {
       console.error(`${MusicManager.TAG} no music resources available`);
@@ -165,7 +169,7 @@ export class MusicManager implements IMccCallback {
    * 通过歌曲代码打开音乐
    */
   private openMusicBySongCode(internalSongCode: bigint): void {
-    console.log(`${MusicManager.TAG} openMusicBySongCode:${internalSongCode}`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager openMusicBySongCode:${internalSongCode}`);
     this.setPlayMode(this.musicPlayMode);
     // 音乐播放器会在RtcMccManager中自动打开和播放
   }
@@ -174,7 +178,7 @@ export class MusicManager implements IMccCallback {
    * 停止音乐
    */
   stopMusic(): void {
-    console.log(`${MusicManager.TAG} stopMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager stopMusic`);
 
     if (this.status === PlaybackStatus.IDLE) {
       return;
@@ -191,7 +195,7 @@ export class MusicManager implements IMccCallback {
    * 暂停音乐
    */
   private pauseMusic(): void {
-    console.log(`${MusicManager.TAG} pauseMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager pauseMusic`);
 
     if (this.status !== PlaybackStatus.PLAYING) {
       return;
@@ -205,7 +209,7 @@ export class MusicManager implements IMccCallback {
    * 恢复音乐
    */
   private resumeMusic(): void {
-    console.log(`${MusicManager.TAG} resumeMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager resumeMusic`);
 
     if (this.status !== PlaybackStatus.PAUSED) {
       return;
@@ -219,7 +223,7 @@ export class MusicManager implements IMccCallback {
    * 暂停或恢复音乐
    */
   pauseOrResumeMusic(): void {
-    console.log(`${MusicManager.TAG} pauseOrResumeMusic status:${this.status}`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager pauseOrResumeMusic status:${this.status}`);
 
     if (this.status === PlaybackStatus.PLAYING) {
       this.pauseMusic();
@@ -233,6 +237,7 @@ export class MusicManager implements IMccCallback {
    * @param position - 目标位置(ms)
    */
   seekMusic(position: number): void {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager seekMusic:${position}`);
     this.lyricsCurrentProgress = position;
     this.rtcMccManager?.seek(position);
     this.updateMusicPosition(position);
@@ -255,7 +260,7 @@ export class MusicManager implements IMccCallback {
    * 切换到下一首歌
    */
   switchMusic(): void {
-    console.log(`${MusicManager.TAG} switchMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager switchMusic`);
 
     this.lyricsCurrentProgress = 0;
     this.rtcMccManager?.stop();
@@ -274,14 +279,13 @@ export class MusicManager implements IMccCallback {
     if (ret === 0) {
       this.musicPlayMode = playMode;
     }
-    console.log(`${MusicManager.TAG} setPlayMode:${playMode} ret:${ret}`);
   }
 
   /**
    * 开始显示歌词（启动位置更新定时器）
    */
   private startDisplayLrc(): void {
-    console.log(`${MusicManager.TAG} startDisplayLrc`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager startDisplayLrc`);
 
     this.playPosition = -1;
 
@@ -303,7 +307,7 @@ export class MusicManager implements IMccCallback {
    * 停止显示歌词（清除位置更新定时器）
    */
   private stopDisplayLrc(): void {
-    console.log(`${MusicManager.TAG} stopDisplayLrc`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager stopDisplayLrc`);
 
     if (this.positionUpdateTimer !== null) {
       clearInterval(this.positionUpdateTimer);
@@ -315,6 +319,7 @@ export class MusicManager implements IMccCallback {
    * 更新音乐位置
    */
   private updateMusicPosition(position: number): void {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager updateMusicPosition:${position}`);
     if (this.status === PlaybackStatus.PLAYING) {
       this.playPosition = position;
     }
@@ -332,6 +337,7 @@ export class MusicManager implements IMccCallback {
    * 清理缓存
    */
   clearCache(): void {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager clearCache`);
     this.rtcMccManager?.clearCache();
   }
 
@@ -348,7 +354,7 @@ export class MusicManager implements IMccCallback {
     songOffsetEnd: number,
     lyricOffset: number
   ): void {
-    console.log(`${MusicManager.TAG} onMusicLyricRequest songCode:${songCode} lyricUrl:${lyricUrl}`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `onMusicLyricRequest songCode:${songCode} lyricUrl:${lyricUrl}`);
 
     this.songOffsetBegin = songOffsetBegin;
 
@@ -360,8 +366,6 @@ export class MusicManager implements IMccCallback {
    * 音乐预加载结果回调
    */
   onMusicPreloadResult(songCode: bigint, percent: number): void {
-    console.log(`${MusicManager.TAG} onMusicPreloadResult songCode:${songCode} percent:${percent}`);
-
     this.callback?.onMusicPreloadResult?.(songCode, percent);
 
     // 预加载完成后开始播放
@@ -412,7 +416,7 @@ export class MusicManager implements IMccCallback {
    * 音乐开始播放回调
    */
   onMusicPlaying(): void {
-    console.log(`${MusicManager.TAG} onMusicPlaying`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `onMusicPlaying`);
 
     this.status = PlaybackStatus.PLAYING;
     this.startDisplayLrc();
@@ -424,7 +428,7 @@ export class MusicManager implements IMccCallback {
    * 音乐停止播放回调
    */
   onMusicStop(): void {
-    console.log(`${MusicManager.TAG} onMusicStop`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `onMusicStop`);
 
     if (this.status !== PlaybackStatus.IDLE) {
       this.status = PlaybackStatus.STOPPED;
@@ -438,15 +442,13 @@ export class MusicManager implements IMccCallback {
    * 音乐播放错误回调
    */
   onMusicError(error: number): void {
-    console.error(`${MusicManager.TAG} onMusicError:${error}`);
+    console.error(`${MusicManager.TAG} MusicManager onMusicError:${error}`);
 
     this.status = PlaybackStatus.ERROR;
     this.stopDisplayLrc();
 
     this.callback?.onMusicError?.(error);
   }
-
-  // ==================== 状态查询方法 ====================
 
   /**
    * 是否正在播放
@@ -467,6 +469,10 @@ export class MusicManager implements IMccCallback {
    */
   isOriginalMode(): boolean {
     return this.isOriginal;
+  }
+
+  isChannelJoined(): boolean {
+    return this.rtcMccManager?.isChannelJoined() || false;
   }
 
   /**
@@ -522,17 +528,10 @@ export class MusicManager implements IMccCallback {
   }
 
   /**
-   * 是否已加入频道
-   */
-  isChannelJoined(): boolean {
-    return this.rtcMccManager?.isChannelJoined() || false;
-  }
-
-  /**
    * 销毁管理器
    */
   destroy(): void {
-    console.log(`${MusicManager.TAG} destroy`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager destroy`);
 
     this.stopDisplayLrc();
     this.rtcMccManager?.destroy();

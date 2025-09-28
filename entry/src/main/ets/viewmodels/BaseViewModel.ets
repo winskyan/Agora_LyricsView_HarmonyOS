@@ -1,4 +1,4 @@
-import { hilog } from '@kit.PerformanceAnalysisKit';
+import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 
 /**
  * ViewModel 基类
@@ -16,7 +16,7 @@ export abstract class BaseViewModel {
    * 子类可以重写此方法进行自定义初始化
    */
   async initialize(): Promise<void> {
-    this.logDebug('ViewModel initialized');
+    ExampleLogUtils.logInfo(this.TAG, 'Initializing ViewModel');
   }
 
   /**
@@ -29,7 +29,7 @@ export abstract class BaseViewModel {
     }
 
     this.isDestroyed = true;
-    this.logDebug('ViewModel destroyed');
+    ExampleLogUtils.logInfo(this.TAG, 'Destroying ViewModel');
   }
 
   /**
@@ -37,7 +37,7 @@ export abstract class BaseViewModel {
    */
   protected checkDestroyed(): boolean {
     if (this.isDestroyed) {
-      this.logDebug('ViewModel operation called after destruction');
+      ExampleLogUtils.logWarn(this.TAG, 'ViewModel operation called after destruction');
       return true;
     }
     return false;
@@ -66,29 +66,8 @@ export abstract class BaseViewModel {
       if (!this.checkDestroyed() && onError) {
         onError(error as Error);
       } else {
-        this.logError(`Operation failed: ${error}`);
+        ExampleLogUtils.logError(this.TAG, `Operation failed: ${error}`);
       }
     }
-  }
-
-  /**
-   * 调试日志
-   */
-  protected logDebug(message: string): void {
-    hilog.debug(0x0000, this.TAG, `%{public}s`, message);
-  }
-
-  /**
-   * 错误日志
-   */
-  protected logError(message: string): void {
-    hilog.error(0x0000, this.TAG, `%{public}s`, message);
-  }
-
-  /**
-   * 信息日志
-   */
-  protected logInfo(message: string): void {
-    hilog.info(0x0000, this.TAG, `%{public}s`, message);
   }
 }

@@ -1,7 +1,7 @@
 import { MccKaraokeViewModel } from '../viewmodels/MccKaraokeViewModel';
 
 import {
-  BuildProfile, LyricsView, ScoringView
+  LyricsView, ScoringView
 } from 'lyrics_view';
 
 /**
@@ -18,7 +18,6 @@ import {
 @Entry
 @ComponentV2
 struct MccIndex {
-  // ViewModel 实例 - 使用 @ObservedV2 响应式状态管理
   @Local private viewModel: MccKaraokeViewModel = new MccKaraokeViewModel();
 
   aboutToAppear() {

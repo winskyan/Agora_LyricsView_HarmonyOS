@@ -7,6 +7,7 @@ import { LyricsService } from '../services/LyricsService';
 import { ContextManager } from '../utils/ContextManager';
 import { BaseViewModel } from './BaseViewModel';
 import { MusicContentCenterVendorId } from "@shengwang/rtc-full";
+import { ExampleLogUtils } from '../utils/ExmapleLogUtils'
 
 import {
   IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel
@@ -18,7 +19,7 @@ import {
  */
 @ObservedV2
 export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
-  protected readonly TAG: string = 'MccKaraokeViewModel';
+  protected readonly TAG: string = 'LyricsView-MccKaraokeViewModel';
   // 响应式状态模型
   @Trace playbackState: PlaybackState = new PlaybackState();
   @Trace songInfo: SongInfo = new SongInfo();
@@ -62,6 +63,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 初始化MCC卡拉OK系统
    */
   private async initializeMccKaraoke(): Promise<void> {
+    ExampleLogUtils.logDebug(this.TAG, 'Initializing MCC Karaoke');
     // 1. 创建KaraokeView
     this.karaokeView = new KaraokeView();
 
@@ -85,7 +87,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     // 6. 更新歌曲信息
     this.updateCurrentSongInfo();
 
-    this.logDebug('MCC Karaoke initialized successfully');
+    ExampleLogUtils.logDebug(this.TAG, 'MCC Karaoke initialized successfully');
   }
 
   /**
@@ -126,8 +128,8 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 开始播放
    */
   startPlayback(): void {
-    this.logDebug('startPlayback');
-    // this.uiState.setLoading('正在加载音乐...'); // API may not exist
+    ExampleLogUtils.logDebug(this.TAG, 'startPlayback');
+    this.uiState.setLoading(true, '正在加载音乐...');
     this.musicManager.playMusic();
   }
 
@@ -135,7 +137,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 暂停播放
    */
   pausePlayback(): void {
-    this.logDebug('pausePlayback');
+    ExampleLogUtils.logDebug(this.TAG, 'pausePlayback');
     this.musicManager.pauseOrResumeMusic();
   }
 
@@ -143,7 +145,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 停止播放
    */
   stopPlayback(): void {
-    this.logDebug('stopPlayback');
+    ExampleLogUtils.logDebug(this.TAG, 'stopPlayback');
     this.musicManager.stopMusic();
     this.playbackState.reset();
     this.karaokeView?.reset();
@@ -153,7 +155,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 切换到下一首
    */
   switchToNext(): void {
-    this.logDebug('switchToNext');
+    ExampleLogUtils.logDebug(this.TAG, 'switchToNext');
     this.stopPlayback();
     this.musicManager.switchMusic();
     this.updateCurrentSongInfo();
@@ -164,7 +166,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 跳过前奏
    */
   skipIntro(): void {
-    this.logDebug('skipIntro');
+    ExampleLogUtils.logDebug(this.TAG, 'skipIntro');
     // 跳转到歌词开始位置
     if (this.karaokeView) {
       // const preludeEnd = this.karaokeView.getPreludeEndPosition(); // API may not exist
@@ -182,7 +184,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 切换原唱/伴唱
    */
   toggleOriginalTrack(): void {
-    this.logDebug('toggleOriginalTrack');
+    ExampleLogUtils.logDebug(this.TAG, 'toggleOriginalTrack');
     this.musicManager.switchPlayOriginal();
     // this.playbackState.setOriginalTrack(this.musicManager.isOriginalMode()); // API may not exist
 
@@ -194,7 +196,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 切换服务类型
    */
   switchServiceType(): void {
-    this.logDebug('switchServiceType');
+    ExampleLogUtils.logDebug(this.TAG, 'switchServiceType');
 
     // 先停止当前播放
     this.stopPlayback();
@@ -225,7 +227,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     songOffsetEnd: number,
     lyricOffset: number
   ): void {
-    this.logDebug(`onMusicLyricRequest: songCode=${songCode}, lyricUrl=${lyricUrl}`);
+    ExampleLogUtils.logDebug(this.TAG, `onMusicLyricRequest: songCode=${songCode}, lyricUrl=${lyricUrl}`);
 
     // 异步加载歌词
     this.loadLyricsFromMcc(lyricUrl, pitchUrl, songOffsetBegin, songOffsetEnd, lyricOffset);
@@ -261,8 +263,8 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
         // this.songInfo.updateDuration(lyricModel.duration); // API may not exist
 
         // this.uiState.setSuccess('歌词加载成功'); // API may not exist
-        // this.logDebug(`Lyrics loaded successfully, duration: ${lyricModel.duration}ms`); // 暂时注释，避免类型错误
-        this.logDebug(`Lyrics loaded successfully`);
+        // ExampleLogUtils.logDebug(this.TAG, `Lyrics loaded successfully, duration: ${lyricModel.duration}ms`); // 暂时注释，避免类型错误
+        ExampleLogUtils.logDebug(this.TAG, `Lyrics loaded successfully`);
       } else {
         throw new Error('Failed to load lyrics from MCC');
       }
@@ -276,7 +278,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 音乐预加载结果回调
    */
   onMusicPreloadResult(songCode: bigint, percent: number): void {
-    this.logDebug(`onMusicPreloadResult: songCode=${songCode}, percent=${percent}`);
+    ExampleLogUtils.logDebug(this.TAG, `onMusicPreloadResult: songCode=${songCode}, percent=${percent}`);
     // this.uiState.setLoading(`音乐加载中... ${percent}%`); // API may not exist
   }
 
@@ -321,7 +323,8 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     performedLineIndex: number,
     performedTotalLines: number
   ): void {
-    this.logDebug(`onMusicLineScore: line=${performedLineIndex}, score=${linePitchScore}, total=${cumulativeTotalLinePitchScores}`);
+    ExampleLogUtils.logDebug(this.TAG,
+      `onMusicLineScore: line=${performedLineIndex}, score=${linePitchScore}, total=${cumulativeTotalLinePitchScores}`);
     // 可以在这里处理行评分
   }
 
@@ -329,7 +332,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 音乐开始播放回调
    */
   onMusicPlaying(): void {
-    this.logDebug('onMusicPlaying');
+    ExampleLogUtils.logDebug(this.TAG, 'onMusicPlaying');
     this.playbackState.setPlayingState(true);
     // this.uiState.setSuccess('音乐播放中...'); // API may not exist
   }
@@ -338,7 +341,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 音乐停止播放回调
    */
   onMusicStop(): void {
-    this.logDebug('onMusicStop');
+    ExampleLogUtils.logDebug(this.TAG, 'onMusicStop');
     this.playbackState.setPlayingState(false);
     // this.uiState.setInfo('音乐已停止'); // API may not exist
   }
@@ -347,7 +350,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
    * 音乐播放错误回调
    */
   onMusicError(error: number): void {
-    this.logError(`Music playback error: ${error}`);
+    ExampleLogUtils.logError(this.TAG, `onMusicError: error=${error}`);
     this.playbackState.setPlayingState(false);
     // this.uiState.setError(`播放错误: ${error}`); // API may not exist
   }
@@ -399,7 +402,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     }
 
     super.destroy();
-    this.logDebug('MccKaraokeViewModel destroyed');
+    ExampleLogUtils.logDebug(this.TAG, 'MccKaraokeViewModel destroyed');
   }
 }
 
