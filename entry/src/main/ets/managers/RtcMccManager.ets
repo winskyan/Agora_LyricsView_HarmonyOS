@@ -20,6 +20,11 @@ import {
   RtcStats,
   SrcInfo
 } from "@shengwang/rtc-full";
+import {
+  IScoreEventHandler,
+  LineScoreData,
+  RawScoreData
+} from '@shengwang/rtc-full/src/main/ets/export/IAgoraMusicContentCenter';
 import { Utils } from 'lyrics_view';
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { ExampleConstants } from '../utils/ExampleConstants';
@@ -146,6 +151,29 @@ export class RtcMccManager {
         // 打开音乐播放器
         this.openMusicBySongCode(internalSongCode);
       }
+    }
+  };
+  private mccScoreEventHandler: IScoreEventHandler = {
+    onPitch: (internalSongCode: number, rawScoreData: RawScoreData) => {
+      ExampleLogUtils.logDebug(RtcMccManager.TAG, `onPitch songCode:${internalSongCode} rawScoreData:${rawScoreData}`);
+      Promise.resolve().then(() => {
+        this.callback?.onMusicPitchScore?.(BigInt(internalSongCode), rawScoreData.speakerPitch, rawScoreData.pitchScore,
+          Number(rawScoreData.progressInMs));
+      })
+    },
+
+    onLineScore: (internalSongCode: number, lineScoreData: LineScoreData) => {
+      ExampleLogUtils.logDebug(RtcMccManager.TAG,
+        `onLineScore songCode:${internalSongCode} lineScoreData:${lineScoreData}`);
+      Promise.resolve().then(() => {
+        this.callback?.onMusicLineScore?.(
+          BigInt(internalSongCode),
+          lineScoreData.pitchScore,
+          lineScoreData.cumulativePitchScore,
+          lineScoreData.index,
+          lineScoreData.totalLines
+        );
+      });
     }
   };
   /**
@@ -317,6 +345,7 @@ export class RtcMccManager {
 
     this.config = new MusicContentCenterConfiguration();
     this.config.eventHandler = this.mccEventHandler;
+    //this.config.scoreEventHandler = this.mccScoreEventHandler;
 
     const ret: number = this.musicCenter.initialize(this.config);
     if (ret !== 0) {
