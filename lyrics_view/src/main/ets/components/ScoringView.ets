@@ -4,7 +4,7 @@ import { ParticleConfig, ParticleRenderer, ParticleSystem, Range } from '../inte
 import { LyricModel } from '../model/LyricModel';
 import { LyricsLineModel } from '../model/LyricsLineModel';
 import { HighlightSegment, Pitch, PitchStickData } from '../model/PitchLineModel';
-import { EventBus, KaraokeEvents, ScoringEvents } from '../utils/EventBus';
+import { EventBus, ScoringEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
 /**
@@ -341,6 +341,15 @@ export struct ScoringView {
         LogUtils.e('ScoringView: ScoringMachine is null when receiving SET_SCORING_LEVEL event');
       }
     });
+
+    // 监听重置事件
+    this.eventBus.on(ScoringEvents.RESET, () => {
+      LogUtils.d('ScoringView: Received RESET event');
+      if (this.scoringMachine) {
+        this.scoringMachine.reset();
+      }
+      this.reset();
+    });
   }
 
   /**
@@ -489,6 +498,9 @@ export struct ScoringView {
    * 重置评分显示
    */
   reset(): void {
+    LogUtils.d('ScoringView: Resetting all state variables');
+
+    // 重置基本状态
     this.localPitch = 0;
     this.animatedPitch = 0;
     this.animatedProgressMs = 0;
@@ -498,6 +510,25 @@ export struct ScoringView {
     this.cumulativeScore = 0;
     this.pitchSticks = [];
     this.lastLocalPitch = 0; // 重置pitch状态跟踪
+
+    // 重置着色相关状态
+    this.pitchHighlightedTime = -1;
+
+    // 重置UI位置状态
+    this.pitchIndicatorY = 0;
+
+    // 重置粒子系统状态
+    this.emittingInitialized = false;
+    if (this.particleSystem) {
+      this.particleSystem.stopEmitting(); // 停止粒子发射
+    }
+
+    // 重置评分机器状态
+    if (this.scoringMachine) {
+      this.scoringMachine.reset();
+    }
+
+    LogUtils.d('ScoringView: Reset completed');
   }
 
   /**
