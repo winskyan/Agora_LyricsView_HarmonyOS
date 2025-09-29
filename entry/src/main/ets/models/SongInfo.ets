@@ -14,6 +14,7 @@ export class SongInfo {
   @Trace name: string = '';
   /** Lyric model */
   @Trace lyricModel: LyricModel | null = null;
+  @Trace vendorName: string = ''
 
   constructor() {
     this.updateCurrentSongName();

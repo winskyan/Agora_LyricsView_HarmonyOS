@@ -47,7 +47,7 @@ struct MccIndex {
           .margin({ top: 2 })
 
         Row() {
-          Text(`Vendor: ${this.viewModel.getVendorName()}`)
+          Text(`Vendor: ${this.viewModel.songInfo.vendorName}`)
             .fontSize(10)
             .fontColor('#2196F3')
         }
@@ -141,6 +141,33 @@ struct MccIndex {
       .width('100%')
       .justifyContent(FlexAlign.Start)
       .alignItems(VerticalAlign.Center)
+
+      // 歌曲打分结果显示
+      Row() {
+        Text('打分: ')
+          .fontSize(12)
+          .fontColor('#666666')
+
+        Text(`当前行: ${this.viewModel.currentLineIndex + 1}/${this.viewModel.totalLines}`)
+          .fontSize(12)
+          .fontColor('#333333')
+          .fontWeight(FontWeight.Medium)
+          .margin({ right: 16 })
+
+        Text(`当前行分数: ${this.viewModel.currentLineScore}`)
+          .fontSize(12)
+          .fontColor('#FF6B35')
+          .fontWeight(FontWeight.Medium)
+          .margin({ right: 16 })
+
+        Text(`总分数: ${this.viewModel.totalScore}`)
+          .fontSize(12)
+          .fontColor('#4CAF50')
+          .fontWeight(FontWeight.Bold)
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
     .height(80)
@@ -151,6 +178,51 @@ struct MccIndex {
       bottom: 8
     })
     .backgroundColor('#FFFFFF')
+    .borderRadius(8)
+    .margin({ left: 16, right: 16, bottom: 10 })
+    .alignItems(HorizontalAlign.Start)
+    .justifyContent(FlexAlign.Center)
+  }
+
+  @Builder
+  ScoringInfoBuilder() {
+    Column({ space: 8 }) {
+      // 歌曲打分结果显示
+      Row() {
+        Text('歌曲打分: ')
+          .fontSize(12)
+          .fontColor('#666666')
+
+        Text(`当前行: ${this.viewModel.currentLineIndex + 1}/${this.viewModel.totalLines}`)
+          .fontSize(12)
+          .fontColor('#333333')
+          .fontWeight(FontWeight.Medium)
+          .margin({ right: 16 })
+
+        Text(`当前行分数: ${this.viewModel.currentLineScore}`)
+          .fontSize(12)
+          .fontColor('#FF6B35')
+          .fontWeight(FontWeight.Medium)
+          .margin({ right: 16 })
+
+        Text(`总分数: ${this.viewModel.totalScore}`)
+          .fontSize(12)
+          .fontColor('#4CAF50')
+          .fontWeight(FontWeight.Bold)
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
+    }
+    .width('100%')
+    .height(40)
+    .padding({
+      left: 16,
+      right: 16,
+      top: 8,
+      bottom: 8
+    })
+    .backgroundColor('#F8F9FA')
     .borderRadius(8)
     .margin({ left: 16, right: 16, bottom: 10 })
     .alignItems(HorizontalAlign.Start)
