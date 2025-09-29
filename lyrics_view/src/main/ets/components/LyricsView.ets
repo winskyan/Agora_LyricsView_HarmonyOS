@@ -1642,16 +1642,11 @@ export struct LyricsView {
    * 获取过渡行的Y位置（使用动画插值）
    */
   private getTransitioningYPosition(): number {
-    const currentTime = Date.now();
-    const timeSinceAnimation = currentTime - this.animationKey;
-
-    // ArkUI V2 优化：使用更短的起始阶段，让动画立即开始，避免重叠
-    const isInStartPhase = timeSinceAnimation < 32; // 约1帧的时间，确保动画立即开始
-
-    if (isInStartPhase) {
-      return this.transitioningFromY; // 起始位置
+    // 基于样式过渡状态判断，而不是时间
+    if (!this.styleTransitioning) {
+      return this.transitioningFromY; // 第一帧：起始位置（中心位置）
     } else {
-      return this.transitioningToY; // 目标位置，让动画系统处理插值
+      return this.transitioningToY; // 后续帧：目标位置，让动画系统处理插值
     }
   }
 
@@ -1659,16 +1654,11 @@ export struct LyricsView {
    * 获取过渡行的字体大小（使用动画插值）
    */
   private getTransitioningHighlightLineTextSize(): number {
-    const currentTime = Date.now();
-    const timeSinceAnimation = currentTime - this.animationKey;
-
-    // ArkUI V2 优化：与位置动画保持同步
-    const isInStartPhase = timeSinceAnimation < 32;
-
-    if (isInStartPhase) {
-      return this.currentLineTextSize; // 起始字体大小
+    // 基于样式过渡状态判断，而不是时间
+    if (!this.styleTransitioning) {
+      return this.currentLineTextSize; // 第一帧：保持高亮行字体大小
     } else {
-      return this.textSize; // 目标字体大小，让动画系统处理插值
+      return this.textSize; // 后续帧：过渡到普通行字体大小
     }
   }
 
@@ -1676,31 +1666,23 @@ export struct LyricsView {
    * 获取过渡行的字体颜色（使用动画插值）
    */
   private getTransitioningHighlightLineTextColor(): string {
-    const currentTime = Date.now();
-    const timeSinceAnimation = currentTime - this.animationKey;
-
-    // ArkUI V2 优化：与其他动画保持同步
-    const isInStartPhase = timeSinceAnimation < 32;
-
-    if (isInStartPhase) {
-      return this.currentLineHighlightedTextColor; // 起始颜色
+    // 基于样式过渡状态判断，而不是时间
+    if (!this.styleTransitioning) {
+      return this.currentLineHighlightedTextColor; // 第一帧：保持高亮行颜色
     } else {
-      return this.previousLineTextColor; // 目标颜色，让动画系统处理插值
+      return this.previousLineTextColor; // 后续帧：过渡到普通行颜色
     }
   }
 
   /**
-   * 获取过渡行的字体颜色（使用动画插值）
+   * 获取过渡行的字体粗细（使用动画插值）
    */
   private getTransitioningHighlightLineFontWeight(): FontWeight {
-    const currentTime = Date.now();
-    const timeSinceAnimation = currentTime - this.animationKey;
-    const isInStartPhase = timeSinceAnimation < 32;
-
-    if (isInStartPhase) {
-      return FontWeight.Bold;
+    // 基于样式过渡状态判断，而不是时间
+    if (!this.styleTransitioning) {
+      return FontWeight.Bold; // 第一帧：保持高亮行字重
     } else {
-      return FontWeight.Normal;
+      return FontWeight.Normal; // 后续帧：过渡到普通行字重
     }
   }
 
@@ -1708,16 +1690,12 @@ export struct LyricsView {
    * 获取过渡行的缩放比例（平滑过渡）
    */
   private getTransitioningScale(index: number): number {
-    const currentTime = Date.now();
-    const timeSinceAnimation = currentTime - this.animationKey;
-
-    // ArkUI V2 优化：与其他动画保持完全同步，避免重叠
-    const isInStartPhase = timeSinceAnimation < 32;
-
-    if (isInStartPhase) {
-      // 起始阶段：保持当前行大小（1.0倍）
+    // 基于样式过渡状态判断，而不是时间
+    if (!this.styleTransitioning) {
+      // 第一帧：保持高亮行缩放比例
       return this.getLineScale(this.mIndexOfCurrentLine);
     } else {
+      // 后续帧：过渡到目标行的缩放比例
       return this.getLineScale(index);
     }
   }
