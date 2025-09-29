@@ -13,17 +13,17 @@ function generateConfigPlugin() {
         name: 'generateBuildConfig',
         run: (taskContext) => {
           console.log('[GenerateConfig] Generating BuildConfig.ets...');
-          
+
           const projectRoot = taskContext.getProjectRootPath();
           const localPropertiesPath = path.join(projectRoot, 'local.properties');
           const buildConfigPath = path.join(projectRoot, 'entry/src/main/ets/utils/BuildConfig.ets');
-          
+
           // 读取 local.properties
           let config = {};
           if (fs.existsSync(localPropertiesPath)) {
             const content = fs.readFileSync(localPropertiesPath, 'utf-8');
             const lines = content.split('\n');
-            
+
             lines.forEach(line => {
               const trimmedLine = line.trim();
               if (trimmedLine && !trimmedLine.startsWith('#')) {
@@ -48,7 +48,7 @@ function generateConfigPlugin() {
               VENDOR_2_TOKEN_HOST: 'https://your-api-host.com/token'
             };
           }
-          
+
           // 生成 BuildConfig.ets 内容
           const buildConfigContent = `/**
  * 构建配置文件 - 自动生成，请勿手动修改
@@ -58,26 +58,26 @@ export class BuildConfig {
   // Agora 配置
   public static readonly APP_ID: string = '${config.APP_ID || ''}';
   public static readonly APP_CERTIFICATE: string = '${config.APP_CERTIFICATE || ''}';
-  
+
   // Token 配置
   public static readonly RTC_TOKEN: string = '${config.RTC_TOKEN || ''}';
   public static readonly RTM_TOKEN: string = '${config.RTM_TOKEN || ''}';
-  
+
   // Vendor2 配置
   public static readonly VENDOR_2_APP_ID: string = '${config.VENDOR_2_APP_ID || ''}';
   public static readonly VENDOR_2_APP_KEY: string = '${config.VENDOR_2_APP_KEY || ''}';
   public static readonly VENDOR_2_TOKEN_HOST: string = '${config.VENDOR_2_TOKEN_HOST || ''}';
-  
+
   // 其他配置
-  public static readonly CHANNEL_NAME: string = 'Karaoke-Example-Test-HarmonyOS';
-  
+  public static readonly CHANNEL_NAME: string = 'Karaoke-Test-HarmonyOS';
+
   /**
    * 检查配置是否有效
    */
   public static isConfigValid(): boolean {
     return !!(BuildConfig.APP_ID && BuildConfig.APP_ID.trim() !== '' && BuildConfig.APP_ID !== 'your_app_id_here');
   }
-  
+
   /**
    * 获取配置信息（用于调试，不显示敏感信息）
    */
@@ -91,17 +91,17 @@ export class BuildConfig {
     return configInfo;
   }
 }`;
-          
+
           // 确保目录存在
           const configDir = path.dirname(buildConfigPath);
           if (!fs.existsSync(configDir)) {
             fs.mkdirSync(configDir, { recursive: true });
           }
-          
+
           // 写入文件
           fs.writeFileSync(buildConfigPath, buildConfigContent, 'utf-8');
           console.log('[GenerateConfig] BuildConfig.ets generated successfully');
-          
+
           // 输出配置信息（不显示敏感信息）
           console.log('[GenerateConfig] Configuration loaded:');
           console.log('- APP_ID:', config.APP_ID ? config.APP_ID.substring(0, 8) + '...' : 'empty');
@@ -110,7 +110,7 @@ export class BuildConfig {
           console.log('- Has RTM Token:', !!(config.RTM_TOKEN && config.RTM_TOKEN.trim() !== ''));
         }
       });
-      
+
       // 将任务添加到 PreBuild 阶段
       pluginContext.lifecycle.beforeTaskExecute('PreBuild', () => {
         pluginContext.executeTask('generateBuildConfig');

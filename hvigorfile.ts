@@ -50,26 +50,26 @@ export class BuildConfig {
   // Agora 配置
   public static readonly APP_ID: string = '${config.APP_ID || ''}';
   public static readonly APP_CERTIFICATE: string = '${config.APP_CERTIFICATE || ''}';
-  
+
   // Token 配置
   public static readonly RTC_TOKEN: string = '${config.RTC_TOKEN || ''}';
   public static readonly RTM_TOKEN: string = '${config.RTM_TOKEN || ''}';
-  
+
   // Vendor2 配置
   public static readonly VENDOR_2_APP_ID: string = '${config.VENDOR_2_APP_ID || ''}';
   public static readonly VENDOR_2_APP_KEY: string = '${config.VENDOR_2_APP_KEY || ''}';
   public static readonly VENDOR_2_TOKEN_HOST: string = '${config.VENDOR_2_TOKEN_HOST || ''}';
-  
+
   // 其他配置
-  public static readonly CHANNEL_NAME: string = 'Karaoke-Example-Test-HarmonyOS';
-  
+  public static readonly CHANNEL_NAME: string = 'Karaoke-Test-HarmonyOS';
+
   /**
    * 检查配置是否有效
    */
   public static isConfigValid(): boolean {
     return !!(BuildConfig.APP_ID && BuildConfig.APP_ID.trim() !== '' && BuildConfig.APP_ID !== 'your_app_id_here');
   }
-  
+
   /**
    * 获取配置信息（用于调试，不显示敏感信息）
    */

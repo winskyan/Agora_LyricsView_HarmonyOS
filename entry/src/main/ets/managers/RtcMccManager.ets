@@ -468,12 +468,13 @@ export class RtcMccManager {
     option.autoSubscribeVideo = true;
     option.channelProfile = Constants.ChannelProfile.LIVE_BROADCASTING;
     option.clientRoleType = Constants.ClientRole.BROADCASTER;
+    option.publishMicrophoneTrack = true;
 
     this.rtcEngine.setAudioScenario(Constants.AudioScenarioType.DEFAULT);
     this.rtcEngine.setDefaultAudioRoutetoSpeakerphone(true);
 
     const ret: number =
-      this.rtcEngine.joinChannelWithOptions(this.rtcToken, this.channelId, parseInt(this.userId, 10), option);
+      this.rtcEngine.joinChannelWithOptions(this.rtcToken, this.channelId, parseInt(this.userId), option);
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `joinChannel ret:${ret} channel:${this.channelId}`);
   }
 
@@ -535,11 +536,6 @@ export class RtcMccManager {
 
       const ret: number = this.musicCenter.startScore(internalSongCode);
       ExampleLogUtils.logDebug(RtcMccManager.TAG, `startScore ret:${ret} internalSongCode:${internalSongCode}`);
-
-
-      this.musicCenter?.setScoreLevel(5);
-      // Open music player
-      this.openMusicBySongCode(internalSongCode);
     } catch (error) {
       console.error(`${RtcMccManager.TAG} startScore error:`, JSON.stringify(error));
     }

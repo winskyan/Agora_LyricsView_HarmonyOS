@@ -9,6 +9,7 @@ import { LyricsService } from '../services/LyricsService';
 import { ContextManager } from '../utils/ContextManager';
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 import { KeyCenter, TokenCallback, TokenResponse, YSDTokenCallback, YSDTokenResponse } from '../utils/KeyCenter';
+import { PermissionUtil } from '../utils/PermissionUtil';
 import { BaseViewModel } from './BaseViewModel';
 
 import { IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel } from 'lyrics_view';
@@ -58,16 +59,49 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   async initialize(): Promise<void> {
     await super.initialize();
 
+    // 首先检查权限状态
     await this.safeExecute(
-      () => this.initializeMccKaraoke(),
+      () => this.checkPermissionsAndInitialize(),
       () => {
-        this.uiState.setSuccess('歌词组件初始化成功');
-        this.musicManager.joinChannel();
+        ExampleLogUtils.logDebug(this.TAG, 'ViewModel initialization completed successfully');
       },
       (error) => {
         this.uiState.setError(`Initialization failed: ${error.message}`);
       }
     );
+  }
+
+  /**
+   * 检查权限并初始化MCC Karaoke系统
+   */
+  private async checkPermissionsAndInitialize(): Promise<void> {
+    const context = ContextManager.getInstance().getContext();
+    if (!context) {
+      throw new Error('Application context not available');
+    }
+
+    ExampleLogUtils.logDebug(this.TAG, 'Checking permissions before initializing MCC Karaoke');
+
+    // 检查必需权限
+    const hasEssentialPermissions = await PermissionUtil.hasEssentialPermissions(context);
+
+    if (!hasEssentialPermissions) {
+      // 尝试申请权限
+      ExampleLogUtils.logDebug(this.TAG, 'Essential permissions not granted, requesting permissions');
+      const result = await PermissionUtil.requestEssentialPermissions(context);
+      PermissionUtil.logPermissionResult(result);
+
+      if (!result.success) {
+        throw new Error(`权限申请失败: ${result.message}`);
+      }
+    }
+
+    // 权限检查通过，初始化MCC Karaoke
+    ExampleLogUtils.logDebug(this.TAG, 'Permissions verified, initializing MCC Karaoke');
+    await this.initializeMccKaraoke();
+
+    this.uiState.setSuccess('歌词组件初始化成功');
+    this.musicManager.joinChannel();
   }
 
   /**
@@ -281,7 +315,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     // Switch service type
     this.currentVendorId =
       this.currentVendorId === MusicContentCenterVendorId.DEFAULT ? MusicContentCenterVendorId.VENDOR_2 :
-      MusicContentCenterVendorId.DEFAULT;
+        MusicContentCenterVendorId.DEFAULT;
     this.musicManager.updateMusicVendor(this.currentVendorId);
 
     // Update song information
