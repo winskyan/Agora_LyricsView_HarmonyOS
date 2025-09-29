@@ -61,7 +61,7 @@ export class BuildConfig {
   public static readonly VENDOR_2_TOKEN_HOST: string = '${config.VENDOR_2_TOKEN_HOST || ''}';
 
   // 其他配置
-  public static readonly CHANNEL_NAME: string = 'Karaoke-Test-HarmonyOS';
+  public static readonly CHANNEL_NAME: string = '${config.CHANNEL_NAME || ''}';
 
   /**
    * 检查配置是否有效

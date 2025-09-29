@@ -83,9 +83,9 @@ generate_config() {
     print_info "应用名称: $APP_NAME"
     print_info "SDK模式: $SDK_MODE"
     
-    # 生成配置文件到 lyrics_view 模块
+    # 生成配置文件到 entry 模块
     node "$PROJECT_ROOT/scripts/generate-config.js"
-    print_info "已生成: lyrics_view/src/main/ets/config/ProjectConfig.ets"
+    print_info "已生成: entry/src/main/ets/utils/BuildConfig.ets"
     
     # 同步版本号到 package.json5 文件
     local FILES=(
@@ -231,7 +231,7 @@ build_release() {
     print_info "🚀 您现在可以："
     print_info "   1. 使用 HAR 包: Agora-LyricsView-HarmonyOS-$VERSION.har"
     print_info "   2. 集成到其他项目中使用"
-    print_info "   3. 查看配置: lyrics_view/src/main/ets/config/ProjectConfig.ets"
+    print_info "   3. 查看配置: entry/src/main/ets/utils/BuildConfig.ets"
 }
 
 # 发布 HAR 包（保留原函数名以兼容）
