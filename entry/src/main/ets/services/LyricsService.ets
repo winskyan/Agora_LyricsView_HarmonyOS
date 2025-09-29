@@ -67,7 +67,8 @@ export class LyricsService {
         throw new Error('Failed to parse lyrics from MCC');
       }
 
-      this.logDebug(`Successfully parsed MCC lyrics with ${lyricModel.lines?.length || 0} lines`);
+      this.logDebug(`Successfully parsed MCC lyrics with ${lyricModel.lines?.length ||
+        0} duration: ${lyricModel.duration}ms lines preludeEndPosition:${lyricModel.preludeEndPosition}`);
 
       // If there's song offset, need to cut lyrics
       if (songOffsetBegin > 0 || songOffsetEnd > 0) {
@@ -76,13 +77,14 @@ export class LyricsService {
 
         const cutResult: LyricModel | null = LyricsCutter.cut(lyricModel, startTime, endTime);
         if (cutResult !== null) {
-          this.logDebug(`Successfully cut MCC lyrics, duration: ${cutResult.duration}ms`);
-          return cutResult;
+          this.logDebug(`Successfully cut MCC lyrics, duration: ${cutResult.duration}ms lines preludeEndPosition:${cutResult.preludeEndPosition}`);
+          this.lyricModel = cutResult;
+          return this.lyricModel;
         }
       }
 
       this.lyricModel = lyricModel;
-      return lyricModel;
+      return this.lyricModel;
 
     } catch (error) {
       this.logDebug(`Failed to load lyrics from MCC: ${error}`);
