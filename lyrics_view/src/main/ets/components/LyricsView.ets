@@ -64,8 +64,6 @@ export struct LyricsView {
   /** Horizontal alignment of lyrics text (0=center, 1=left, 2=right) */
   @Param textGravity: number = 0;
   // Internal state
-  /** The lyrics state machine managing lyrics progression */
-  private mLyricMachine: LyricMachine | null = null;
   /** Index of the currently displayed lyrics line */
   @Local private mIndexOfCurrentLine: number = -1;
   /** 响应式的歌词模型副本 */
@@ -97,13 +95,15 @@ export struct LyricsView {
   // 文本滚动相关状态
   @Local private isTextScrolling: boolean = false; // 是否正在滚动文本
   @Local private textScrollTimer: number = -1; // 文本滚动定时器
-  // Text scroll controller for horizontal scrolling
-  private textScroller: Scroller = new Scroller();
   // 当前行的滚动偏移状态（用于调试日志）
   @Local private currentLineScrollOffset: number = 0;
+  @Local private linePaddingLeftRight: number = 20;
+  /** The lyrics state machine managing lyrics progression */
+  private mLyricMachine: LyricMachine | null = null;
+  // Text scroll controller for horizontal scrolling
+  private textScroller: Scroller = new Scroller();
   // Event bus instance for global communication
   private eventBus: EventBus = EventBus.getInstance();
-  @Local private linePaddingLeftRight: number = 10;
 
   /**
    * Requests a refresh of the UI.
@@ -714,11 +714,10 @@ export struct LyricsView {
 
   /**
    * 改进的文本宽度估算方法
-   * 根据字符类型进行更精确的估算
+   * 根据字符类型进行更精确的估算，并添加安全边距
    */
   private measureTextWidth(text: string, fontSize: number): number {
     let estimatedWidth = 0;
-
     let isChinese = false;
 
     for (let i = 0; i < text.length; i++) {
@@ -728,16 +727,21 @@ export struct LyricsView {
         estimatedWidth += fontSize;
         isChinese = true;
       } else if (/[a-zA-Z0-9]/.test(char)) {
-        // 英文字母和数字，宽度约为字体大小的0.5倍
-        estimatedWidth += fontSize * 0.5;
+        // 英文字母和数字，宽度约为字体大小的0.6倍（稍微增加以确保准确性）
+        estimatedWidth += fontSize * 0.6;
       } else {
-        // 标点符号和其他字符，宽度约为字体大小的0.3倍
+        // 标点符号和其他字符
         if (isChinese) {
-          estimatedWidth += fontSize;
+          estimatedWidth += fontSize * 0.8; // 中文标点符号
         } else {
-          estimatedWidth += fontSize * 0.5;
+          estimatedWidth += fontSize * 0.4; // 英文标点符号
         }
       }
+    }
+
+    // 为英文文本添加额外的安全边距，因为英文字符间距和字体渲染可能有差异
+    if (!isChinese && text.length > 0) {
+      estimatedWidth *= 1.1; // 增加10%的安全边距
     }
 
     return estimatedWidth;
@@ -748,7 +752,8 @@ export struct LyricsView {
    */
   private isTextOverflowing(text: string, fontSize: number): boolean {
     const actualTextWidth = this.measureTextWidth(text, fontSize);
-    const availableWidth = this.actualViewWidth; // 使用完整宽度
+    // 考虑左右边距，实际可用宽度要减去边距
+    const availableWidth = this.actualViewWidth - (this.linePaddingLeftRight * 2);
     const isOverflowing = actualTextWidth > availableWidth;
 
     // 为了测试，降低滚动触发阈值
@@ -770,7 +775,8 @@ export struct LyricsView {
     const text = this.getLineText(line);
     const fontSize = this.currentLineTextSize; // 确保使用当前行字体大小
     const actualTextWidth = this.measureTextWidth(text, fontSize); // 使用精确测量
-    const containerWidth = this.actualViewWidth;
+    // 考虑左右边距，实际可用宽度要减去边距
+    const containerWidth = this.actualViewWidth - (this.linePaddingLeftRight * 2);
 
     // 为了测试，即使文本不是很长也允许滚动
     if (actualTextWidth <= containerWidth * 0.8) { // 降低阈值，80%就开始滚动

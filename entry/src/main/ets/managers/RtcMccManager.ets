@@ -102,7 +102,7 @@ export class RtcMccManager {
    */
   private mccEventHandler: IMusicContentCenterEventHandler = {
     onPreLoadEvent: (requestId: string, internalSongCode: bigint, percent: number, payload: string,
-      state: Constants.MusicContentCenterState, reason: number) => {
+      state: Constants.MusicContentCenterState, reason: Constants.MusicContentCenterStateReason) => {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `onPreLoadEvent requestId:${requestId} songCode:${internalSongCode} percent:${percent} payload:${payload} state:${state} reason:${reason}`);
 
@@ -115,37 +115,42 @@ export class RtcMccManager {
     },
 
     onMusicCollectionResult: (requestId: string, page: number, pageSize: number, total: number, list: Music[],
-      errorCode: number) => {
+      reason: Constants.MusicContentCenterStateReason) => {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
-        `onMusicCollectionResult requestId:${requestId} page:${page} total:${total} errorCode:${errorCode}`);
+        `onMusicCollectionResult requestId:${requestId} page:${page} total:${total} reason:${reason}`);
     },
 
-    onMusicChartsResult: (requestId: string, list: MusicChartInfo[], errorCode: number) => {
-      ExampleLogUtils.logDebug(RtcMccManager.TAG, `onMusicChartsResult requestId:${requestId} errorCode:${errorCode}`);
+    onMusicChartsResult: (requestId: string, list: MusicChartInfo[],
+      reason: Constants.MusicContentCenterStateReason) => {
+      ExampleLogUtils.logDebug(RtcMccManager.TAG, `onMusicChartsResult requestId:${requestId} reason:${reason}`);
     },
 
-    onLyricResult: (requestId: string, internalSongCode: bigint, payload: string, reason: number) => {
+    onLyricResult: (requestId: string, internalSongCode: bigint, payload: string,
+      reason: Constants.MusicContentCenterStateReason) => {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `onLyricResult requestId:${requestId} songCode:${internalSongCode} payload:${payload} reason:${reason}`);
       this.handleLyricResult(internalSongCode, payload);
     },
 
-    onLyricInfoResult: (requestId: string, internalSongCode: bigint, lyricInfo: LyricInfo, reason: number) => {
+    onLyricInfoResult: (requestId: string, internalSongCode: bigint, lyricInfo: LyricInfo,
+      reason: Constants.MusicContentCenterStateReason) => {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `onLyricInfoResult requestId:${requestId} songCode:${internalSongCode} reason:${reason}`);
     },
 
-    onSongSimpleInfoResult: (requestId: string, songCode: bigint, simpleInfo: string, errorCode: number) => {
+    onSongSimpleInfoResult: (requestId: string, songCode: bigint, simpleInfo: string,
+      reason: Constants.MusicContentCenterStateReason) => {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
-        `onSongSimpleInfoResult requestId:${requestId} songCode:${songCode} simpleInfo:${simpleInfo} errorCode:${errorCode}`);
+        `onSongSimpleInfoResult requestId:${requestId} songCode:${songCode} simpleInfo:${simpleInfo} reason:${reason}`);
     },
 
-    onStartScoreResult: (internalSongCode: bigint, state: Constants.MusicContentCenterState, reason: number) => {
+    onStartScoreResult: (internalSongCode: bigint, state: Constants.MusicContentCenterState,
+      reason: Constants.MusicContentCenterStateReason) => {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `onStartScoreResult songCode:${internalSongCode} state:${state} reason:${reason}`);
 
       if (state === Constants.MusicContentCenterState.START_SCORE_COMPLETED &&
-        reason === 0) { // START_SCORE_COMPLETED = 0, REASON_OK = 0
+        reason === Constants.MusicContentCenterStateReason.OK) { // START_SCORE_COMPLETED = 0, REASON_OK = 0
         // 设置评分等级
         this.musicCenter?.setScoreLevel(5);
         // 打开音乐播放器
@@ -154,21 +159,21 @@ export class RtcMccManager {
     }
   };
   private mccScoreEventHandler: IScoreEventHandler = {
-    onPitch: (internalSongCode: number, rawScoreData: RawScoreData) => {
+    onPitch: (internalSongCode: bigint, rawScoreData: RawScoreData) => {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `onPitch songCode:${internalSongCode} rawScoreData.speakerPitch:${rawScoreData.speakerPitch} rawScoreData.pitchScore:${rawScoreData.pitchScore}`);
       Promise.resolve().then(() => {
-        this.callback?.onMusicPitchScore?.(BigInt(internalSongCode), rawScoreData.speakerPitch, rawScoreData.pitchScore,
+        this.callback?.onMusicPitchScore?.(internalSongCode, rawScoreData.speakerPitch, rawScoreData.pitchScore,
           Number(rawScoreData.progressInMs));
       })
     },
 
-    onLineScore: (internalSongCode: number, lineScoreData: LineScoreData) => {
+    onLineScore: (internalSongCode: bigint, lineScoreData: LineScoreData) => {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `onLineScore songCode:${internalSongCode} lineScoreData:${lineScoreData}`);
       Promise.resolve().then(() => {
         this.callback?.onMusicLineScore?.(
-          BigInt(internalSongCode),
+          internalSongCode,
           lineScoreData.pitchScore,
           lineScoreData.cumulativePitchScore,
           lineScoreData.index,
@@ -354,8 +359,8 @@ export class RtcMccManager {
     }
 
     // // 创建音乐播放器
-    // this.musicPlayer = this.musicCenter.createMusicPlayer();
-    // this.musicPlayer?.registerPlayerObserver(this.mediaPlayerObserver);
+    this.musicPlayer = this.musicCenter.createMusicPlayer();
+    this.musicPlayer?.registerPlayerObserver(this.mediaPlayerObserver);
 
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `MCC initialized successfully`);
   }
@@ -413,10 +418,6 @@ export class RtcMccManager {
     addVendorRet = this.musicCenter.addVendor(MusicContentCenterVendorId.VENDOR_2, JSON.stringify(vendor2Config));
     ExampleLogUtils.logDebug(RtcMccManager.TAG,
       `add vendor2 ret:${addVendorRet} config:${JSON.stringify(vendor2Config)}`);
-
-    // 创建音乐播放器
-    this.musicPlayer = this.musicCenter.createMusicPlayer();
-    this.musicPlayer?.registerPlayerObserver(this.mediaPlayerObserver);
 
     ExampleLogUtils.logDebug(RtcMccManager.TAG, 'MCC vendors added successfully');
   }
