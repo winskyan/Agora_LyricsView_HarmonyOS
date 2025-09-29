@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit';
-import { Constants, MusicContentCenterVendorId } from "@shengwang/rtc-full";
+import { MusicContentCenterVendorId } from '@shengwang/rtc-full';
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { MusicManager, PlaybackStatus } from '../managers/MusicManager';
 import { PlaybackState } from '../models/PlaybackState';
@@ -11,27 +11,25 @@ import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 import { KeyCenter, TokenCallback, TokenResponse, YSDTokenCallback, YSDTokenResponse } from '../utils/KeyCenter';
 import { BaseViewModel } from './BaseViewModel';
 
-import {
-  IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel
-} from 'lyrics_view';
+import { IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel } from 'lyrics_view';
 
 /**
- * MCC 卡拉OK ViewModel
- * 集成MCC音乐播放和歌词显示功能
+ * MCC Karaoke ViewModel
+ * Integrates MCC music playback and lyrics display functionality
  */
 @ObservedV2
 export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   protected readonly TAG: string = 'LyricsView-MccKaraokeViewModel';
-  // 响应式状态模型
+  // Reactive state models
   @Trace playbackState: PlaybackState = new PlaybackState();
   @Trace songInfo: SongInfo = new SongInfo();
   @Trace uiState: UIState = new UIState();
-  // 服务依赖
+  // Service dependencies
   private lyricsService: LyricsService;
   public musicManager: MusicManager;
-  // KaraokeView 实例
+  // KaraokeView instance
   private karaokeView: KaraokeView | null = null;
-  // 配置信息 - 从KeyCenter获取
+  // Configuration information - obtained from KeyCenter
   public appId: string = KeyCenter.APP_ID;
   public rtcToken: string = "";
   public rtmToken: string = "";
@@ -40,7 +38,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   public ysdAppKey: string = KeyCenter.VENDOR_2_APP_KEY;
   public ysdUserId: string = "";
   public ysdToken: string = "";
-  // 当前服务类型
+  // Current service type
   private currentVendorId: MusicContentCenterVendorId = MusicContentCenterVendorId.DEFAULT;
 
   constructor() {
@@ -50,7 +48,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   }
 
   /**
-   * 初始化 ViewModel
+   * Initialize ViewModel
    */
   async initialize(): Promise<void> {
     await super.initialize();
@@ -58,30 +56,30 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     await this.safeExecute(
       () => this.initializeMccKaraoke(),
       () => {
-        this.uiState.setSuccess('MCC KaraokeView 初始化成功');
+        this.uiState.setSuccess('MCC KaraokeView initialized successfully');
         this.musicManager.joinChannel();
       },
       (error) => {
-        this.uiState.setError(`初始化失败: ${error.message}`);
+        this.uiState.setError(`Initialization failed: ${error.message}`);
       }
     );
   }
 
   /**
-   * 初始化MCC卡拉OK系统
+   * Initialize MCC Karaoke system
    */
   private async initializeMccKaraoke(): Promise<void> {
     ExampleLogUtils.logDebug(this.TAG, 'Initializing MCC Karaoke');
-    // 1. 创建KaraokeView
+    // 1. Create KaraokeView
     this.karaokeView = new KaraokeView();
 
-    // 2. 设置KaraokeView事件监听
+    // 2. Setup KaraokeView event listeners
     this.setupKaraokeViewEvents();
 
-    // 3. 设置歌词服务
+    // 3. Setup lyrics service
     this.lyricsService.setKaraokeView(this.karaokeView);
 
-    // 4. 获取Token并初始化音乐管理器
+    // 4. Get tokens and initialize music manager
     const context = ContextManager.getInstance().getContext();
     if (!context) {
       throw new Error('Application context not available');
@@ -89,14 +87,14 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 
     await this.initializeWithTokens(context);
 
-    // 5. 更新歌曲信息
+    // 5. Update current song information
     this.updateCurrentSongInfo();
 
     ExampleLogUtils.logDebug(this.TAG, 'MCC Karaoke initialized successfully');
   }
 
   /**
-   * 设置KaraokeView事件监听
+   * Setup KaraokeView event listeners
    */
   private setupKaraokeViewEvents(): void {
     if (!this.karaokeView) {
@@ -108,12 +106,12 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   }
 
   /**
-   * 获取Token并初始化音乐管理器
+   * Get tokens and initialize music manager
    */
   private async initializeWithTokens(context: common.UIAbilityContext): Promise<void> {
     ExampleLogUtils.logDebug(this.TAG, 'Starting token initialization');
 
-    // 获取用户ID
+    // Get user ID
     this.userId = KeyCenter.getUserUid().toString();
     const channelName = KeyCenter.CHANNEL_NAME;
 
@@ -139,37 +137,37 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
         }
       };
 
-      // 获取RTC Token
+      // Get RTC Token
       const rtcTokenCallback = new RtcTokenCallbackImpl(this, () => {
         rtcTokenReceived = true;
       }, checkComplete);
       KeyCenter.getRtcToken(channelName, KeyCenter.getUserUid(), rtcTokenCallback);
 
-      // 获取RTM Token
+      // Get RTM Token
       const rtmTokenCallback = new RtmTokenCallbackImpl(this, () => {
         rtmTokenReceived = true;
       }, checkComplete);
       KeyCenter.getRtmToken(KeyCenter.getUserUid(), rtmTokenCallback);
 
-      // 获取音速达Token
+      // Get YSD Token
       const ysdTokenCallback = new YSDTokenCallbackImpl(this, () => {
         ysdTokenReceived = true;
       }, checkComplete);
       KeyCenter.getYSDToken(KeyCenter.getUserUid(), ysdTokenCallback);
 
-      // 设置超时
+      // Set timeout
       setTimeout(() => {
         if (!rtcTokenReceived || !rtmTokenReceived || !ysdTokenReceived) {
           hasError = true;
           ExampleLogUtils.logError(this.TAG, 'Token initialization timeout');
           reject(new Error('Token initialization timeout'));
         }
-      }, 15000); // 15秒超时
+      }, 15000); // 15 seconds timeout
     });
   }
 
   /**
-   * 更新当前歌曲信息
+   * Update current song information
    */
   private updateCurrentSongInfo(): void {
     const currentMusic = this.musicManager.getCurrentMusicInfo();
@@ -181,37 +179,37 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   public getVendorName(): string {
     switch (this.currentVendorId) {
       case MusicContentCenterVendorId.DEFAULT:
-        return "Default (音集协)";
+        return "Default (MCCA)";
       case MusicContentCenterVendorId.VENDOR_2:
-        return "Vendor2 (音速达)";
+        return "Vendor2 (YSD)";
       default:
-        return "未知供应商";
+        return "Unknown Vendor";
     }
   }
 
   /**
-   * 开始播放
+   * Start playback
    */
   startPlayback(): void {
     ExampleLogUtils.logDebug(this.TAG, 'startPlayback');
     if (this.musicManager.isPaused()) {
-      this.uiState.setLoading(false, '正在播放音乐...');
+      this.uiState.setLoading(false, 'Playing music...');
       this.playbackState.isPlaying = true;
     } else {
-      this.uiState.setLoading(true, '正在加载音乐...');
+      this.uiState.setLoading(true, 'Loading music...');
     }
     this.musicManager.playMusic();
   }
 
   /**
-   * 暂停播放
+   * Pause playback
    */
   pausePlayback(): void {
     this.musicManager.pauseOrResumeMusic();
   }
 
   /**
-   * 停止播放
+   * Stop playback
    */
   stopPlayback(): void {
     ExampleLogUtils.logDebug(this.TAG, 'stopPlayback');
@@ -221,73 +219,73 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   }
 
   /**
-   * 切换到下一首
+   * Switch to next song
    */
   switchToNext(): void {
     ExampleLogUtils.logDebug(this.TAG, 'switchToNext');
     this.stopPlayback();
     this.musicManager.switchMusic();
     this.updateCurrentSongInfo();
-    this.uiState.setSuccess('已切换到下一首歌曲');
+    this.uiState.setSuccess('Switched to next song');
   }
 
   /**
-   * 跳过前奏
+   * Skip intro
    */
   skipIntro(): void {
     ExampleLogUtils.logDebug(this.TAG, 'skipIntro');
-    // 跳转到歌词开始位置
+    // Jump to lyrics start position
     if (this.karaokeView) {
       const preludeEnd = this.lyricsService.getPreludeEndPosition();
       if (preludeEnd > 0) {
         this.musicManager.seekMusic(preludeEnd);
-        this.uiState.setSuccess(`已跳过前奏，跳转到 ${preludeEnd}ms`);
+        this.uiState.setSuccess(`Intro skipped, jumped to ${preludeEnd}ms`);
       } else {
-        this.uiState.callBackInfo = '当前歌曲没有前奏';
+        this.uiState.callBackInfo = 'Current song has no intro';
       }
     }
   }
 
   /**
-   * 切换原唱/伴唱
+   * Toggle original/accompaniment track
    */
   toggleOriginalTrack(): void {
     ExampleLogUtils.logDebug(this.TAG, 'toggleOriginalTrack');
     this.musicManager.switchPlayOriginal();
     this.playbackState.isOriginalTrack = this.musicManager.isOriginalMode();
 
-    const mode = this.musicManager.isOriginalMode() ? '原唱' : '伴唱';
-    this.uiState.setSuccess(`已切换到${mode}模式`);
+    const mode = this.musicManager.isOriginalMode() ? 'Original' : 'Accompaniment';
+    this.uiState.setSuccess(`Switched to ${mode} mode`);
   }
 
   /**
-   * 切换服务类型
+   * Switch service type
    */
   switchServiceType(): void {
     ExampleLogUtils.logDebug(this.TAG, 'switchServiceType');
 
-    // 先停止当前播放
+    // Stop current playback first
     this.stopPlayback();
 
     this.karaokeView?.reset();
 
-    // 切换服务类型
+    // Switch service type
     this.currentVendorId =
       this.currentVendorId === MusicContentCenterVendorId.DEFAULT ? MusicContentCenterVendorId.VENDOR_2 :
       MusicContentCenterVendorId.DEFAULT;
     this.musicManager.updateMusicVendor(this.currentVendorId);
 
-    // 更新歌曲信息
+    // Update song information
     this.updateCurrentSongInfo();
 
     const typeName = this.getVendorName();
-    this.uiState.setSuccess(`已切换到 ${typeName}`); // API may not exist
+    this.uiState.setSuccess(`Switched to ${typeName}`); // API may not exist
   }
 
-  // ==================== IMccCallback 实现 ====================
+  // ==================== IMccCallback Implementation ====================
 
   /**
-   * 音乐歌词请求回调
+   * Music lyrics request callback
    */
   onMusicLyricRequest(
     songCode: bigint,
@@ -297,12 +295,12 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     songOffsetEnd: number,
     lyricOffset: number
   ): void {
-    // 异步加载歌词
+    // Load lyrics asynchronously
     this.loadLyricsFromMcc(lyricUrl, pitchUrl, songOffsetBegin, songOffsetEnd, lyricOffset);
   }
 
   /**
-   * 从MCC加载歌词
+   * Load lyrics from MCC
    */
   private async loadLyricsFromMcc(
     lyricUrl: string,
@@ -312,7 +310,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     lyricOffset: number
   ): Promise<void> {
     try {
-      this.uiState.setLoading(true, '正在加载歌词...');
+      this.uiState.setLoading(true, 'Loading lyrics...');
 
       const lyricModel: LyricModel | null = await this.lyricsService.loadLyricsFromMcc(
         lyricUrl,
@@ -326,45 +324,45 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 
         this.songInfo.setLyricModel(lyricModel)
 
-        // 设置歌词数据
+        // Set lyrics data
         this.karaokeView.setLyricData(lyricModel);
 
-        // 更新歌曲信息
+        // Update song information
         // this.songInfo(lyricModel.duration); // API may not exist
 
-        this.uiState.setSuccess('歌词加载成功');
+        this.uiState.setSuccess('Lyrics loaded successfully');
         ExampleLogUtils.logDebug(this.TAG, `Lyrics loaded successfully, duration: ${lyricModel.duration}ms`);
       } else {
         throw new Error('Failed to load lyrics from MCC');
       }
     } catch (error) {
       console.error('Failed to load lyrics from MCC', JSON.stringify(error));
-      this.uiState.setError(`歌词加载失败: ${error.message}`);
+      this.uiState.setError(`Failed to load lyrics: ${error.message}`);
     }
   }
 
   /**
-   * 音乐预加载结果回调
+   * Music preload result callback
    */
   onMusicPreloadResult(songCode: bigint, percent: number): void {
     ExampleLogUtils.logDebug(this.TAG, `onMusicPreloadResult: songCode=${songCode}, percent=${percent}`);
-    this.uiState.setLoading(true, `音乐加载中... ${percent}%`);
+    this.uiState.setLoading(true, `Loading music... ${percent}%`);
   }
 
   /**
-   * 音乐播放位置变化回调
+   * Music position change callback
    */
   onMusicPositionChange(position: number): void {
     this.playbackState.updateProgress(position);
 
-    // 更新歌词进度
+    // Update lyrics progress
     if (this.karaokeView) {
       this.karaokeView.setProgress(position);
     }
   }
 
   /**
-   * 音乐音高评分回调
+   * Music pitch score callback
    */
   onMusicPitchScore(
     internalSongCode: bigint,
@@ -372,17 +370,17 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     pitchScore: number,
     progressInMs: number
   ): void {
-    // 更新音高数据
+    // Update pitch data
     this.playbackState.updatePitch(voicePitch);
 
-    // 更新KaraokeView音高
+    // Update KaraokeView pitch
     if (this.karaokeView) {
       this.karaokeView.setPitch(voicePitch, pitchScore);
     }
   }
 
   /**
-   * 音乐行评分回调
+   * Music line score callback
    */
   onMusicLineScore(
     internalSongCode: bigint,
@@ -393,81 +391,81 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   ): void {
     ExampleLogUtils.logDebug(this.TAG,
       `onMusicLineScore: line=${performedLineIndex}, score=${linePitchScore}, total=${cumulativeTotalLinePitchScores}`);
-    // 可以在这里处理行评分
+    // Handle line score here
   }
 
   /**
-   * 音乐开始播放回调
+   * Music start playing callback
    */
   onMusicPlaying(): void {
     this.playbackState.setPlayingState(true);
-    this.uiState.setSuccess('音乐播放中...');
+    this.uiState.setSuccess('Music is playing...');
   }
 
   onMusicPause(): void {
     this.playbackState.setPlayingState(false);
-    this.uiState.callBackInfo = '音乐已暂停';
+    this.uiState.callBackInfo = 'Music paused';
   }
 
   /**
-   * 音乐停止播放回调
+   * Music stop playing callback
    */
   onMusicStop(): void {
     ExampleLogUtils.logDebug(this.TAG, 'onMusicStop');
     this.playbackState.setPlayingState(false);
-    this.uiState.callBackInfo = '音乐已停止';
+    this.uiState.callBackInfo = 'Music stopped';
   }
 
   /**
-   * 音乐播放错误回调
+   * Music playback error callback
    */
   onMusicError(error: number): void {
     ExampleLogUtils.logError(this.TAG, `onMusicError: error=${error}`);
     this.playbackState.setPlayingState(false);
-    this.uiState.setError(`播放错误: ${error}`);
+    this.uiState.setError(`Playback error: ${error}`);
   }
 
-  // ==================== 状态查询方法 ====================
+  // ==================== State Query Methods ====================
 
   /**
-   * 获取当前播放状态
+   * Get current playback status
    */
   getPlaybackStatus(): PlaybackStatus {
     return this.musicManager.getPlaybackStatus();
   }
 
   /**
-   * 是否已加入频道
+   * Check if channel is joined
    */
   isChannelJoined(): boolean {
     return this.musicManager.isChannelJoined();
   }
 
   /**
-   * 获取频道ID
+   * Get channel ID
    */
   getChannelId(): string {
     return this.musicManager.getChannelId();
   }
 
 
-  // ==================== 销毁方法 ====================
+  // ==================== Destroy Methods ====================
 
   /**
-   * 销毁 ViewModel
+   * Destroy ViewModel
    */
   destroy(): void {
     if (this.checkDestroyed()) {
       return;
     }
 
-    // 停止播放
+    // Stop playback
     this.stopPlayback();
 
-    // 销毁音乐管理器
+    // Destroy music manager
     this.musicManager.destroy();
 
-    // 销毁 KaraokeView
+    // Destroy KaraokeView
     if (this.karaokeView && !this.karaokeView.getIsDestroyed()) {
       this.karaokeView.destroy();
       this.karaokeView = null;
@@ -479,7 +477,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 }
 
 /**
- * MCC KaraokeEvent 实现类
+ * MCC KaraokeEvent implementation class
  */
 class MccKaraokeEventImpl implements IKaraokeEvent {
   private viewModel: MccKaraokeViewModel;
@@ -496,7 +494,7 @@ class MccKaraokeEventImpl implements IKaraokeEvent {
   onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number, total: number): void {
     ExampleLogUtils.logDebug('LyricsView-MccKaraokeEventImpl',
       `onLineFinished: line=${line}, score=${score}, total=${cumulativeScore}`);
-    // 可以在这里处理行完成事件
+    // Handle line finished event here
   }
 }
 
@@ -569,7 +567,7 @@ class YSDTokenCallbackImpl implements YSDTokenCallback {
         `YSD Token received - userId: ${response.ysdUserId}, token: ${response.ysdToken.substring(0, 20)}...`);
     } else {
       ExampleLogUtils.logError('LyricsView-YSDTokenCallbackImpl', `YSD Token failed: ${response.error}`);
-      // 使用默认值
+      // Use default values
       this.viewModel.ysdUserId = "";
       this.viewModel.ysdToken = "";
     }

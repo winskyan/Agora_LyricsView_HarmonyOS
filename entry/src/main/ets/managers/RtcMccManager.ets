@@ -19,7 +19,7 @@ import {
   RtcEngineConfig,
   RtcStats,
   SrcInfo
-} from "@shengwang/rtc-full";
+} from '@shengwang/rtc-full';
 import {
   IScoreEventHandler,
   LineScoreData,
@@ -32,7 +32,7 @@ import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 
 
 /**
- * YinSuDa API 响应数据结构
+ * YinSuDa API response data structure
  */
 interface YSDApiData {
   yinsuda_uid: string;
@@ -45,7 +45,7 @@ interface YSDApiResponse {
 }
 
 /**
- * Vendor1配置接口
+ * Vendor1 configuration interface
  */
 interface IVendor1Config {
   appId: string;
@@ -57,7 +57,7 @@ interface IVendor1Config {
 }
 
 /**
- * Vendor2配置接口
+ * Vendor2 configuration interface
  */
 interface IVendor2Config {
   appId: string;
@@ -72,17 +72,17 @@ interface IVendor2Config {
 }
 
 /**
- * RTC MCC (Music Content Center) 管理器
- * 负责管理RTC引擎、音乐内容中心和音乐播放器
+ * RTC MCC (Music Content Center) Manager
+ * Responsible for managing RTC engine, music content center and music player
  */
 export class RtcMccManager {
   private static readonly TAG = ExampleConstants.APP_TAG + "-RtcMccManager";
-  // 核心组件
+  // Core components
   private rtcEngine: RtcEngine | null = null;
   private musicCenter: IAgoraMusicContentCenter | null = null;
   private musicPlayer: IAgoraMusicPlayer | null = null;
   private config: MusicContentCenterConfiguration | null = null;
-  // 配置信息
+  // Configuration information
   private appId: string = "";
   private rtcToken: string = "";
   private rtmToken: string = "";
@@ -93,12 +93,12 @@ export class RtcMccManager {
   private ysdUserId: string = "";
   private ysdToken: string = "";
   private localUid: number = 0;
-  // 回调接口
+  // Callback interface
   private callback: IMccCallback | null = null;
-  // 状态标识
+  // Status flags
   private isJoined: boolean = false;
   /**
-   * MCC事件处理器
+   * MCC event handler
    */
   private mccEventHandler: IMusicContentCenterEventHandler = {
     onPreLoadEvent: (requestId: string, internalSongCode: bigint, percent: number, payload: string,
@@ -151,9 +151,9 @@ export class RtcMccManager {
 
       if (state === Constants.MusicContentCenterState.START_SCORE_COMPLETED &&
         reason === Constants.MusicContentCenterStateReason.OK) { // START_SCORE_COMPLETED = 0, REASON_OK = 0
-        // 设置评分等级
+        // Set score level
         this.musicCenter?.setScoreLevel(5);
-        // 打开音乐播放器
+        // Open music player
         this.openMusicBySongCode(internalSongCode);
       }
     }
@@ -183,7 +183,7 @@ export class RtcMccManager {
     }
   };
   /**
-   * 媒体播放器观察者
+   * Media player observer
    */
   private mediaPlayerObserver: IMediaPlayerObserver = {
     onPlayerStateChanged: (state: Constants.MediaPlayerState, reason: Constants.MediaPlayerReason) => {
@@ -227,49 +227,49 @@ export class RtcMccManager {
     },
 
     onPlayerEvent: (eventCode: Constants.MediaPlayerEvent, elapsedTime: number, message: string) => {
-      // 播放器事件处理
+      // Player event handling
     },
 
     onMetaData: (type: Constants.MediaPlayerMetadataType, data: ArrayBuffer) => {
-      // 元数据处理
+      // Metadata handling
     },
 
     onPlayBufferUpdated: (playCachedBuffer: number) => {
-      // 缓冲更新处理
+      // Buffer update handling
     },
 
     onPreloadEvent: (src: string, event: Constants.MediaPlayerPreloadEvent) => {
-      // 预加载事件处理
+      // Preload event handling
     },
 
     onPlayerSrcInfoChanged: (from: SrcInfo, to: SrcInfo) => {
-      // 源信息变化处理
+      // Source info change handling
     },
 
     onPlayerInfoUpdated: (info: PlayerUpdatedInfo) => {
-      // 播放器信息更新处理
+      // Player info update handling
     },
 
     onPlayerCacheStats: (stats: CacheStatistics) => {
-      // 缓存统计处理
+      // Cache statistics handling
     },
 
     onPlayerPlaybackStats: (stats: PlayerPlaybackStats) => {
-      // 播放统计处理
+      // Playback statistics handling
     },
 
     onAudioVolumeIndication: (volume: number) => {
-      // 音量指示处理
+      // Audio volume indication handling
     }
   };
 
   /**
-   * 初始化RTC MCC管理器
-   * @param context - 应用上下文
+   * Initialize RTC MCC manager
+   * @param context - Application context
    * @param appId - Agora App ID
    * @param token - RTC Token
-   * @param userId - 用户ID
-   * @param callback - 回调接口
+   * @param userId - User ID
+   * @param callback - Callback interface
    */
   async init(context: common.UIAbilityContext, appId: string, channelId: string, rtcToken: string, rtmToken: string,
     userId: string,
@@ -301,7 +301,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 初始化RTC引擎
+   * Initialize RTC engine
    */
   private async initRtcEngine(context: common.UIAbilityContext, appId: string): Promise<void> {
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `RtcEngine version: ${RtcEngine.getSdkVersion()}`);
@@ -316,8 +316,8 @@ export class RtcMccManager {
         this.localUid = uid;
         this.isJoined = true;
 
-        // 加入频道成功后，使用Promise.resolve()确保在下一个事件循环中执行
-        // 这样可以避免在RTC回调线程中直接调用RTC接口
+        // After successfully joining the channel, use Promise.resolve() to ensure execution in the next event loop
+        // This avoids directly calling RTC interfaces in the RTC callback thread
         Promise.resolve().then(() => {
           this.addMccVendors();
         });
@@ -344,7 +344,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 初始化音乐内容中心
+   * Initialize music content center
    */
   private async initMusicContentCenter(): Promise<void> {
     this.musicCenter = IAgoraMusicContentCenter.create();
@@ -358,7 +358,7 @@ export class RtcMccManager {
       throw Error(`MCC initialize failed with code: ${ret}`);
     }
 
-    // // 创建音乐播放器
+    // Create music player
     this.musicPlayer = this.musicCenter.createMusicPlayer();
     this.musicPlayer?.registerPlayerObserver(this.mediaPlayerObserver);
 
@@ -367,8 +367,8 @@ export class RtcMccManager {
 
 
   /**
-   * 添加MCC供应商
-   * 只有在加入频道成功后才调用
+   * Add MCC vendors
+   * Only called after successfully joining the channel
    */
   private async addMccVendors(): Promise<void> {
     if (!this.musicCenter) {
@@ -383,11 +383,11 @@ export class RtcMccManager {
 
     ExampleLogUtils.logDebug(RtcMccManager.TAG, 'Adding MCC vendors after join channel success');
 
-    // 音速达数据已通过init方法传入，无需再次获取
+    // YinSuDa data has been passed through init method, no need to fetch again
     ExampleLogUtils.logDebug(RtcMccManager.TAG,
       `Using YSD data - userId:${this.ysdUserId}, token:${this.ysdToken?.substring(0, 10)}...`);
 
-    // 添加Vendor1 (默认供应商)
+    // Add Vendor1 (default vendor)
     const vendor1Config: IVendor1Config = {
       appId: this.appId,
       token: this.rtmToken,
@@ -402,7 +402,7 @@ export class RtcMccManager {
     ExampleLogUtils.logDebug(RtcMccManager.TAG,
       `add vendor1 ret:${addVendorRet} config:${JSON.stringify(vendor1Config)}`);
 
-    // 添加Vendor2 (第三方供应商) - 使用传入的YSD数据
+    // Add Vendor2 (third-party vendor) - using passed YSD data
     const vendor2Config: IVendor2Config = {
       appId: this.ysdAppId,
       appKey: this.ysdAppKey,
@@ -424,7 +424,7 @@ export class RtcMccManager {
 
 
   /**
-   * 处理歌词结果
+   * Handle lyric result
    */
   private handleLyricResult(internalSongCode: bigint, payload: string): void {
     try {
@@ -438,7 +438,7 @@ export class RtcMccManager {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `handleLyricResult songCode:${internalSongCode} lyricPath:${lyricPath}`);
 
-      // 使用Promise.resolve()确保在下一个事件循环中执行回调，避免在RTC回调线程中直接调用接口
+      // Use Promise.resolve() to ensure callback execution in the next event loop, avoiding direct interface calls in RTC callback thread
       Promise.resolve().then(() => {
         this.callback?.onMusicLyricRequest?.(
           internalSongCode,
@@ -455,7 +455,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 加入频道
+   * Join channel
    */
   joinChannel(): void {
     if (!this.rtcEngine) {
@@ -478,7 +478,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 离开频道
+   * Leave channel
    */
   leaveChannel(): void {
     if (!this.rtcEngine) {
@@ -491,7 +491,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 预加载音乐
+   * Preload music
    */
   preloadMusic(songCode: string, vendorId: MusicContentCenterVendorId, songOptionJson: string): void {
     if (!this.musicCenter) {
@@ -518,7 +518,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 开始评分
+   * Start scoring
    */
   startScore(vendorId: MusicContentCenterVendorId, songCode: string, jsonOption: string): void {
     if (!this.musicCenter) {
@@ -538,7 +538,7 @@ export class RtcMccManager {
 
 
       this.musicCenter?.setScoreLevel(5);
-      // // 打开音乐播放器
+      // Open music player
       this.openMusicBySongCode(internalSongCode);
     } catch (error) {
       console.error(`${RtcMccManager.TAG} startScore error:`, JSON.stringify(error));
@@ -546,7 +546,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 通过歌曲代码打开音乐
+   * Open music by song code
    */
   private openMusicBySongCode(internalSongCode: bigint): void {
     if (!this.musicPlayer) {
@@ -559,7 +559,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 播放音乐
+   * Play music
    */
   play(): void {
     if (!this.musicPlayer) {
@@ -572,7 +572,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 暂停音乐
+   * Pause music
    */
   pause(): void {
     if (!this.musicPlayer) {
@@ -585,7 +585,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 停止音乐
+   * Stop music
    */
   stop(): void {
     if (!this.musicPlayer) {
@@ -599,7 +599,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 恢复播放
+   * Resume playback
    */
   resume(): void {
     if (!this.musicPlayer) {
@@ -612,7 +612,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 跳转到指定位置
+   * Seek to specified position
    */
   seek(time: number): void {
     if (!this.musicPlayer) {
@@ -625,7 +625,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 获取播放位置
+   * Get play position
    */
   getPlayPosition(): number {
     if (!this.musicPlayer) {
@@ -636,7 +636,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 设置播放模式
+   * Set play mode
    */
   setPlayMode(playMode: Constants.MusicPlayMode): number {
     if (!this.musicPlayer) {
@@ -650,7 +650,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 调整播放音量
+   * Adjust playout volume
    */
   adjustPlayoutVolume(volume: number): number {
     if (!this.musicPlayer) {
@@ -664,7 +664,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 获取播放音量
+   * Get playout volume
    */
   getPlayoutVolume(): number {
     if (!this.musicPlayer) {
@@ -675,7 +675,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 移除缓存
+   * Remove cache
    */
   removeCache(internalSongCode: bigint): number {
     if (!this.musicCenter) {
@@ -689,7 +689,7 @@ export class RtcMccManager {
   }
 
   /**
-   * 清理所有缓存
+   * Clear all cache
    */
   clearCache(): void {
     if (!this.musicCenter) {
@@ -701,34 +701,34 @@ export class RtcMccManager {
     const caches: CacheStatistics[] = []; // placeholder
     for (const cache of caches) {
       // this.musicCenter.removeCache(cache.songCode); // API may not exist
-      // ExampleLogUtils.logDebug(RtcMccManager.TAG, `would remove cache: ${cache.songCode}`); // 暂时注释，避免API错误
+      // ExampleLogUtils.logDebug(RtcMccManager.TAG, `would remove cache: ${cache.songCode}`); // Temporarily commented to avoid API errors
       ExampleLogUtils.logDebug(RtcMccManager.TAG, `would remove cache`);
     }
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `clearCache completed`);
   }
 
   /**
-   * 销毁管理器
+   * Destroy manager
    */
   destroy(): void {
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `destroy called`);
 
-    // 注销观察者
+    // Unregister observer
     // this.musicPlayer?.unRegisterPlayerObserver(this.mediaPlayerObserver); // API may not exist
 
-    // 销毁音乐播放器
+    // Destroy music player
     if (this.musicPlayer && this.musicCenter) {
       this.musicCenter.destroyMusicPlayer(this.musicPlayer);
       this.musicPlayer = null;
     }
 
-    // 销毁MCC
+    // Destroy MCC
     if (this.musicCenter) {
       IAgoraMusicContentCenter.destroy();
       this.musicCenter = null;
     }
 
-    // 销毁RTC引擎
+    // Destroy RTC engine
     if (this.rtcEngine) {
       if (this.isJoined) {
         this.rtcEngine.leaveChannel();
@@ -737,7 +737,7 @@ export class RtcMccManager {
       this.rtcEngine = null;
     }
 
-    // 清理配置
+    // Clear configuration
     this.config = null;
     this.callback = null;
     this.isJoined = false;
@@ -746,24 +746,23 @@ export class RtcMccManager {
   }
 
   /**
-   * 获取频道ID
+   * Get channel ID
    */
   getChannelId(): string {
     return this.channelId;
   }
 
   /**
-   * 获取本地用户ID
+   * Get local user ID
    */
   getLocalUid(): number {
     return this.localUid;
   }
 
   /**
-   * 是否已加入频道
+   * Check if channel is joined
    */
   isChannelJoined(): boolean {
     return this.isJoined;
   }
 }
-

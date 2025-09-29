@@ -1,82 +1,72 @@
-/**
- * 项目配置常量
- * 此文件由 scripts/generate-config.js 自动生成，请勿手动修改
- * 生成时间: 2025-09-26T09:31:27.272Z
- * 源文件: project-config.json
- * 
- * 此文件会被导出到 lyrics_view 模块，供其他模块使用
- */
-
-// ========== 项目信息 ==========
-/** 项目名称 */
+/** Project name */
 export const PROJECT_NAME = 'Agora LyricsView HarmonyOS';
 
-/** 版本号 */
+/** Version number */
 export const VERSION = '1.0.0';
 
-/** 项目描述 */
+/** Project description */
 export const DESCRIPTION = 'HarmonyOS LyricsView component with karaoke functionality';
 
-/** 作者 */
+/** Author */
 export const AUTHOR = 'Agora';
 
-/** 许可证 */
+/** License */
 export const LICENSE = 'Apache-2.0';
 
-/** 仓库地址 */
+/** Repository URL */
 export const REPOSITORY = 'https://github.com/AgoraIO-Community/Agora-LyricsView-HarmonyOS';
 
-// ========== SDK 配置 ==========
-/** SDK 模式开关 */
+// ========== SDK Configuration ==========
+/** SDK mode switch */
 export const SDK_MODE = false;
 
-/** 是否为 SDK 模式 */
+/** Whether it is SDK mode */
 export const IS_SDK_MODE = false;
 
-/** 是否为源码模式 */
+/** Whether it is source code mode */
 export const IS_SOURCE_MODE = true;
 
-// ========== 构建配置 ==========
-/** HAR 包名称 */
+// ========== Build Configuration ==========
+/** HAR package name */
 export const HAR_NAME = 'Agora-LyricsView-HarmonyOS';
 
-/** 输出目录 */
+/** Output directory */
 export const OUTPUT_DIR = 'lyrics_view/build/default/outputs/default';
 
-/** 是否启用签名 */
+/** Whether signing is enabled */
 export const SIGNING_ENABLED = false;
 
-// ========== 计算属性 ==========
-/** 完整版本名称 */
+// ========== Computed Properties ==========
+/** Full version name */
 export const VERSION_NAME = `${PROJECT_NAME}-${VERSION}`;
 
-/** 完整HAR包名称 */
+/** Full HAR package name */
 export const FULL_HAR_NAME = `${HAR_NAME}-${VERSION}`;
 
-// ========== 工具方法 ==========
+// ========== Utility Methods ==========
 /**
- * 获取模式描述
+ * Get mode description
  */
 export function getModeDescription(): string {
-  return IS_SDK_MODE ? 'HAR 包模式' : '源码模式';
+  return IS_SDK_MODE ? 'HAR Package Mode' : 'Source Code Mode';
 }
 
 /**
- * 检查是否为 SDK 模式
+ * Check if using SDK mode
  */
 export function isUsingSdk(): boolean {
   return IS_SDK_MODE;
 }
 
 /**
- * 获取配置摘要
+ * Get configuration summary
  */
 export function getConfigSummary(): string {
   return `${PROJECT_NAME} v${VERSION} (${getModeDescription()})`;
 }
 
 /**
- * 获取版本信息
+ * Get version information
  */
 export function getVersionInfo(): string {
   return JSON.stringify({
@@ -91,7 +81,7 @@ export function getVersionInfo(): string {
 }
 
 /**
- * 获取SDK配置信息
+ * Get SDK configuration information
  */
 export function getSdkInfo(): string {
   return JSON.stringify({
@@ -103,7 +93,7 @@ export function getSdkInfo(): string {
 }
 
 /**
- * 获取构建配置信息
+ * Get build configuration information
  */
 export function getBuildInfo(): string {
   return JSON.stringify({
@@ -115,59 +105,56 @@ export function getBuildInfo(): string {
 }
 
 /**
- * 项目配置类
- * 提供统一的配置访问接口
+ * Project configuration class
+ * Provides unified configuration access interface
  */
 export class ProjectConfig {
-  // 项目信息
+  // Project information
   static readonly PROJECT_NAME = PROJECT_NAME;
   static readonly VERSION = VERSION;
   static readonly DESCRIPTION = DESCRIPTION;
   static readonly AUTHOR = AUTHOR;
   static readonly LICENSE = LICENSE;
   static readonly REPOSITORY = REPOSITORY;
-  
-  // SDK 配置
+  // SDK configuration
   static readonly SDK_MODE = SDK_MODE;
   static readonly IS_SDK_MODE = IS_SDK_MODE;
   static readonly IS_SOURCE_MODE = IS_SOURCE_MODE;
-  
-  // 构建配置
+  // Build configuration
   static readonly HAR_NAME = HAR_NAME;
   static readonly OUTPUT_DIR = OUTPUT_DIR;
   static readonly SIGNING_ENABLED = SIGNING_ENABLED;
-  
-  // 计算属性
+  // Computed properties
   static readonly VERSION_NAME = VERSION_NAME;
   static readonly FULL_HAR_NAME = FULL_HAR_NAME;
-  
-  // 工具方法
+
+  // Utility methods
   static getModeDescription(): string {
     return getModeDescription();
   }
-  
+
   static isUsingSdk(): boolean {
     return isUsingSdk();
   }
-  
+
   static getConfigSummary(): string {
     return getConfigSummary();
   }
-  
+
   static getVersionInfo(): string {
     return getVersionInfo();
   }
-  
+
   static getSdkInfo(): string {
     return getSdkInfo();
   }
-  
+
   static getBuildInfo(): string {
     return getBuildInfo();
   }
 }
 
 /**
- * 默认导出
+ * Default export
  */
 export default ProjectConfig;

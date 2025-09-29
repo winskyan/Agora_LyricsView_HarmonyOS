@@ -65,9 +65,10 @@ export class LyricMachine {
       this.mLyricsModel = model;
     }
 
-    // 通知UI刷新
+    // Notify UI to refresh
     this.mListener.requestRefreshUi();
-    LogUtils.d(`LyricMachine: prepare completed, model set: ${!!this.mLyricsModel}, lines: ${this.mLyricsModel?.lines?.length || 0}`);
+    LogUtils.d(`LyricMachine: prepare completed, model set: ${!!this.mLyricsModel}, lines: ${this.mLyricsModel?.lines?.length ||
+      0}`);
   }
 
   /**
@@ -139,6 +140,9 @@ export class LyricMachine {
     this.minorReset();
   }
 
+  /**
+   * Resets the UI through listener callback
+   */
   private resetUi() {
     if (this.mListener) {
       this.mListener.resetUi();

@@ -1,37 +1,37 @@
 /**
- * 下载错误枚举类 - HarmonyOS版本
- * 定义下载操作中可能出现的各种错误场景
+ * Download error enumeration - HarmonyOS version
+ * Defines various error scenarios that may occur during download operations
  */
 export enum DownloadError {
   /**
-   * 通用下载错误
+   * General download error
    */
   GENERAL = 0,
 
   /**
-   * 重复下载错误（文件正在下载中）
+   * Repeat download error (file is being downloaded)
    */
   REPEAT_DOWNLOADING = 1,
 
   /**
-   * HTTP下载错误
+   * HTTP download error
    */
   HTTP_DOWNLOAD_ERROR = 2,
 
   /**
-   * HTTP下载逻辑错误
+   * HTTP download logic error
    */
   HTTP_DOWNLOAD_ERROR_LOGIC = 3,
 
   /**
-   * 文件解压失败
+   * File unzip failure
    */
   UNZIP_FAIL = 4
 }
 
 /**
- * 下载错误详情类
- * 包含错误类型、错误码和错误消息
+ * Download error detail class
+ * Contains error type, error code and error message
  */
 export class DownloadErrorDetail {
   private mType: DownloadError;
@@ -43,57 +43,57 @@ export class DownloadErrorDetail {
   }
 
   /**
-   * 获取错误类型
-   * @returns 错误类型
+   * Get error type
+   * @returns Error type
    */
   getType(): DownloadError {
     return this.mType;
   }
 
   /**
-   * 获取错误码
-   * @returns 错误码
+   * Get error code
+   * @returns Error code
    */
   getErrorCode(): number {
     return this.mErrorCode;
   }
 
   /**
-   * 设置错误码
-   * @param errorCode 错误码
+   * Set error code
+   * @param errorCode Error code
    */
   setErrorCode(errorCode: number): void {
     this.mErrorCode = errorCode;
   }
 
   /**
-   * 获取错误消息
-   * @returns 错误消息
+   * Get error message
+   * @returns Error message
    */
   getMessage(): string {
     return this.mMessage;
   }
 
   /**
-   * 设置错误消息
-   * @param message 错误消息
+   * Set error message
+   * @param message Error message
    */
   setMessage(message: string): void {
     this.mMessage = message;
   }
 
   /**
-   * 转换为字符串表示
-   * @returns 包含错误名称、类型、错误码和消息的字符串
+   * Convert to string representation
+   * @returns String containing error name, type, error code and message
    */
   toString(): string {
     return `DownloadError{type=${this.mType}, errorCode=${this.mErrorCode}, message='${this.mMessage}'}`;
   }
 
   /**
-   * 创建通用错误
-   * @param message 错误消息
-   * @returns 错误详情对象
+   * Create general error
+   * @param message Error message
+   * @returns Error detail object
    */
   static createGeneralError(message: string = ''): DownloadErrorDetail {
     const error = new DownloadErrorDetail(DownloadError.GENERAL);
@@ -102,21 +102,21 @@ export class DownloadErrorDetail {
   }
 
   /**
-   * 创建重复下载错误
-   * @param message 错误消息
-   * @returns 错误详情对象
+   * Create repeat downloading error
+   * @param message Error message
+   * @returns Error detail object
    */
-  static createRepeatDownloadingError(message: string = '文件正在下载中'): DownloadErrorDetail {
+  static createRepeatDownloadingError(message: string = 'File is being downloaded'): DownloadErrorDetail {
     const error = new DownloadErrorDetail(DownloadError.REPEAT_DOWNLOADING);
     error.setMessage(message);
     return error;
   }
 
   /**
-   * 创建HTTP下载错误
-   * @param errorCode 错误码
-   * @param message 错误消息
-   * @returns 错误详情对象
+   * Create HTTP download error
+   * @param errorCode Error code
+   * @param message Error message
+   * @returns Error detail object
    */
   static createHttpDownloadError(errorCode: number, message: string = ''): DownloadErrorDetail {
     const error = new DownloadErrorDetail(DownloadError.HTTP_DOWNLOAD_ERROR);
@@ -126,10 +126,10 @@ export class DownloadErrorDetail {
   }
 
   /**
-   * 创建HTTP逻辑错误
-   * @param errorCode 错误码
-   * @param message 错误消息
-   * @returns 错误详情对象
+   * Create HTTP logic error
+   * @param errorCode Error code
+   * @param message Error message
+   * @returns Error detail object
    */
   static createHttpLogicError(errorCode: number, message: string = ''): DownloadErrorDetail {
     const error = new DownloadErrorDetail(DownloadError.HTTP_DOWNLOAD_ERROR_LOGIC);
@@ -139,11 +139,11 @@ export class DownloadErrorDetail {
   }
 
   /**
-   * 创建解压失败错误
-   * @param message 错误消息
-   * @returns 错误详情对象
+   * Create unzip failure error
+   * @param message Error message
+   * @returns Error detail object
    */
-  static createUnzipFailError(message: string = '文件解压失败'): DownloadErrorDetail {
+  static createUnzipFailError(message: string = 'File unzip failed'): DownloadErrorDetail {
     const error = new DownloadErrorDetail(DownloadError.UNZIP_FAIL);
     error.setMessage(message);
     return error;

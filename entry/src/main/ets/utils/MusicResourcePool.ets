@@ -1,7 +1,7 @@
-import { MusicContentCenterVendorId } from "@shengwang/rtc-full";
+import { MusicContentCenterVendorId } from '@shengwang/rtc-full';
 
 /**
- * 音乐资源数据模型
+ * Music resource data model
  */
 export class MusicResource {
   index: number;
@@ -29,13 +29,13 @@ export class MusicResource {
 }
 
 /**
- * 音乐资源池
- * 管理不同供应商的音乐资源
+ * Music resource pool
+ * Manages music resources from different vendors
  */
 export class MusicResourcePool {
   /**
-   * 获取Vendor1(默认供应商)的音乐列表
-   * @returns Vendor1音乐资源列表
+   * Get Vendor1 (default vendor) music list
+   * @returns Vendor1 music resource list
    */
   static getVendor1MusicList(): MusicResource[] {
     const list: MusicResource[] = [];
@@ -80,8 +80,8 @@ export class MusicResourcePool {
   }
 
   /**
-   * 获取Vendor2(第三方供应商)的音乐列表
-   * @returns Vendor2音乐资源列表
+   * Get Vendor2 (third-party vendor) music list
+   * @returns Vendor2 music resource list
    */
   static getVendor2MusicList(): MusicResource[] {
     const list: MusicResource[] = [];
@@ -131,7 +131,7 @@ export class MusicResourcePool {
       ""
     ));
 
-    // 测试用的歌曲
+    // Test songs
     list.push(new MusicResource(
       5,
       "613544010",
@@ -163,9 +163,9 @@ export class MusicResourcePool {
   }
 
   /**
-   * 根据供应商ID获取音乐列表
-   * @param vendorId - 供应商ID
-   * @returns 对应供应商的音乐资源列表
+   * Get music list by vendor ID
+   * @param vendorId - Vendor ID
+   * @returns Music resource list for the corresponding vendor
    */
   static getMusicListByVendor(vendorId: MusicContentCenterVendorId): MusicResource[] {
     switch (vendorId) {
@@ -179,8 +179,8 @@ export class MusicResourcePool {
   }
 
   /**
-   * 获取所有音乐资源
-   * @returns 所有音乐资源列表
+   * Get all music resources
+   * @returns All music resource list
    */
   static getAllMusicList(): MusicResource[] {
     const allList: MusicResource[] = [];

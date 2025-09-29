@@ -1,34 +1,34 @@
 /**
- * 粒子渲染器
+ * Particle renderer
  */
 
 import { LogUtils } from '../../utils/LogUtils';
 import { Particle, ParticleSystem } from './ParticleSystem';
 
 /**
- * 粒子渲染组件
- * 使用HarmonyOS的UI组件系统渲染粒子
+ * Particle rendering component
+ * Uses HarmonyOS UI component system to render particles
  */
 @ComponentV2
 export struct ParticleRenderer {
   @Param particleSystem: ParticleSystem | null = null;
   @Local particles: Particle[] = [];
   @Param particleColors: string[] = [
-    '#FFD700', // 金色
-    '#FF6B35', // 橙色
-    '#F7931E', // 橙黄色
-    '#FFE135', // 黄色
-    '#C5E063', // 黄绿色
-    '#9BC53D', // 绿色
-    '#5BA8F2', // 蓝色
-    '#9B59B6'// 紫色
+    '#FFD700', // Gold
+    '#FF6B35', // Orange
+    '#F7931E', // Orange-yellow
+    '#FFE135', // Yellow
+    '#C5E063', // Yellow-green
+    '#9BC53D', // Green
+    '#5BA8F2', // Blue
+    '#9B59B6'// Purple
   ];
-  @Param particleSize: number = 20; // 增加粒子基础大小，便于测试
+  @Param particleSize: number = 20; // Increase base particle size for testing
   private updateTimer: number = -1;
 
   build() {
     Stack() {
-      // 使用ForEach渲染所有粒子
+      // Use ForEach to render all particles
       ForEach(this.particles, (particle: Particle, index: number) => {
         this.buildParticle(particle)
       }, (particle: Particle) => particle.id)
@@ -46,13 +46,13 @@ export struct ParticleRenderer {
   }
 
   /**
-   * 构建单个粒子
+   * Build a single particle
    */
   @Builder
   buildParticle(particle: Particle) {
-    // 使用不同的形状表示不同类型的粒子
+    // Use different shapes to represent different types of particles
     if (particle.particleType % 3 === 0) {
-      // 圆形粒子
+      // Circular particle
       Circle({ width: this.particleSize * particle.scale, height: this.particleSize * particle.scale })
         .fill(this.particleColors[particle.particleType % this.particleColors.length])
         .opacity(particle.alpha)
@@ -62,7 +62,7 @@ export struct ParticleRenderer {
           y: particle.y - (this.particleSize * particle.scale) / 2
         })
     } else if (particle.particleType % 3 === 1) {
-      // 矩形粒子
+      // Rectangular particle
       Rect()
         .width(this.particleSize * particle.scale)
         .height(this.particleSize * particle.scale)
@@ -75,23 +75,23 @@ export struct ParticleRenderer {
           y: particle.y - (this.particleSize * particle.scale) / 2
         })
     } else {
-      // 星形粒子（使用多边形模拟）
+      // Star particle (simulated using polygons)
       this.buildStarParticle(particle)
     }
   }
 
   /**
-   * 构建星形粒子
+   * Build star particle
    */
   @Builder
   buildStarParticle(particle: Particle) {
-    // 使用多个小圆形组成星形效果
+    // Use multiple small circles to create star effect
     Stack() {
-      // 中心圆
+      // Center circle
       Circle({ width: this.particleSize * particle.scale * 0.6, height: this.particleSize * particle.scale * 0.6 })
         .fill(this.particleColors[particle.particleType % this.particleColors.length])
 
-      // 四个方向的小圆
+      // Four directional small circles
       Circle({ width: this.particleSize * particle.scale * 0.3, height: this.particleSize * particle.scale * 0.3 })
         .fill(this.particleColors[particle.particleType % this.particleColors.length])
         .position({ x: this.particleSize * particle.scale * 0.4, y: 0 })
@@ -117,7 +117,7 @@ export struct ParticleRenderer {
   }
 
   /**
-   * 启动更新循环
+   * Start update loop
    */
   private startUpdateLoop(): void {
     if (this.updateTimer !== -1) {
@@ -126,7 +126,7 @@ export struct ParticleRenderer {
 
     const updateLoop = () => {
       if (this.particleSystem) {
-        // 从粒子系统获取最新的粒子数据
+        // Get latest particle data from particle system
         const newParticles = this.particleSystem.getParticles();
         const oldCount = this.particles.length;
         this.particles = [...newParticles];
@@ -134,7 +134,7 @@ export struct ParticleRenderer {
         this.particles = [];
       }
 
-      // 继续下一帧更新
+      // Continue next frame update
       this.updateTimer = setTimeout(updateLoop, 16); // 60fps
     };
 
@@ -142,7 +142,7 @@ export struct ParticleRenderer {
   }
 
   /**
-   * 停止更新循环
+   * Stop update loop
    */
   private stopUpdateLoop(): void {
     if (this.updateTimer !== -1) {
@@ -153,13 +153,13 @@ export struct ParticleRenderer {
 }
 
 /**
- * 简化版粒子渲染器 - 用于性能敏感的场景
+ * Simplified particle renderer - for performance-sensitive scenarios
  */
 @ComponentV2
 export struct SimpleParticleRenderer {
   @Param particleSystem: ParticleSystem | null = null;
   @Local particles: Particle[] = [];
-  @Param particleColor: string = '#FFD700'; // 统一的粒子颜色
+  @Param particleColor: string = '#FFD700'; // Unified particle color
   @Param particleSize: number = 8;
   private updateTimer: number = -1;
 

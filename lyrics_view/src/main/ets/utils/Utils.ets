@@ -3,20 +3,20 @@ import fs from '@ohos.file.fs';
 import { LogUtils } from './LogUtils';
 
 /**
- * 工具类
- * 提供通用的工具方法，包括文件操作、字符串处理、编码转换等
+ * Utility class
+ * Provides common utility methods including file operations, string processing, encoding conversion, etc.
  */
 export class Utils {
-  // ========== 字符串处理工具 ==========
+  // ========== String Processing Tools ==========
 
   /**
-   * 生成指定长度的随机字符串
-   * @param length 字符串长度
-   * @param charset 字符集，默认为大写字母和数字
-   * @returns 随机字符串
+   * Generate a random string of specified length
+   * @param length String length
+   * @param charset Character set, defaults to uppercase letters and numbers
+   * @returns Random string
    */
   static generateRandomString(length: number, charset?: string): string {
-    // 默认字符集：大写字母和数字（适合生成设备ID等）
+    // Default charset: uppercase letters and numbers (suitable for generating device IDs, etc.)
     const defaultCharset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const chars = charset || defaultCharset;
 
@@ -38,26 +38,26 @@ export class Utils {
   }
 
   /**
-   * 生成32位随机设备ID
-   * @returns 32位大写字母和数字组成的设备ID
+   * Generate a 32-character random device ID
+   * @returns 32-character device ID composed of uppercase letters and numbers
    */
   static generateDeviceId(): string {
     return Utils.generateRandomString(32);
   }
 
   /**
-   * 生成指定长度的十六进制随机字符串
-   * @param length 字符串长度
-   * @returns 十六进制随机字符串
+   * Generate a hexadecimal random string of specified length
+   * @param length String length
+   * @returns Hexadecimal random string
    */
   static generateRandomHex(length: number): string {
     return Utils.generateRandomString(length, '0123456789ABCDEF');
   }
 
   /**
-   * 移除字符串开头的BOM标记
-   * @param str 输入字符串
-   * @returns 移除BOM后的字符串
+   * Remove BOM marker from the beginning of a string
+   * @param str Input string
+   * @returns String with BOM removed
    */
   static removeStringBom(str: string): string {
     if (str.charCodeAt(0) === 0xFEFF) {
@@ -67,9 +67,9 @@ export class Utils {
   }
 
   /**
-   * 移除字符串两端的引号
-   * @param str 输入字符串
-   * @returns 移除引号后的字符串
+   * Remove quotes from both ends of a string
+   * @param str Input string
+   * @returns String with quotes removed
    */
   static removeQuotes(str: string): string {
     if (!str) {
@@ -82,20 +82,20 @@ export class Utils {
     return str;
   }
 
-  // ========== 编码转换工具 ==========
+  // ========== Encoding Conversion Tools ==========
 
   /**
-   * 将 Uint8Array 转换为字符串（UTF-8解码）
-   * @param uint8Array 字节数组
-   * @param encoding 编码格式（默认 utf-8）
-   * @returns 转换后的字符串
+   * Convert Uint8Array to string (UTF-8 decoding)
+   * @param uint8Array Byte array
+   * @param encoding Encoding format (default utf-8)
+   * @returns Converted string
    */
   static uint8ArrayToString(uint8Array: Uint8Array, encoding: string = 'utf-8'): string {
     try {
       return Utils.decodeUTF8(uint8Array);
     } catch (error) {
       LogUtils.e(`uint8ArrayToString error: ${error}`);
-      // 降级方案：逐字节转换（可能有乱码）
+      // Fallback: byte-by-byte conversion (may have garbled characters)
       let result = '';
       for (let i = 0; i < uint8Array.length; i++) {
         result += String.fromCharCode(uint8Array[i]);
@@ -105,17 +105,17 @@ export class Utils {
   }
 
   /**
-   * 将字符串转换为 Uint8Array（UTF-8编码）
-   * @param str 输入字符串
-   * @param encoding 编码格式（默认 utf-8）
-   * @returns 转换后的字节数组
+   * Convert string to Uint8Array (UTF-8 encoding)
+   * @param str Input string
+   * @param encoding Encoding format (default utf-8)
+   * @returns Converted byte array
    */
   static stringToUint8Array(str: string, encoding: string = 'utf-8'): Uint8Array {
     try {
       return Utils.encodeUTF8(str);
     } catch (error) {
       LogUtils.e(`stringToUint8Array error: ${error}`);
-      // 降级方案：简单的字符码转换
+      // Fallback: simple character code conversion
       const bytes = new Uint8Array(str.length);
       for (let i = 0; i < str.length; i++) {
         bytes[i] = str.charCodeAt(i) & 0xFF;
@@ -125,8 +125,8 @@ export class Utils {
   }
 
   /**
-   * UTF-8解码方法
-   * 正确处理多字节UTF-8字符
+   * UTF-8 decoding method
+   * Properly handles multi-byte UTF-8 characters
    */
   private static decodeUTF8(uint8Array: Uint8Array): string {
     let result = '';
@@ -136,10 +136,10 @@ export class Utils {
       let byte1 = uint8Array[i++];
 
       if (byte1 < 0x80) {
-        // 单字节字符 (ASCII)
+        // Single-byte character (ASCII)
         result += String.fromCharCode(byte1);
       } else if ((byte1 & 0xE0) === 0xC0) {
-        // 双字节字符
+        // Two-byte character
         if (i >= uint8Array.length) {
           break;
         }
@@ -147,7 +147,7 @@ export class Utils {
         let codePoint = ((byte1 & 0x1F) << 6) | (byte2 & 0x3F);
         result += String.fromCharCode(codePoint);
       } else if ((byte1 & 0xF0) === 0xE0) {
-        // 三字节字符
+        // Three-byte character
         if (i + 1 >= uint8Array.length) {
           break;
         }
@@ -156,7 +156,7 @@ export class Utils {
         let codePoint = ((byte1 & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | (byte3 & 0x3F);
         result += String.fromCharCode(codePoint);
       } else if ((byte1 & 0xF8) === 0xF0) {
-        // 四字节字符
+        // Four-byte character
         if (i + 2 >= uint8Array.length) {
           break;
         }
@@ -165,7 +165,7 @@ export class Utils {
         let byte4 = uint8Array[i++];
         let codePoint = ((byte1 & 0x07) << 18) | ((byte2 & 0x3F) << 12) | ((byte3 & 0x3F) << 6) | (byte4 & 0x3F);
 
-        // 处理超出基本多文种平面的字符
+        // Handle characters beyond the Basic Multilingual Plane
         if (codePoint > 0xFFFF) {
           codePoint -= 0x10000;
           result += String.fromCharCode(0xD800 + (codePoint >> 10));
@@ -174,7 +174,7 @@ export class Utils {
           result += String.fromCharCode(codePoint);
         }
       } else {
-        // 无效的UTF-8字节，跳过
+        // Invalid UTF-8 byte, skip
         continue;
       }
     }
@@ -183,8 +183,8 @@ export class Utils {
   }
 
   /**
-   * UTF-8编码方法
-   * 将字符串编码为UTF-8字节数组
+   * UTF-8 encoding method
+   * Encode string to UTF-8 byte array
    */
   private static encodeUTF8(str: string): Uint8Array {
     const bytes: number[] = [];
@@ -192,19 +192,19 @@ export class Utils {
       const charCode = str.charCodeAt(i);
 
       if (charCode < 0x80) {
-        // ASCII 字符 (0-127)
+        // ASCII characters (0-127)
         bytes.push(charCode);
       } else if (charCode < 0x800) {
-        // 2 字节 UTF-8
+        // 2-byte UTF-8
         bytes.push(0xC0 | (charCode >> 6));
         bytes.push(0x80 | (charCode & 0x3F));
       } else if (charCode < 0xD800 || charCode >= 0xE000) {
-        // 3 字节 UTF-8 (非代理对)
+        // 3-byte UTF-8 (non-surrogate pair)
         bytes.push(0xE0 | (charCode >> 12));
         bytes.push(0x80 | ((charCode >> 6) & 0x3F));
         bytes.push(0x80 | (charCode & 0x3F));
       } else {
-        // 4 字节 UTF-8 (代理对)
+        // 4-byte UTF-8 (surrogate pair)
         if (i + 1 < str.length) {
           const nextCharCode = str.charCodeAt(i + 1);
           if (charCode >= 0xD800 && charCode <= 0xDBFF && nextCharCode >= 0xDC00 && nextCharCode <= 0xDFFF) {
@@ -213,13 +213,13 @@ export class Utils {
             bytes.push(0x80 | ((codePoint >> 12) & 0x3F));
             bytes.push(0x80 | ((codePoint >> 6) & 0x3F));
             bytes.push(0x80 | (codePoint & 0x3F));
-            i++; // 跳过下一个字符（代理对的低位）
+            i++; // Skip next character (low surrogate)
           } else {
-            // 无效的代理对，使用替换字符
+            // Invalid surrogate pair, use replacement character
             bytes.push(0xEF, 0xBF, 0xBD);
           }
         } else {
-          // 字符串结尾的无效代理字符
+          // Invalid surrogate character at end of string
           bytes.push(0xEF, 0xBF, 0xBD);
         }
       }
@@ -230,40 +230,40 @@ export class Utils {
 
 
   /**
-   * 同步读取文件的核心实现
+   * Core implementation for synchronous file reading
    */
   static getFileBytes(filePath: string): Uint8Array | null {
-    // 检查文件路径是否有效
+    // Check if file path is valid
     if (!filePath || filePath.trim().length === 0) {
       LogUtils.e('readFileSync: filePath is empty');
       return null;
     }
 
-    // 检查文件是否存在
+    // Check if file exists
     if (!fs.accessSync(filePath)) {
       LogUtils.e(`readFileSync: file does not exist: ${filePath}`);
       return null;
     }
 
-    // 获取文件状态信息
+    // Get file status information
     const stat = fs.statSync(filePath);
     if (!stat.isFile()) {
       LogUtils.e(`readFileSync: path is not a file: ${filePath}`);
       return null;
     }
 
-    // 检查文件大小
+    // Check file size
     const fileSize = stat.size;
     if (fileSize <= 0) {
       LogUtils.w(`readFileSync: file is empty: ${filePath}`);
       return new Uint8Array(0);
     }
 
-    // 打开文件
+    // Open file
     const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
 
     try {
-      // 创建缓冲区并读取文件内容
+      // Create buffer and read file content
       const buffer = new ArrayBuffer(fileSize);
       const readSize = fs.readSync(file.fd, buffer);
 
@@ -276,47 +276,47 @@ export class Utils {
       return uint8Array;
 
     } finally {
-      // 确保文件被关闭
+      // Ensure file is closed
       fs.closeSync(file.fd);
     }
   }
 
   /**
-   * 异步读取文件的核心实现
+   * Core implementation for asynchronous file reading
    */
   static async getFileBytesAsync(filePath: string): Promise<Uint8Array | null> {
-    // 检查文件路径是否有效
+    // Check if file path is valid
     if (!filePath || filePath.trim().length === 0) {
       LogUtils.e('getFileBytesAsync: filePath is empty');
       return null;
     }
 
-    // 检查文件是否存在
+    // Check if file exists
     const exists = await fs.access(filePath).then(() => true).catch(() => false);
     if (!exists) {
       LogUtils.e(`getFileBytesAsync: file does not exist: ${filePath}`);
       return null;
     }
 
-    // 获取文件状态信息
+    // Get file status information
     const stat = await fs.stat(filePath);
     if (!stat.isFile()) {
       LogUtils.e(`getFileBytesAsync: path is not a file: ${filePath}`);
       return null;
     }
 
-    // 检查文件大小
+    // Check file size
     const fileSize = stat.size;
     if (fileSize <= 0) {
       LogUtils.w(`getFileBytesAsync: file is empty: ${filePath}`);
       return new Uint8Array(0);
     }
 
-    // 打开文件
+    // Open file
     const file = await fs.open(filePath, fs.OpenMode.READ_ONLY);
 
     try {
-      // 创建缓冲区并读取文件内容
+      // Create buffer and read file content
       const buffer = new ArrayBuffer(fileSize);
       const readSize = await fs.read(file.fd, buffer);
 
@@ -329,15 +329,15 @@ export class Utils {
       return uint8Array;
 
     } finally {
-      // 确保文件被关闭
+      // Ensure file is closed
       await fs.close(file.fd);
     }
   }
 
   /**
-   * 读取本地文件内容为字符串（异步）
-   * @param filePath 文件路径
-   * @returns Promise<string | null> 文件内容字符串，失败返回null
+   * Read local file content as string (asynchronous)
+   * @param filePath File path
+   * @returns Promise<string | null> File content string, returns null on failure
    */
   static async getFileStringAsync(filePath: string): Promise<string | null> {
     try {
@@ -353,10 +353,10 @@ export class Utils {
   }
 
   /**
-   * 从rawfile目录加载文件内容为字符串
-   * @param context 应用上下文
-   * @param fileName 文件名
-   * @returns 文件内容字符串，失败返回null
+   * Load file content from rawfile directory as string
+   * @param context Application context
+   * @param fileName File name
+   * @returns File content string, returns null on failure
    */
   static async loadRawFileAsString(context: common.UIAbilityContext, fileName: string): Promise<string | null> {
     try {
@@ -375,10 +375,10 @@ export class Utils {
   }
 
   /**
-   * 从rawfile目录加载文件内容为Uint8Array
-   * @param context 应用上下文
-   * @param fileName 文件名
-   * @returns 文件内容字节数组，失败返回null
+   * Load file content from rawfile directory as Uint8Array
+   * @param context Application context
+   * @param fileName File name
+   * @returns File content byte array, returns null on failure
    */
   static async loadRawFileAsBytes(context: common.UIAbilityContext, fileName: string): Promise<Uint8Array | null> {
     try {

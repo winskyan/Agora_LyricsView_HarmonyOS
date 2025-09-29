@@ -3,13 +3,13 @@ import { ILogger } from './ILogger';
 import { LogLevel } from './LogLevel';
 
 /**
- * 控制台日志记录器
- * 基于 Agora-LoggingService 的 ConsoleLogger 实现
- * 使用 HarmonyOS hilog 输出到控制台
+ * Console logger implementation - HarmonyOS version
+ * Based on Agora-LoggingService ConsoleLogger implementation
+ * Uses HarmonyOS hilog for console output
  */
 export class ConsoleLogger implements ILogger {
   /**
-   * 日志域标识
+   * Log domain identifier
    */
   private readonly domain: number;
 
@@ -32,7 +32,7 @@ export class ConsoleLogger implements ILogger {
         hilog.warn(this.domain, tag, message);
         break;
       case LogLevel.VERBOSE:
-        hilog.debug(this.domain, tag, message); // HarmonyOS 没有 verbose，使用 debug
+        hilog.debug(this.domain, tag, message); // HarmonyOS doesn't have verbose, use debug instead
         break;
       default:
         hilog.info(this.domain, tag, message);

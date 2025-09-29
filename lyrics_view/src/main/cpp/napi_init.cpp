@@ -2,7 +2,7 @@
 #include "napi/native_api.h"
 
 /**
- * NAPI接口：将pitch值转换为音调值
+ * NAPI interface: Convert pitch value to tone value
  */
 static napi_value PitchToTone(napi_env env, napi_callback_info info) {
     size_t argc = 1;
@@ -35,7 +35,7 @@ static napi_value PitchToTone(napi_env env, napi_callback_info info) {
 }
 
 /**
- * NAPI接口：计算评分
+ * NAPI interface: Calculate score
  */
 static napi_value CalculatedScore(napi_env env, napi_callback_info info) {
     size_t argc = 4;
@@ -48,7 +48,7 @@ static napi_value CalculatedScore(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 验证参数类型
+    // Validate parameter types
     for (int i = 0; i < 4; i++) {
         napi_valuetype valuetype;
         napi_typeof(env, args[i], &valuetype);
@@ -75,7 +75,7 @@ static napi_value CalculatedScore(napi_env env, napi_callback_info info) {
 }
 
 /**
- * NAPI接口：处理音调补偿
+ * NAPI interface: Handle pitch compensation
  */
 static napi_value HandlePitch(napi_env env, napi_callback_info info) {
     size_t argc = 3;
@@ -88,7 +88,7 @@ static napi_value HandlePitch(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 验证参数类型
+    // Validate parameter types
     for (int i = 0; i < 3; i++) {
         napi_valuetype valuetype;
         napi_typeof(env, args[i], &valuetype);
@@ -113,7 +113,7 @@ static napi_value HandlePitch(napi_env env, napi_callback_info info) {
 }
 
 /**
- * NAPI接口：重置算法状态
+ * NAPI interface: Reset algorithm state
  */
 static napi_value Reset(napi_env env, napi_callback_info info) {
     resetC();
@@ -124,7 +124,7 @@ static napi_value Reset(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 保留原有的Add函数作为示例
+ * Keep the original Add function as an example
  */
 static napi_value Add(napi_env env, napi_callback_info info) {
     size_t argc = 2;

@@ -1,27 +1,27 @@
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 
 /**
- * ViewModel 基类
- * 提供通用的 ViewModel 功能
+ * Base ViewModel class
+ * Provides common ViewModel functionality
  */
 @ObservedV2
 export abstract class BaseViewModel {
-  /** 是否已销毁 */
+  /** Whether the ViewModel has been destroyed */
   @Trace protected isDestroyed: boolean = false;
-  /** ViewModel 标签，用于日志 */
+  /** ViewModel tag for logging */
   protected abstract readonly TAG: string;
 
   /**
-   * 初始化 ViewModel
-   * 子类可以重写此方法进行自定义初始化
+   * Initialize the ViewModel
+   * Subclasses can override this method for custom initialization
    */
   async initialize(): Promise<void> {
     ExampleLogUtils.logInfo(this.TAG, 'Initializing ViewModel');
   }
 
   /**
-   * 销毁 ViewModel
-   * 子类应该重写此方法进行资源清理
+   * Destroy the ViewModel
+   * Subclasses should override this method for resource cleanup
    */
   destroy(): void {
     if (this.isDestroyed) {
@@ -33,7 +33,7 @@ export abstract class BaseViewModel {
   }
 
   /**
-   * 检查是否已销毁
+   * Check if the ViewModel has been destroyed
    */
   protected checkDestroyed(): boolean {
     if (this.isDestroyed) {
@@ -44,8 +44,8 @@ export abstract class BaseViewModel {
   }
 
   /**
-   * 安全执行异步操作
-   * 确保在 ViewModel 销毁后不执行回调
+   * Safely execute asynchronous operations
+   * Ensures callbacks are not executed after ViewModel destruction
    */
   protected async safeExecute<T>(
     operation: () => Promise<T>,

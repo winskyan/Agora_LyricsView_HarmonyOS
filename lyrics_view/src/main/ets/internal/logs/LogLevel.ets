@@ -1,6 +1,6 @@
 /**
- * 日志级别定义
- * 对应 Android Log 类的级别定义
+ * Log level definitions
+ * Corresponds to Android Log class level definitions
  */
 export enum LogLevel {
   VERBOSE = 2,
@@ -11,13 +11,13 @@ export enum LogLevel {
 }
 
 /**
- * 日志级别工具类
+ * Log level utility class
  */
 export class LogLevelUtils {
   /**
-   * 获取日志级别名称
-   * @param logLevel 日志级别
-   * @returns 级别名称字符串
+   * Get log level name
+   * @param logLevel Log level
+   * @returns Level name string
    */
   static getLevelName(logLevel: number): string {
     switch (logLevel) {

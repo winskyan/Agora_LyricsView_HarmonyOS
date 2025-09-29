@@ -3,7 +3,7 @@ import { LyricsLineModel } from './LyricsLineModel';
 import { PitchData } from './PitchData';
 
 /**
- * 歌词数据模型
+ * Lyrics data model
  * Model class representing lyrics data for a song.
  * Contains song information, lyrics lines, and pitch data for karaoke functionality.
  */

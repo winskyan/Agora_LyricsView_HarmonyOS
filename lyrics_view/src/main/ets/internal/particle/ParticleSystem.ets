@@ -1,30 +1,30 @@
 /**
- * 用于在ScoringView中实现粒子动画效果
+ * Particle system for implementing particle animation effects in ScoringView
  */
 
 import { LogUtils } from '../../utils/LogUtils';
 
 /**
- * 单个粒子的数据结构
+ * Data structure for a single particle
  */
 export interface Particle {
   id: string;
   x: number;
   y: number;
-  vx: number; // X方向速度
-  vy: number; // Y方向速度
+  vx: number; // X-direction velocity
+  vy: number; // Y-direction velocity
   rotation: number;
   rotationSpeed: number;
   scale: number;
   alpha: number;
-  life: number; // 生命周期 (0-1)
-  maxLife: number; // 最大生命周期 (ms)
-  particleType: number; // 粒子类型索引
+  life: number; // Lifecycle (0-1)
+  maxLife: number; // Maximum lifecycle (ms)
+  particleType: number; // Particle type index
   startTime: number;
 }
 
 /**
- * 范围接口
+ * Range interface
  */
 export interface Range {
   min: number;
@@ -32,22 +32,22 @@ export interface Range {
 }
 
 /**
- * 粒子系统配置
+ * Particle system configuration
  */
 export interface ParticleConfig {
-  particlesPerSecond: number; // 每秒发射粒子数
-  maxParticles: number; // 最大粒子数
-  particleLifetime: number; // 粒子生命周期 (ms)
-  speedRange: Range; // 速度范围
-  angleRange: Range; // 发射角度范围 (度)
-  rotationSpeedRange: Range; // 旋转速度范围
-  scaleRange: Range; // 缩放范围
-  fadeOutDuration: number; // 淡出持续时间 (ms)
-  gravity: number; // 重力加速度
+  particlesPerSecond: number; // Number of particles emitted per second
+  maxParticles: number; // Maximum number of particles
+  particleLifetime: number; // Particle lifetime (ms)
+  speedRange: Range; // Speed range
+  angleRange: Range; // Emission angle range (degrees)
+  rotationSpeedRange: Range; // Rotation speed range
+  scaleRange: Range; // Scale range
+  fadeOutDuration: number; // Fade out duration (ms)
+  gravity: number; // Gravity acceleration
 }
 
 /**
- * 粒子系统类 - 对应Android的ParticleSystem
+ * Particle system class - corresponds to Android's ParticleSystem
  */
 export class ParticleSystem {
   private particles: Particle[] = [];
@@ -58,11 +58,12 @@ export class ParticleSystem {
   private lastEmitTime: number = 0;
   private particleCounter: number = 0;
   private animationId: number = -1;
-  // 延迟停止相关
+  // Delayed stop related
   private stopDelayTimer: number = -1;
   private shouldStopEmitting: boolean = false;
-  private readonly STOP_DELAY_MS: number = 300; // 延长到500ms，确保连续着色时粒子持续生成
-  // 默认配置 - 对应Android版本的设置
+  private readonly STOP_DELAY_MS: number =
+    300; // Extended to 500ms to ensure continuous particle generation during continuous coloring
+  // Default configuration - corresponds to Android version settings
   private static readonly DEFAULT_CONFIG: ParticleConfig = ParticleSystem.createDefaultConfig();
 
   private static createDefaultConfig(): ParticleConfig {
@@ -75,12 +76,12 @@ export class ParticleSystem {
       particlesPerSecond: 12,
       maxParticles: 24, // particles.length * 3
       particleLifetime: 900, // 900ms
-      speedRange: speedRange, // 对应Android的0.10f, 0.20f
-      angleRange: angleRange, // 对应Android的130, 230度
-      rotationSpeedRange: rotationSpeedRange, // 对应Android的90, 180
-      scaleRange: scaleRange, // 对应Android的0.7f, 1.6f
-      fadeOutDuration: 300, // 对应Android的300ms淡出
-      gravity: 0.0002 // 重力效果
+      speedRange: speedRange, // Corresponds to Android's 0.10f, 0.20f
+      angleRange: angleRange, // Corresponds to Android's 130, 230 degrees
+      rotationSpeedRange: rotationSpeedRange, // Corresponds to Android's 90, 180
+      scaleRange: scaleRange, // Corresponds to Android's 0.7f, 1.6f
+      fadeOutDuration: 300, // Corresponds to Android's 300ms fade out
+      gravity: 0.0002 // Gravity effect
     };
 
     return config;
@@ -112,7 +113,7 @@ export class ParticleSystem {
   }
 
   /**
-   * 开始在指定位置发射粒子 - 对应Android的emit方法
+   * Start emitting particles at specified position - corresponds to Android's emit method
    */
   emit(x: number, y: number, particlesPerSecond?: number): void {
     this.emitX = x;
@@ -122,7 +123,7 @@ export class ParticleSystem {
     }
     this.isEmitting = true;
 
-    // 立即创建第一个粒子，不等待发射间隔
+    // Create first particle immediately without waiting for emission interval
     if (this.particles.length < this.config.maxParticles) {
       this.createParticle();
     }
@@ -135,7 +136,7 @@ export class ParticleSystem {
   }
 
   /**
-   * 更新发射点位置 - 对应Android的updateEmitPoint方法
+   * Update emission point position - corresponds to Android's updateEmitPoint method
    */
   updateEmitPoint(x: number, y: number): void {
     this.emitX = x;
@@ -143,10 +144,10 @@ export class ParticleSystem {
   }
 
   /**
-   * 恢复发射 - 对应Android的resumeEmitting方法
+   * Resume emission - corresponds to Android's resumeEmitting method
    */
   resumeEmitting(): void {
-    // 清除延迟停止定时器和标记
+    // Clear delayed stop timer and flag
     if (this.stopDelayTimer !== -1) {
       clearTimeout(this.stopDelayTimer);
       this.stopDelayTimer = -1;
@@ -155,18 +156,18 @@ export class ParticleSystem {
 
     if (!this.isEmitting) {
       this.isEmitting = true;
-      // 立即创建第一个粒子，不等待发射间隔
+      // Create first particle immediately without waiting for emission interval
       if (this.particles.length < this.config.maxParticles) {
         this.createParticle();
       }
       this.lastEmitTime = Date.now();
 
-      // 确保动画循环正在运行
+      // Ensure animation loop is running
       if (this.animationId === -1) {
         this.startAnimation();
       }
     } else {
-      // 如果已经在发射但粒子很少，也立即创建一个粒子
+      // If already emitting but few particles, also create a particle immediately
       if (this.particles.length < 3 && this.particles.length < this.config.maxParticles) {
         this.createParticle();
       }
@@ -175,24 +176,24 @@ export class ParticleSystem {
   }
 
   /**
-   * 停止发射 - 对应Android的stopEmitting方法
-   * 使用延迟停止机制，避免粒子发射被过快中断
+   * Stop emission - corresponds to Android's stopEmitting method
+   * Uses delayed stop mechanism to avoid particle emission being interrupted too quickly
    */
   stopEmitting(): void {
-    // 如果已经不在发射或已经设置了停止标记，直接返回
+    // If already not emitting or stop flag is already set, return directly
     if (!this.isEmitting || this.shouldStopEmitting) {
       return;
     }
 
-    // 设置延迟停止标记
+    // Set delayed stop flag
     this.shouldStopEmitting = true;
 
-    // 清除之前的延迟定时器
+    // Clear previous delay timer
     if (this.stopDelayTimer !== -1) {
       clearTimeout(this.stopDelayTimer);
     }
 
-    // 设置延迟停止定时器
+    // Set delayed stop timer
     this.stopDelayTimer = setTimeout(() => {
       this.isEmitting = false;
       this.shouldStopEmitting = false;
@@ -201,13 +202,13 @@ export class ParticleSystem {
   }
 
   /**
-   * 取消粒子系统 - 对应Android的cancel方法
+   * Cancel particle system - corresponds to Android's cancel method
    */
   cancel(): void {
     this.isEmitting = false;
     this.particles = [];
 
-    // 清除延迟停止定时器
+    // Clear delayed stop timer
     if (this.stopDelayTimer !== -1) {
       clearTimeout(this.stopDelayTimer);
       this.stopDelayTimer = -1;
@@ -222,21 +223,21 @@ export class ParticleSystem {
   }
 
   /**
-   * 获取当前所有活跃的粒子
+   * Get all currently active particles
    */
   getParticles(): Particle[] {
     return this.particles;
   }
 
   /**
-   * 设置粒子系统配置
+   * Set particle system configuration
    */
   setConfig(config: Partial<ParticleConfig>): void {
     this.config = this.mergeConfig(this.config, config);
   }
 
   /**
-   * 设置旋转速度范围 - 对应Android的setRotationSpeedRange
+   * Set rotation speed range - corresponds to Android's setRotationSpeedRange
    */
   setRotationSpeedRange(min: number, max: number): ParticleSystem {
     const range: Range = { min: min, max: max };
@@ -245,7 +246,7 @@ export class ParticleSystem {
   }
 
   /**
-   * 设置缩放范围 - 对应Android的setScaleRange
+   * Set scale range - corresponds to Android's setScaleRange
    */
   setScaleRange(min: number, max: number): ParticleSystem {
     const range: Range = { min: min, max: max };
@@ -254,7 +255,7 @@ export class ParticleSystem {
   }
 
   /**
-   * 设置速度模块和角度范围 - 对应Android的setSpeedModuleAndAngleRange
+   * Set speed module and angle range - corresponds to Android's setSpeedModuleAndAngleRange
    */
   setSpeedModuleAndAngleRange(minSpeed: number, maxSpeed: number, minAngle: number, maxAngle: number): ParticleSystem {
     const speedRange: Range = { min: minSpeed, max: maxSpeed };
@@ -265,7 +266,7 @@ export class ParticleSystem {
   }
 
   /**
-   * 设置淡出效果 - 对应Android的setFadeOut
+   * Set fade out effect - corresponds to Android's setFadeOut
    */
   setFadeOut(duration: number): ParticleSystem {
     this.config.fadeOutDuration = duration;
@@ -273,7 +274,7 @@ export class ParticleSystem {
   }
 
   /**
-   * 启动动画循环
+   * Start animation loop
    */
   private startAnimation(): void {
     const animate = () => {
@@ -289,13 +290,13 @@ export class ParticleSystem {
   }
 
   /**
-   * 更新粒子状态
+   * Update particle states
    */
   private updateParticles(): void {
     const now = Date.now();
     const deltaTime = 16; // 16ms per frame
 
-    // 发射新粒子
+    // Emit new particles
     if (this.isEmitting && this.particles.length < this.config.maxParticles) {
       const timeSinceLastEmit = now - this.lastEmitTime;
       const emitInterval = 1000 / this.config.particlesPerSecond;
@@ -306,31 +307,31 @@ export class ParticleSystem {
       }
     }
 
-    // 更新现有粒子
+    // Update existing particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const particle = this.particles[i];
       const age = now - particle.startTime;
 
-      // 检查粒子是否应该被移除
+      // Check if particle should be removed
       if (age >= particle.maxLife) {
         this.particles.splice(i, 1);
         continue;
       }
 
-      // 更新粒子位置
+      // Update particle position
       particle.x += particle.vx * deltaTime;
       particle.y += particle.vy * deltaTime;
 
-      // 应用重力
+      // Apply gravity
       particle.vy += this.config.gravity * deltaTime;
 
-      // 更新旋转
+      // Update rotation
       particle.rotation += particle.rotationSpeed * deltaTime;
 
-      // 更新生命周期和透明度
+      // Update lifecycle and alpha
       particle.life = age / particle.maxLife;
 
-      // 淡出效果
+      // Fade out effect
       const fadeOutStart = 1 - (this.config.fadeOutDuration / particle.maxLife);
       if (particle.life > fadeOutStart) {
         const fadeProgress = (particle.life - fadeOutStart) / (1 - fadeOutStart);
@@ -342,7 +343,7 @@ export class ParticleSystem {
   }
 
   /**
-   * 创建新粒子
+   * Create new particle
    */
   private createParticle(): void {
     const angle = this.randomBetween(this.config.angleRange.min, this.config.angleRange.max);
@@ -361,7 +362,7 @@ export class ParticleSystem {
       alpha: 1,
       life: 0,
       maxLife: this.config.particleLifetime,
-      particleType: Math.floor(Math.random() * 8), // 8种不同的粒子类型
+      particleType: Math.floor(Math.random() * 8), // 8 different particle types
       startTime: Date.now()
     };
 
@@ -369,7 +370,7 @@ export class ParticleSystem {
   }
 
   /**
-   * 生成指定范围内的随机数
+   * Generate random number within specified range
    */
   private randomBetween(min: number, max: number): number {
     return min + Math.random() * (max - min);

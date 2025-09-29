@@ -1,18 +1,18 @@
 import { LyricModel } from 'lyrics_view';
 
 /**
- * 歌曲信息模型
- * 使用 @ObservedV2 实现响应式状态管理
+ * Song information model
+ * Uses @ObservedV2 for reactive state management
  */
 @ObservedV2
 export class SongInfo {
-  /** 歌曲列表 */
+  /** Song list */
   @Trace songList: string[] = [];
-  /** 当前歌曲索引 */
+  /** Current song index */
   @Trace currentIndex: number = 0;
-  /** 当前歌曲名称 */
+  /** Current song name */
   @Trace name: string = '';
-  /** 歌词模型 */
+  /** Lyric model */
   @Trace lyricModel: LyricModel | null = null;
 
   constructor() {
@@ -20,57 +20,57 @@ export class SongInfo {
   }
 
   /**
-   * 切换到下一首歌
+   * Switch to next song
    */
   switchToNext(): void {
     this.currentIndex = (this.currentIndex + 1) % this.songList.length;
     this.updateCurrentSongName();
-    this.lyricModel = null; // 清空当前歌词数据
+    this.lyricModel = null; // Clear current lyric data
   }
 
   /**
-   * 切换到上一首歌
+   * Switch to previous song
    */
   switchToPrevious(): void {
     this.currentIndex = (this.currentIndex - 1 + this.songList.length) % this.songList.length;
     this.updateCurrentSongName();
-    this.lyricModel = null; // 清空当前歌词数据
+    this.lyricModel = null; // Clear current lyric data
   }
 
   /**
-   * 切换到指定歌曲
+   * Switch to specified song
    */
   switchToSong(index: number): void {
     if (index >= 0 && index < this.songList.length) {
       this.currentIndex = index;
       this.updateCurrentSongName();
-      this.lyricModel = null; // 清空当前歌词数据
+      this.lyricModel = null; // Clear current lyric data
     }
   }
 
   /**
-   * 设置歌词模型
+   * Set lyric model
    */
   setLyricModel(model: LyricModel | null): void {
     this.lyricModel = model;
   }
 
   /**
-   * 获取歌曲描述信息
+   * Get song description information
    */
   getDescription(): string {
     return `当前歌曲: ${this.name}`;
   }
 
   /**
-   * 检查是否有歌词数据
+   * Check if lyric data exists
    */
   hasLyrics(): boolean {
     return this.lyricModel !== null;
   }
 
   /**
-   * 更新当前歌曲名称
+   * Update current song name
    */
   private updateCurrentSongName(): void {
     this.name = this.songList[this.currentIndex];

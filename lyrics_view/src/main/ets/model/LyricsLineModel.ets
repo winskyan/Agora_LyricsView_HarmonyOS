@@ -1,7 +1,7 @@
 /**
  * Model class representing a single line of lyrics.
  * Contains information about individual tones (words/syllables) with their timing and pitch data.
- * 对应Android项目中的LyricsLineModel
+ * Corresponds to LyricsLineModel in Android project
  */
 
 /**
@@ -92,7 +92,7 @@ export class Tone {
  * Note: Inheritance is not recommended for this use case
  */
 export class Monolog extends Tone {
-  // Better not use extend
+  // Inheritance is not recommended for this use case
 }
 
 /**

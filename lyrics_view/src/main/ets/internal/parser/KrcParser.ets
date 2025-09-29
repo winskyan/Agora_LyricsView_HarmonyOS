@@ -6,25 +6,25 @@ import { LogUtils } from '../../utils/LogUtils';
 import { Utils } from '../../utils/Utils';
 
 /**
- * KRC 音调数据 JSON 结构接口
+ * KRC pitch data JSON structure interface
  */
 interface KrcPitchDataJson {
   pitchDatas?: string | PitchData[];
 }
 
 /**
- * KRC格式歌词解析器 - HarmonyOS版本
- * 对应Java项目中的LyricParser.doParseKrc方法
- * 支持逐字高亮的KRC格式解析
+ * KRC format lyrics parser - HarmonyOS version
+ * Corresponds to the doParseKrc method in the Java project
+ * Supports word-by-word highlighting KRC format parsing
  */
 export class KrcParser {
   /**
-   * 解析KRC格式歌词和音调数据（对外接口）
-   * @param krcData KRC歌词数据字节数组
-   * @param pitchData 音调数据字节数组（可选）
-   * @param includeCopyrightSentence 是否包含版权信息
-   * @param lyricOffset 歌词时间偏移（毫秒）
-   * @returns 解析后的歌词模型
+   * Parse KRC format lyrics and pitch data (public interface)
+   * @param krcData KRC lyrics data byte array
+   * @param pitchData Pitch data byte array (optional)
+   * @param includeCopyrightSentence Whether to include copyright information
+   * @param lyricOffset Lyrics time offset (milliseconds)
+   * @returns Parsed lyrics model
    */
   static parseKrcLyricData(
     krcData: Uint8Array,
@@ -33,20 +33,20 @@ export class KrcParser {
     lyricOffset: number = 0
   ): LyricModel | null {
     try {
-      // 解析KRC歌词数据
+      // Parse KRC lyrics data
       const lyricsModel = KrcParser.doParseKrc(krcData, lyricOffset);
       if (!lyricsModel) {
         LogUtils.e('Failed to parse KRC data');
         return null;
       }
 
-      // 解析音调数据
+      // Parse pitch data
       let pitchDataList: PitchData[] | null = null;
       if (pitchData) {
         pitchDataList = KrcParser.doParseKrcPitchData(pitchData);
       }
 
-      // 设置音调相关属性
+      // Set pitch-related properties
       lyricsModel.pitchDataList = pitchDataList || null;
       lyricsModel.hasPitch = pitchDataList != null && pitchDataList.length > 0;
 
@@ -54,7 +54,7 @@ export class KrcParser {
         lyricsModel.preludeEndPosition = pitchDataList[0].startTime;
       }
 
-      // 移除版权信息句子
+      // Remove copyright information sentences
       if (!includeCopyrightSentence && lyricsModel.lines && lyricsModel.lines.length > 0) {
         let copyrightCount = 0;
         const filteredLines = lyricsModel.lines.filter(line => {
@@ -76,10 +76,10 @@ export class KrcParser {
   }
 
   /**
-   * 解析KRC格式歌词（对外接口）
-   * @param krcContent KRC歌词内容字符串
-   * @param lyricOffset 歌词时间偏移（毫秒）
-   * @returns 解析后的歌词模型
+   * Parse KRC format lyrics (public interface)
+   * @param krcContent KRC lyrics content string
+   * @param lyricOffset Lyrics time offset (milliseconds)
+   * @returns Parsed lyrics model
    */
   static parseKRC(krcContent: string, lyricOffset: number = 0): LyricModel {
     const krcData = Utils.stringToUint8Array(krcContent);
@@ -88,10 +88,10 @@ export class KrcParser {
   }
 
   /**
-   * 核心KRC解析方法（对应Java的doParseKrc）
-   * @param krcFileData KRC文件数据字节数组
-   * @param lyricOffset 歌词时间偏移（毫秒）
-   * @returns 解析后的歌词模型
+   * Core KRC parsing method (corresponds to Java's doParseKrc)
+   * @param krcFileData KRC file data byte array
+   * @param lyricOffset Lyrics time offset (milliseconds)
+   * @returns Parsed lyrics model
    */
   private static doParseKrc(krcFileData: Uint8Array, lyricOffset: number): LyricModel | null {
     try {
@@ -111,7 +111,7 @@ export class KrcParser {
 
           if (line.startsWith('[')) {
             if (line.includes('<') && line.includes('>')) {
-              // 解析歌词行
+              // Parse lyrics line
               let offsetValue = 0;
               if (metadata.has('offset')) {
                 try {
@@ -128,12 +128,12 @@ export class KrcParser {
                 LogUtils.e('parseLine error');
               }
             } else {
-              // 处理元数据部分：`[ti:星晴]`
+              // Handle metadata part: `[ti:星晴]`
               const index = line.indexOf(':');
               if (index !== -1) {
-                // 键值，从第二个字符到":"之前
+                // Key, from second character to before ":"
                 const key = line.substring(1, index);
-                // 值，从":"之后到"]"之前
+                // Value, from after ":" to before "]"
                 const value = line.substring(index + 1, line.length - 1);
                 metadata.set(key, value);
               } else {
@@ -169,10 +169,10 @@ export class KrcParser {
   }
 
   /**
-   * 解析单行KRC格式（对应Java的parseKrcLine）
-   * @param line 要解析的行
-   * @param offset 时间偏移量（毫秒）
-   * @returns 解析后的歌词行模型，解析失败返回null
+   * Parse single KRC format line (corresponds to Java's parseKrcLine)
+   * @param line Line to parse
+   * @param offset Time offset (milliseconds)
+   * @returns Parsed lyrics line model, returns null if parsing fails
    */
   private static parseKrcLine(line: string, offset: number): LyricsLineModel | null {
     try {
@@ -185,7 +185,7 @@ export class KrcParser {
       const timeStr = line.substring(rangeStart + 1, rangeEnd);
       const timeComponents = timeStr.split(',');
 
-      // 处理行时间：`0,1600`
+      // Handle line time: `0,1600`
       if (timeComponents.length !== 2) {
         return null;
       }
@@ -196,7 +196,7 @@ export class KrcParser {
       const lineDuration = parseInt(timeComponents[1].trim());
       const lineContent = line.substring(rangeEnd + 1).trim();
 
-      // 解析行内容
+      // Parse line content
       const tones: Tone[] = [];
       const toneComponents = lineContent.split('<');
 
@@ -205,7 +205,7 @@ export class KrcParser {
           continue;
         }
 
-        // 解析单词内容：'0,177,0>星'
+        // Parse word content: '0,177,0>星'
         const toneParts = toneComponent.split('>');
         if (toneParts.length === 2) {
           const word = toneParts[1];
@@ -237,9 +237,9 @@ export class KrcParser {
   }
 
   /**
-   * 解析KRC格式音调数据
-   * @param fileData 包含KRC音调数据的字节数组
-   * @returns PitchData对象数组，解析失败返回null
+   * Parse KRC format pitch data
+   * @param fileData Byte array containing KRC pitch data
+   * @returns Array of PitchData objects, returns null if parsing fails
    */
   private static doParseKrcPitchData(fileData: Uint8Array): PitchData[] | null {
     if (!fileData || fileData.length === 0) {

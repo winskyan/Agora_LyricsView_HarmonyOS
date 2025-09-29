@@ -1,25 +1,25 @@
 /**
- * 音调数据模型
- * 对应Android项目中的PitchData
+ * Pitch data model
+ * Corresponds to PitchData in Android project
  * Interface representing pitch data for karaoke scoring
  */
 export interface PitchData {
-  /** 开始时间 */
+  /** Start time in milliseconds */
   startTime: number;
 
-  /** 持续时间 */
+  /** Duration in milliseconds */
   duration: number;
 
-  /** 音调值 */
+  /** Pitch value */
   pitch: number;
 }
 
 /**
- * 创建PitchData对象的工厂函数
- * @param startTime 开始时间，默认为0
- * @param duration 持续时间，默认为0
- * @param pitch 音调值，默认为0
- * @returns PitchData对象
+ * Factory function to create PitchData object
+ * @param startTime Start time, defaults to 0
+ * @param duration Duration, defaults to 0
+ * @param pitch Pitch value, defaults to 0
+ * @returns PitchData object
  */
 export function createPitchData(
   startTime: number = 0,

@@ -6,23 +6,23 @@ import { EventBus, KaraokeEvents, LyricsEvents, ScoringEvents } from './utils/Ev
 import { LogUtils } from './utils/LogUtils';
 
 /**
- * 卡拉OK主控制器
- * 管理歌词显示、评分和不同组件之间的同步
+ * Karaoke main controller
+ * Manages lyrics display, scoring and synchronization between different components
  */
 export class KaraokeView {
   /**
-   * 卡拉OK事件监听器
+   * Karaoke event listener
    */
   private mKaraokeEvent?: IKaraokeEvent;
   /**
-   * 事件总线实例
+   * Event bus instance
    */
   private eventBus: EventBus = EventBus.getInstance();
   /**
-   * 是否已销毁
+   * Whether the instance has been destroyed
    */
   private isDestroyed: boolean = false;
-  // 事件监听器引用，用于后续移除
+  // Event listener references for later removal
   private dragStartListener = () => {
     LogUtils.d('KaraokeView: Drag start received');
   };
@@ -34,14 +34,14 @@ export class KaraokeView {
   };
 
   /**
-   * 默认构造函数
+   * Default constructor
    */
   constructor() {
     this.initialize();
   }
 
   /**
-   * 初始化卡拉OK组件，包括歌词和评分机器
+   * Initialize karaoke components, including lyrics and scoring machine
    */
   private initialize(): void {
     if (this.isDestroyed) {
@@ -52,18 +52,18 @@ export class KaraokeView {
     LogUtils.d('KaraokeView initialize');
     LogUtils.enableLog(true, true);
 
-    // 设置拖拽事件监听
+    // Setup drag event listeners
     this.setupDragEventListeners();
   }
 
   /**
-   * 设置拖拽事件监听器
+   * Setup drag event listeners
    */
   private setupDragEventListeners(): void {
-    // 监听拖拽开始事件
+    // Listen for drag start events
     this.eventBus.on(LyricsEvents.DRAG_START, this.dragStartListener);
 
-    // 监听拖拽结束事件
+    // Listen for drag end events
     this.eventBus.on(LyricsEvents.DRAG_END, this.dragEndListener);
   }
 
@@ -85,13 +85,13 @@ export class KaraokeView {
     LogUtils.d(`KaraokeView parseLyrics lyricSource type:${typeof lyricSource}, pitchSource type:${typeof pitchSource}, includeCopyrightSentence:${includeCopyrightSentence}, lyricOffset:${lyricOffset}`);
 
     try {
-      // 根据输入类型分发处理逻辑
+      // Dispatch processing logic based on input type
       if (typeof lyricSource === 'string') {
-        // 处理文件路径
+        // Handle file path
         const pitchPath = typeof pitchSource === 'string' ? pitchSource : undefined;
         return LyricsParser.parseFile(lyricSource, pitchPath, includeCopyrightSentence, lyricOffset);
       } else if (lyricSource instanceof Uint8Array) {
-        // 处理字节数组
+        // Handle byte array
         const pitchData = pitchSource instanceof Uint8Array ? pitchSource : undefined;
         return LyricsParser.parseLyricData(lyricSource, pitchData, includeCopyrightSentence, lyricOffset);
       } else {
@@ -105,7 +105,7 @@ export class KaraokeView {
   }
 
   /**
-   * Reset all components (通过事件总线)
+   * Reset all components (via event bus)
    */
   reset(): void {
     if (this.checkDestroyed()) {
@@ -114,7 +114,7 @@ export class KaraokeView {
 
     LogUtils.d('KaraokeView reset');
 
-    // 通过事件总线通知组件重置
+    // Notify components to reset via event bus
     this.eventBus.emit(LyricsEvents.RESET);
     this.eventBus.emit(ScoringEvents.RESET);
   }
@@ -131,7 +131,7 @@ export class KaraokeView {
     }
 
     LogUtils.d(`KaraokeView setLyricDatasetLyricData model lines:${model.lines.length} usingInternalScoring:${usingInternalScoring}`);
-    // 通过事件总线通知组件
+    // Notify components via event bus
     this.eventBus.emit(LyricsEvents.SET_LYRIC_DATA, model);
     this.eventBus.emit(ScoringEvents.SET_LYRIC_DATA, model, usingInternalScoring);
   }
@@ -157,7 +157,7 @@ export class KaraokeView {
 
     //LogUtils.d(`KaraokeView:setPitch speakerPitch:${speakerPitch.toFixed(2)}, pitchScore:${pitchScore.toFixed(1)}, progressInMs:${Math.floor(progressInMs)}ms`);
 
-    // 通过事件总线发送音高数据给ScoringView
+    // Send pitch data to ScoringView via event bus
     this.eventBus.emit(ScoringEvents.SET_PITCH, speakerPitch, pitchScore);
   }
 
@@ -177,7 +177,7 @@ export class KaraokeView {
     }
 
     //LogUtils.d(`KaraokeView:setProgress progress:${progress}`);
-    // 通过事件总线通知组件
+    // Notify components via event bus
     this.eventBus.emit(LyricsEvents.SET_PROGRESS, progress);
     this.eventBus.emit(ScoringEvents.SET_PROGRESS, progress);
   }
@@ -197,7 +197,7 @@ export class KaraokeView {
   }
 
   /**
-   * Set custom scoring algorithm,内部打分功能暂不支持
+   * Set custom scoring algorithm, internal scoring feature is not supported yet
    *
    * @param algorithm Custom scoring algorithm implementation
    */
@@ -208,12 +208,12 @@ export class KaraokeView {
 
     LogUtils.d(`setScoringAlgorithm algorithm:${algorithm}`);
 
-    // 通过事件总线发送评分算法给ScoringView
+    // Send scoring algorithm to ScoringView via event bus
     this.eventBus.emit(ScoringEvents.SET_SCORING_ALGORITHM, algorithm);
   }
 
   /**
-   * Set scoring difficulty level，暂不支持
+   * Set scoring difficulty level, not supported yet
    *
    * @param level Scoring difficulty level
    */
@@ -224,14 +224,14 @@ export class KaraokeView {
 
     LogUtils.d(`setScoringLevel level:${level}`);
 
-    // 通过事件总线发送评分难度给ScoringView
+    // Send scoring difficulty to ScoringView via event bus
     this.eventBus.emit(ScoringEvents.SET_SCORING_LEVEL, level);
   }
 
   /**
-   * 主动销毁KaraokeView
-   * 清理所有资源，包括事件监听器、定时器等
-   * 调用此方法后，KaraokeView实例将不可再使用
+   * Actively destroy KaraokeView
+   * Clean up all resources including event listeners, timers, etc.
+   * After calling this method, the KaraokeView instance cannot be used anymore
    */
   destroy(): void {
     if (this.isDestroyed) {
@@ -244,26 +244,26 @@ export class KaraokeView {
   }
 
   /**
-   * 内部销毁逻辑
-   * 执行实际的资源清理工作
+   * Internal destroy logic
+   * Performs actual resource cleanup work
    */
   private doDestroy(): void {
     try {
-      // 标记为已销毁
+      // Mark as destroyed
       this.isDestroyed = true;
 
-      // 移除所有事件监听器
+      // Remove all event listeners
       this.removeAllEventListeners();
 
-      // 通过事件总线通知所有组件销毁
+      // Notify all components to destroy via event bus
       this.eventBus.emit(LyricsEvents.DESTROY);
       this.eventBus.emit(ScoringEvents.DESTROY);
       this.eventBus.emit(KaraokeEvents.DESTROY);
 
-      // 清理事件监听器引用
+      // Clear event listener references
       this.mKaraokeEvent = undefined;
 
-      // 销毁日志系统
+      // Destroy logging system
       LogUtils.destroy();
 
       LogUtils.d('KaraokeView: Destroy completed successfully');
@@ -273,11 +273,11 @@ export class KaraokeView {
   }
 
   /**
-   * 移除所有事件监听器
+   * Remove all event listeners
    */
   private removeAllEventListeners(): void {
     try {
-      // 移除拖拽事件监听器
+      // Remove drag event listeners
       this.eventBus.off(LyricsEvents.DRAG_START, this.dragStartListener);
       this.eventBus.off(LyricsEvents.DRAG_END, this.dragEndListener);
 
@@ -288,7 +288,7 @@ export class KaraokeView {
   }
 
   /**
-   * 检查是否已销毁
+   * Check if the instance has been destroyed
    * @returns true if destroyed, false otherwise
    */
   getIsDestroyed(): boolean {
@@ -296,7 +296,7 @@ export class KaraokeView {
   }
 
   /**
-   * 为所有公共方法添加销毁状态检查
+   * Add destroy state check for all public methods
    */
   private checkDestroyed(): boolean {
     if (this.isDestroyed) {

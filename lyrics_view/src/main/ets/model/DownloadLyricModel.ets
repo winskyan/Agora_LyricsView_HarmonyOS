@@ -1,8 +1,8 @@
 import { HttpUrlRequest } from '../net/HttpUrlRequest';
 
 /**
- * 歌词下载请求模型类
- * 包含下载请求的相关信息，包括URL、文件路径和HTTP请求对象
+ * Lyric download request model class
+ * Contains information related to download requests, including URL, file path, and HTTP request object
  */
 export class DownloadLyricModel {
   private mRequestId: number = 0;
@@ -11,80 +11,80 @@ export class DownloadLyricModel {
   private mHttpUrlRequest: HttpUrlRequest | null = null;
 
   /**
-   * 获取请求标识符
-   * @returns 请求ID
+   * Gets the request identifier
+   * @returns The request ID
    */
   getRequestId(): number {
     return this.mRequestId;
   }
 
   /**
-   * 设置请求标识符
-   * @param requestId 请求ID
+   * Sets the request identifier
+   * @param requestId The request ID
    */
   setRequestId(requestId: number): void {
     this.mRequestId = requestId;
   }
 
   /**
-   * 获取歌词文件的URL
-   * @returns URL字符串
+   * Gets the URL of the lyric file
+   * @returns The URL string
    */
   getUrl(): string {
     return this.mUrl;
   }
 
   /**
-   * 设置歌词文件的URL
-   * @param url URL字符串
+   * Sets the URL of the lyric file
+   * @param url The URL string
    */
   setUrl(url: string): void {
     this.mUrl = url;
   }
 
   /**
-   * 获取保存歌词的本地文件路径
-   * @returns 文件路径字符串
+   * Gets the local file path for saving lyrics
+   * @returns The file path string
    */
   getFilePath(): string {
     return this.mFilePath;
   }
 
   /**
-   * 设置保存歌词的本地文件路径
-   * @param filePath 文件路径字符串
+   * Sets the local file path for saving lyrics
+   * @param filePath The file path string
    */
   setFilePath(filePath: string): void {
     this.mFilePath = filePath;
   }
 
   /**
-   * 获取HTTP请求对象
-   * @returns HTTP请求对象
+   * Gets the HTTP request object
+   * @returns The HTTP request object
    */
   getHttpUrlRequest(): HttpUrlRequest | null {
     return this.mHttpUrlRequest;
   }
 
   /**
-   * 设置HTTP请求对象
-   * @param httpUrlRequest HTTP请求对象
+   * Sets the HTTP request object
+   * @param httpUrlRequest The HTTP request object
    */
   setHttpUrlRequest(httpUrlRequest: HttpUrlRequest): void {
     this.mHttpUrlRequest = httpUrlRequest;
   }
 
   /**
-   * 返回下载模型的字符串表示
-   * @returns 包含所有模型属性的字符串
+   * Returns the string representation of the download model
+   * @returns A string containing all model properties
    */
   toString(): string {
     return `DownloadLyricModel{requestId=${this.mRequestId}, url='${this.mUrl}', filePath='${this.mFilePath}', httpUrlRequest=${this.mHttpUrlRequest}}`;
   }
 
   /**
-   * 检查模型是否有效
-   * @returns 模型是否包含必要的信息
+   * Checks if the model is valid
+   * @returns Whether the model contains necessary information
    */
   isValid(): boolean {
     return this.mRequestId > 0 &&
@@ -94,7 +94,7 @@ export class DownloadLyricModel {
   }
 
   /**
-   * 清理资源
+   * Cleans up resources
    */
   cleanup(): void {
     if (this.mHttpUrlRequest) {

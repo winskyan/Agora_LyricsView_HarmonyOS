@@ -1,22 +1,22 @@
 /**
- * 播放状态模型
- * 使用 @ObservedV2 实现响应式状态管理
+ * Playback state model
+ * Uses @ObservedV2 for reactive state management
  */
 @ObservedV2
 export class PlaybackState {
-  /** 当前播放时间 (ms) */
+  /** Current playback time (ms) */
   @Trace currentTime: number = 0;
-  /** 播放进度显示文本 */
+  /** Playback progress display text */
   @Trace playingProgress: string = '0ms';
-  /** 是否正在播放 */
+  /** Whether currently playing */
   @Trace isPlaying: boolean = false;
-  /** 是否为原唱模式 */
+  /** Whether in original track mode */
   @Trace isOriginalTrack: boolean = true;
-  /** 上一次的 pitch 值 */
+  /** Last pitch value */
   @Trace lastPitch: number = 50;
 
   /**
-   * 重置播放状态
+   * Reset playback state
    */
   reset(): void {
     this.currentTime = 0;
@@ -26,7 +26,7 @@ export class PlaybackState {
   }
 
   /**
-   * 更新播放进度
+   * Update playback progress
    */
   updateProgress(time: number): void {
     this.currentTime = time;
@@ -34,21 +34,21 @@ export class PlaybackState {
   }
 
   /**
-   * 设置播放状态
+   * Set playing state
    */
   setPlayingState(isPlaying: boolean): void {
     this.isPlaying = isPlaying;
   }
 
   /**
-   * 切换原唱/伴奏模式
+   * Toggle original/accompaniment track mode
    */
   toggleOriginalTrack(): void {
     this.isOriginalTrack = !this.isOriginalTrack;
   }
 
   /**
-   * 更新 pitch 值
+   * Update pitch value
    */
   updatePitch(pitch: number): void {
     this.lastPitch = Math.max(0, Math.min(100, pitch));

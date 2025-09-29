@@ -7,7 +7,7 @@ import { Utils } from '../../utils/Utils';
 
 
 /**
- * 歌曲数据结构，包含基本信息和MIDI数据
+ * Song data structure containing basic information and MIDI data
  */
 interface Song {
   general?: SongGeneral;
@@ -15,7 +15,7 @@ interface Song {
 }
 
 /**
- * 歌曲基本信息
+ * Song general information
  */
 interface SongGeneral {
   name?: string;
@@ -25,21 +25,21 @@ interface SongGeneral {
 }
 
 /**
- * MIDI歌词数据
+ * MIDI lyrics data
  */
 interface SongMidi {
   paragraphs: Paragraph[];
 }
 
 /**
- * 包含多行歌词的段落
+ * Paragraph containing multiple lyrics lines
  */
 interface Paragraph {
   lines: LyricsLineModel[];
 }
 
 /**
- * XML音调数据模型
+ * XML pitch data model
  */
 export interface XmlPitchData {
   version: number;
@@ -49,25 +49,25 @@ export interface XmlPitchData {
 }
 
 /**
- * XML 音调数据 JSON 结构接口
+ * XML pitch data JSON structure interface
  */
 interface XmlPitchDataJson {
   pitchDatas?: string | PitchData[];
 }
 
 /**
- * XML格式歌词解析器 - HarmonyOS版本
- * 对应Java项目中的LyricsParserXml
- * 专门处理XML格式歌词解析
+ * XML format lyrics parser - HarmonyOS version
+ * Corresponds to LyricsParserXml in Java project
+ * Specifically handles XML format lyrics parsing
  */
 export class XmlParser {
   /**
-   * 解析XML格式歌词和音调数据（对外接口）
-   * @param lyricData XML歌词数据字节数组
-   * @param pitchData 音调数据字节数组（可选）
-   * @param includeCopyrightSentence 是否包含版权信息
-   * @param lyricOffset 歌词时间偏移（毫秒）
-   * @returns 解析后的歌词模型
+   * Parse XML format lyrics and pitch data (public interface)
+   * @param lyricData XML lyrics data byte array
+   * @param pitchData Pitch data byte array (optional)
+   * @param includeCopyrightSentence Whether to include copyright information
+   * @param lyricOffset Lyrics time offset (milliseconds)
+   * @returns Parsed lyrics model
    */
   static parseXmlLyricData(
     lyricData: Uint8Array,
@@ -77,30 +77,30 @@ export class XmlParser {
   ): LyricModel | null {
     LogUtils.d(`parseXmlLyricData lyricData: ${lyricData.length}, pitchData: ${pitchData?.length}, includeCopyrightSentence: ${includeCopyrightSentence}, lyricOffset: lyricOffset=${lyricOffset}`);
     try {
-      // 解析音调数据
+      // Parse pitch data
       let pitchesModel: XmlPitchData | null = null;
       if (pitchData) {
         pitchesModel = XmlParser.parseXmlPitchData(pitchData);
       }
 
-      // 使用专用的XML解析器
+      // Use dedicated XML parser
       const model = XmlParser.parseXMLFromBytes(lyricData);
       if (!model) {
         LogUtils.e('Failed to parse XML content');
         return null;
       }
 
-      // XML格式通常已经包含音调信息，但如果提供了额外的音调数据，可以进行增强
+      // XML format usually already contains pitch information, but if additional pitch data is provided, it can be enhanced
       if (pitchesModel && pitchesModel.pitches.length > 0) {
         model.hasPitch = true;
 
-        // 为XML歌词添加额外的音调数据处理
+        // Add additional pitch data processing for XML lyrics
         for (let i = 0; i < model.lines.length; i++) {
           const line = model.lines[i];
           if (line.tones && line.tones.length > 0) {
             for (const tone of line.tones) {
               if (tone.pitch === 0) {
-                // 如果XML中没有音调信息，从音调数据中获取
+                // If there's no pitch information in XML, get it from pitch data
                 tone.pitch = Math.floor(XmlParser.fetchPitchWithRange(
                   pitchesModel,
                   model.preludeEndPosition,
@@ -121,9 +121,9 @@ export class XmlParser {
   }
 
   /**
-   * 解析XML格式歌词数据
-   * @param xmlContent XML内容字符串
-   * @returns 包含解析歌词的LyricModel对象，如果解析失败则返回null
+   * Parse XML format lyrics data
+   * @param xmlContent XML content string
+   * @returns LyricModel object containing parsed lyrics, or null if parsing fails
    */
   static parseXML(xmlContent: string): LyricModel | null {
     if (!xmlContent || xmlContent.trim().length === 0) {
@@ -132,11 +132,11 @@ export class XmlParser {
     }
 
     try {
-      // 移除BOM标记
+      // Remove BOM marker
       const cleanContent = Utils.removeStringBom(xmlContent.trim());
       LogUtils.d(`parseXML xmlContent: ${cleanContent}`);
 
-      // 使用简单的XML解析（HarmonyOS可能没有完整的XML解析器）
+      // Use simple XML parsing (HarmonyOS may not have complete XML parser)
       const song = XmlParser.parseXmlContent(cleanContent);
 
       if (!song.midi || !song.midi.paragraphs) {
@@ -153,7 +153,7 @@ export class XmlParser {
 
       if (lines.length > 0) {
         lyrics.duration = lines[lines.length - 1].getEndTime();
-        // 总是第一行歌词
+        // Always the first line of lyrics
         lyrics.preludeEndPosition = lines[0].getStartTime();
         lyrics.hasPitch = lines[0].tones.length > 0 && lines[0].tones[0].pitch !== 0;
       }
@@ -176,9 +176,9 @@ export class XmlParser {
   }
 
   /**
-   * 从字节数组解析XML格式歌词数据
-   * @param xmlFileData 包含XML文件数据的字节数组
-   * @returns 包含解析歌词的LyricModel对象，如果解析失败则返回null
+   * Parse XML format lyrics data from byte array
+   * @param xmlFileData Byte array containing XML file data
+   * @returns LyricModel object containing parsed lyrics, or null if parsing fails
    */
   static parseXMLFromBytes(xmlFileData: Uint8Array): LyricModel | null {
     if (!xmlFileData || xmlFileData.length === 0) {
@@ -187,7 +187,7 @@ export class XmlParser {
     }
 
     try {
-      // 使用 HarmonyOS 兼容的方式将 Uint8Array 转换为字符串
+      // Use HarmonyOS compatible way to convert Uint8Array to string
       const xmlContent = Utils.uint8ArrayToString(xmlFileData);
       return XmlParser.parseXML(xmlContent);
     } catch (error) {
@@ -197,27 +197,27 @@ export class XmlParser {
   }
 
   /**
-   * 解析XML内容（简化版本）
-   * @param xmlContent XML内容字符串
-   * @returns Song对象
+   * Parse XML content (simplified version)
+   * @param xmlContent XML content string
+   * @returns Song object
    */
   private static parseXmlContent(xmlContent: string): Song {
     const song: Song = {};
 
     try {
-      // 解析general信息
+      // Parse general information
       const generalMatch = xmlContent.match(/<general>([\s\S]*?)<\/general>/);
       if (generalMatch) {
         song.general = XmlParser.parseGeneral(generalMatch[1]);
       }
 
-      // 解析midi_lrc信息
+      // Parse midi_lrc information
       const midiMatch = xmlContent.match(/<midi_lrc>([\s\S]*?)<\/midi_lrc>/);
       if (midiMatch) {
         song.midi = XmlParser.parseMidiLrc(midiMatch[1]);
       }
 
-      // 如果没有找到midi_lrc，尝试解析paragraphs（兼容不同格式）
+      // If midi_lrc is not found, try to parse paragraphs (compatible with different formats)
       if (!song.midi) {
         const paragraphsMatch = xmlContent.match(/<paragraphs>([\s\S]*?)<\/paragraphs>/);
         if (paragraphsMatch) {
@@ -237,9 +237,9 @@ export class XmlParser {
   }
 
   /**
-   * 解析歌曲基本信息
-   * @param generalContent general标签内容
-   * @returns SongGeneral对象
+   * Parse song general information
+   * @param generalContent Content within general tag
+   * @returns SongGeneral object
    */
   private static parseGeneral(generalContent: string): SongGeneral {
     const general: SongGeneral = {};
@@ -276,15 +276,15 @@ export class XmlParser {
   }
 
   /**
-   * 解析MIDI歌词数据
-   * @param midiContent midi_lrc标签内容
-   * @returns SongMidi对象
+   * Parse MIDI lyrics data
+   * @param midiContent Content within midi_lrc tag
+   * @returns SongMidi object
    */
   private static parseMidiLrc(midiContent: string): SongMidi {
     const midi: SongMidi = { paragraphs: [] };
 
     try {
-      // 匹配所有paragraph标签
+      // Match all paragraph tags
       const paragraphMatches = midiContent.matchAll(/<paragraph>([\s\S]*?)<\/paragraph>/g);
 
       for (const paragraphMatch of paragraphMatches) {
@@ -299,15 +299,15 @@ export class XmlParser {
   }
 
   /**
-   * 解析段落数据
-   * @param paragraphContent paragraph标签内容
-   * @returns Paragraph对象
+   * Parse paragraph data
+   * @param paragraphContent Content within paragraph tag
+   * @returns Paragraph object
    */
   private static parseParagraph(paragraphContent: string): Paragraph {
     const paragraph: Paragraph = { lines: [] };
 
     try {
-      // 匹配所有sentence标签
+      // Match all sentence tags
       const sentenceMatches = paragraphContent.matchAll(/<sentence[^>]*>([\s\S]*?)<\/sentence>/g);
 
       for (const sentenceMatch of sentenceMatches) {
@@ -328,15 +328,15 @@ export class XmlParser {
   }
 
   /**
-   * 直接解析段落数据（用于处理包含monolog的格式）
-   * @param paragraphContent paragraph标签内容
-   * @returns Paragraph对象
+   * Parse paragraph data directly (for handling formats containing monolog)
+   * @param paragraphContent Content within paragraph tag
+   * @returns Paragraph object
    */
   private static parseParagraphDirect(paragraphContent: string): Paragraph {
     const paragraph: Paragraph = { lines: [] };
 
     try {
-      // 匹配所有monolog标签
+      // Match all monolog tags
       const monologMatches = paragraphContent.matchAll(/<monolog[^>]*>([\s\S]*?)<\/monolog>/g);
 
       for (const monologMatch of monologMatches) {
@@ -348,7 +348,7 @@ export class XmlParser {
         paragraph.lines.push(...lines);
       }
 
-      // 如果没有monolog，尝试直接解析line标签
+      // If no monolog, try to parse line tags directly
       if (paragraph.lines.length === 0) {
         const lineMatches = paragraphContent.matchAll(/<line[^>]*>([\s\S]*?)<\/line>/g);
         for (const lineMatch of lineMatches) {
@@ -368,23 +368,23 @@ export class XmlParser {
   }
 
   /**
-   * 解析歌词行数据
-   * @param sentenceTag sentence标签（包含属性）
-   * @param sentenceContent sentence标签内容
-   * @returns LyricsLineModel对象数组
+   * Parse lyrics line data
+   * @param sentenceTag Sentence tag (including attributes)
+   * @param sentenceContent Content within sentence tag
+   * @returns Array of LyricsLineModel objects
    */
   private static parseLines(sentenceTag: string, sentenceContent: string): LyricsLineModel[] {
     const line = new LyricsLineModel();
 
     try {
-      // 解析sentence的mode属性
+      // Parse mode attribute of sentence
       const modeMatch = sentenceTag.match(/mode="([^"]*)"/);
       let isManMode = true;
       if (modeMatch) {
         isManMode = modeMatch[1] === 'man';
       }
 
-      // 匹配所有tone标签
+      // Match all tone tags
       const toneMatches = sentenceContent.matchAll(/<tone[^>]*>[\s\S]*?<\/tone>/g);
 
       for (const toneMatch of toneMatches) {
@@ -396,7 +396,7 @@ export class XmlParser {
         }
       }
 
-      // 匹配所有monolog标签
+      // Match all monolog tags
       const monologMatches = sentenceContent.matchAll(/<monolog[^>]*>[\s\S]*?<\/monolog>/g);
 
       for (const monologMatch of monologMatches) {
@@ -415,15 +415,15 @@ export class XmlParser {
   }
 
   /**
-   * 解析monolog中的行数据
-   * @param monologContent monolog标签内容
-   * @returns LyricsLineModel对象数组
+   * Parse line data within monolog
+   * @param monologContent Content within monolog tag
+   * @returns Array of LyricsLineModel objects
    */
   private static parseMonologLines(monologContent: string): LyricsLineModel[] {
     const lines: LyricsLineModel[] = [];
 
     try {
-      // 匹配所有line标签
+      // Match all line tags
       const lineMatches = monologContent.matchAll(/<line[^>]*>([\s\S]*?)<\/line>/g);
 
       for (const lineMatch of lineMatches) {
@@ -441,15 +441,15 @@ export class XmlParser {
   }
 
   /**
-   * 直接解析line标签内容
-   * @param lineContent line标签内容
-   * @returns LyricsLineModel对象
+   * Parse line tag content directly
+   * @param lineContent Content within line tag
+   * @returns LyricsLineModel object
    */
   private static parseDirectLine(lineContent: string): LyricsLineModel | null {
     try {
       const line = new LyricsLineModel();
 
-      // 匹配所有tone标签
+      // Match all tone tags
       const toneMatches =
         lineContent.matchAll(/<tone[^>]*\s+begin="([^"]*)"[^>]*\s+end="([^"]*)"[^>]*\s+pitch="([^"]*)"[^>]*\s+word="([^"]*)"[^>]*\/>/g);
 
@@ -459,7 +459,7 @@ export class XmlParser {
         tone.end = Math.floor(parseFloat(toneMatch[2]) * 1000);
         tone.pitch = Math.floor(parseFloat(toneMatch[3]));
         tone.word = toneMatch[4];
-        tone.lang = Lang.Chinese; // 默认中文
+        tone.lang = Lang.Chinese; // Default to Chinese
         line.tones.push(tone);
       }
 
@@ -471,9 +471,9 @@ export class XmlParser {
   }
 
   /**
-   * 提取tone标签的内容
-   * @param toneTag 完整的tone标签
-   * @returns tone标签内容
+   * Extract content from tone tag
+   * @param toneTag Complete tone tag
+   * @returns Content within tone tag
    */
   private static extractToneContent(toneTag: string): string {
     const match = toneTag.match(/<tone[^>]*>([\s\S]*?)<\/tone>/);
@@ -481,9 +481,9 @@ export class XmlParser {
   }
 
   /**
-   * 提取monolog标签的内容
-   * @param monologTag 完整的monolog标签
-   * @returns monolog标签内容
+   * Extract content from monolog tag
+   * @param monologTag Complete monolog tag
+   * @returns Content within monolog tag
    */
   private static extractMonologContent(monologTag: string): string {
     const match = monologTag.match(/<monolog[^>]*>([\s\S]*?)<\/monolog>/);
@@ -491,27 +491,27 @@ export class XmlParser {
   }
 
   /**
-   * 解析音调数据
-   * @param toneTag 完整的tone标签
-   * @param toneContent tone标签内容
-   * @returns Tone对象
+   * Parse tone data
+   * @param toneTag Complete tone tag
+   * @param toneContent Content within tone tag
+   * @returns Tone object
    */
   private static parseTone(toneTag: string, toneContent: string): Tone | null {
     try {
       const tone = new Tone();
 
-      // 解析属性
+      // Parse attributes
       const beginMatch = toneTag.match(/begin="([^"]*)"/);
       if (beginMatch) {
         const beginValue = parseFloat(beginMatch[1]);
-        // 如果值小于1000，假设是秒，需要转换为毫秒
+        // If value is less than 1000, assume it's in seconds and convert to milliseconds
         tone.begin = beginValue < 1000 ? Math.floor(beginValue * 1000) : Math.floor(beginValue);
       }
 
       const endMatch = toneTag.match(/end="([^"]*)"/);
       if (endMatch) {
         const endValue = parseFloat(endMatch[1]);
-        // 如果值小于1000，假设是秒，需要转换为毫秒
+        // If value is less than 1000, assume it's in seconds and convert to milliseconds
         tone.end = endValue < 1000 ? Math.floor(endValue * 1000) : Math.floor(endValue);
       }
 
@@ -533,15 +533,15 @@ export class XmlParser {
         tone.lang = Lang.English;
       }
 
-      // 解析pronounce属性（发音）
+      // Parse pronounce attribute (pronunciation)
       const pronounceMatch = toneTag.match(/pronounce="([^"]*)"/);
 
-      // 解析word内容
+      // Parse word content
       const wordMatch = toneContent.match(/<word>(.*?)<\/word>/);
       if (wordMatch) {
         tone.word = wordMatch[1];
 
-        // 如果lang字段缺失，通过word内容检查语言
+        // If lang field is missing, check language through word content
         if (!langMatch) {
           const isEnglish = XmlParser.checkLang(tone.word);
           if (isEnglish) {
@@ -549,7 +549,7 @@ export class XmlParser {
           }
         }
       } else {
-        // 如果没有word标签，使用整个内容作为word
+        // If no word tag, use entire content as word
         tone.word = toneContent.trim();
       }
 
@@ -561,27 +561,27 @@ export class XmlParser {
   }
 
   /**
-   * 解析独白数据
-   * @param monologTag 完整的monolog标签
-   * @param monologContent monolog标签内容
-   * @returns Monolog对象
+   * Parse monolog data
+   * @param monologTag Complete monolog tag
+   * @param monologContent Content within monolog tag
+   * @returns Monolog object
    */
   private static parseMonolog(monologTag: string, monologContent: string): Monolog | null {
     try {
       const monolog = new Monolog();
 
-      // 解析属性
+      // Parse attributes
       const beginMatch = monologTag.match(/begin="([^"]*)"/);
       if (beginMatch) {
         const beginValue = parseFloat(beginMatch[1]);
-        // 如果值小于1000，假设是秒，需要转换为毫秒
+        // If value is less than 1000, assume it's in seconds and convert to milliseconds
         monolog.begin = beginValue < 1000 ? Math.floor(beginValue * 1000) : Math.floor(beginValue);
       }
 
       const endMatch = monologTag.match(/end="([^"]*)"/);
       if (endMatch) {
         const endValue = parseFloat(endMatch[1]);
-        // 如果值小于1000，假设是秒，需要转换为毫秒
+        // If value is less than 1000, assume it's in seconds and convert to milliseconds
         monolog.end = endValue < 1000 ? Math.floor(endValue * 1000) : Math.floor(endValue);
       }
 
@@ -603,7 +603,7 @@ export class XmlParser {
         monolog.lang = Lang.English;
       }
 
-      // monolog的内容直接是文本
+      // Monolog content is directly text
       monolog.word = monologContent.trim();
 
       return monolog;
@@ -614,24 +614,24 @@ export class XmlParser {
   }
 
   /**
-   * 检查单词是否为中文
-   * @param word 要检查的单词
-   * @returns 如果单词不是中文则返回true，否则返回false
+   * Check if word is Chinese
+   * @param word Word to check
+   * @returns True if word is not Chinese, false otherwise
    */
   private static checkLang(word: string): boolean {
     for (let i = 0; i < word.length; i++) {
       const charCode = word.charCodeAt(i);
       if (!(19968 <= charCode && charCode < 40869)) {
-        return true; // 不是中文字符
+        return true; // Not a Chinese character
       }
     }
-    return false; // 全是中文字符
+    return false; // All Chinese characters
   }
 
   /**
-   * 解析XML格式音调数据
-   * @param fileData 包含XML音调数据的字节数组
-   * @returns XmlPitchData对象，包含解析后的音调数据
+   * Parse XML format pitch data
+   * @param fileData Byte array containing XML pitch data
+   * @returns XmlPitchData object containing parsed pitch data
    */
   static parseXmlPitchData(fileData: Uint8Array): XmlPitchData {
     const model: XmlPitchData = {
@@ -650,7 +650,7 @@ export class XmlParser {
       const dataView = new DataView(buffer);
       let offset = 0;
 
-      // 读取int32值直到文件结束
+      // Read int32 values until end of file
       model.version = XmlParser.readLittleEndianInt(dataView, offset);
       offset += 4;
       LogUtils.d(`Version for the pitch file: ${model.version}`);
@@ -664,11 +664,11 @@ export class XmlParser {
       LogUtils.d(`Reserved for the pitch file: ${model.reserved}`);
 
       while (offset + 8 <= buffer.byteLength) {
-        // 每个音调值至少占用8位
+        // Each pitch value occupies at least 8 bits
         const pitch = XmlParser.readLittleEndianDouble(dataView, offset);
         offset += 8;
 
-        // 格式化到3位小数
+        // Format to 3 decimal places
         const formattedPitch = Math.round(pitch * 1000) / 1000;
         model.pitches.push(formattedPitch);
       }
@@ -680,12 +680,12 @@ export class XmlParser {
   }
 
   /**
-   * 获取指定时间范围内的平均音调值
-   * @param data 包含音调值的XmlPitchData
-   * @param startOfFirstTone 第一个音调的开始时间（毫秒）
-   * @param start 范围开始时间（毫秒）
-   * @param end 范围结束时间（毫秒）
-   * @returns 范围内的平均音调值，如果没有找到有效音调则返回0
+   * Get average pitch value within specified time range
+   * @param data XmlPitchData containing pitch values
+   * @param startOfFirstTone Start time of first tone (milliseconds)
+   * @param start Range start time (milliseconds)
+   * @param end Range end time (milliseconds)
+   * @returns Average pitch value within range, returns 0 if no valid pitch found
    */
   static fetchPitchWithRange(
     data: XmlPitchData | null,
@@ -706,7 +706,7 @@ export class XmlParser {
     for (let idx = fromIdx; idx < toIdx && idx < data.pitches.length; idx++) {
       if (idx >= 0) {
         const pitch = data.pitches[idx];
-        if (pitch > 0) { // 过滤值 <= 0
+        if (pitch > 0) { // Filter values <= 0
           total += pitch;
           numberOfValidPitches++;
         }
@@ -720,9 +720,9 @@ export class XmlParser {
   }
 
   /**
-   * 解析KRC格式音调数据
-   * @param fileData 包含KRC音调数据的字节数组
-   * @returns PitchData对象数组，如果解析失败则返回null
+   * Parse KRC format pitch data
+   * @param fileData Byte array containing KRC pitch data
+   * @returns Array of PitchData objects, or null if parsing fails
    */
   static parseKrcPitchData(fileData: Uint8Array): PitchData[] | null {
     if (!fileData || fileData.length === 0) {
@@ -749,49 +749,49 @@ export class XmlParser {
   }
 
   /**
-   * 从DataView读取小端序32位整数
-   * @param dataView DataView对象
-   * @param offset 偏移量
-   * @returns 读取的整数值
+   * Read little-endian 32-bit integer from DataView
+   * @param dataView DataView object
+   * @param offset Offset position
+   * @returns Read integer value
    */
   private static readLittleEndianInt(dataView: DataView, offset: number): number {
-    return dataView.getInt32(offset, true); // true表示小端序
+    return dataView.getInt32(offset, true); // true indicates little-endian
   }
 
   /**
-   * 从DataView读取小端序64位双精度浮点数
-   * @param dataView DataView对象
-   * @param offset 偏移量
-   * @returns 读取的双精度浮点数值
+   * Read little-endian 64-bit double precision floating point from DataView
+   * @param dataView DataView object
+   * @param offset Offset position
+   * @returns Read double precision floating point value
    */
   private static readLittleEndianDouble(dataView: DataView, offset: number): number {
-    return dataView.getFloat64(offset, true); // true表示小端序
+    return dataView.getFloat64(offset, true); // true indicates little-endian
   }
 
   /**
-   * 从DataView读取小端序64位长整数
-   * @param dataView DataView对象
-   * @param offset 偏移量
-   * @returns 读取的长整数值
+   * Read little-endian 64-bit long integer from DataView
+   * @param dataView DataView object
+   * @param offset Offset position
+   * @returns Read long integer value
    */
   private static readLittleEndianLong(dataView: DataView, offset: number): bigint {
-    return dataView.getBigInt64(offset, true); // true表示小端序
+    return dataView.getBigInt64(offset, true); // true indicates little-endian
   }
 
   /**
-   * 获取无符号字节值
-   * @param dataView DataView对象
-   * @param offset 偏移量
-   * @returns 无符号字节值
+   * Get unsigned byte value
+   * @param dataView DataView object
+   * @param offset Offset position
+   * @returns Unsigned byte value
    */
   private static getUnsignedByte(dataView: DataView, offset: number): number {
     return dataView.getUint8(offset);
   }
 
   /**
-   * 将有符号字节转换为无符号字节值
-   * @param b 有符号字节
-   * @returns 无符号字节值
+   * Convert signed byte to unsigned byte value
+   * @param b Signed byte
+   * @returns Unsigned byte value
    */
   private static asUnsignedByte(b: number): number {
     return b & 0xFF;

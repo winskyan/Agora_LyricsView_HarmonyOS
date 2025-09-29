@@ -1,6 +1,6 @@
 /**
- * 歌词类型枚举
- * 对应Android项目中的LyricType
+ * Lyric type enumeration - HarmonyOS version
+ * Corresponds to LyricType in Android project
  * Enumeration for different types of lyrics formats supported
  */
 export enum LyricType {

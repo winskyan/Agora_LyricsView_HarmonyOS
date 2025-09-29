@@ -1,16 +1,16 @@
 /**
- * Native模块类型声明
- * 用于TypeScript编译器识别Native函数
+ * Native module type declarations
+ * Used for TypeScript compiler to recognize Native functions
  */
 
 declare module 'liblyrics_view.so' {
   /**
-   * 将pitch值转换为音调值
+   * Convert pitch value to tone value
    */
   export function pitchToTone(pitch: number): number;
 
   /**
-   * 计算评分
+   * Calculate score
    */
   export function calculatedScore(
     voicePitch: number,
@@ -20,7 +20,7 @@ declare module 'liblyrics_view.so' {
   ): number;
 
   /**
-   * 处理音调补偿
+   * Handle pitch compensation
    */
   export function handlePitch(
     stdPitch: number,
@@ -29,12 +29,12 @@ declare module 'liblyrics_view.so' {
   ): number;
 
   /**
-   * 重置算法状态
+   * Reset algorithm state
    */
   export function reset(): void;
 
   /**
-   * 测试函数
+   * Test function
    */
   export function add(a: number, b: number): number;
 }

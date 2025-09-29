@@ -6,8 +6,8 @@ import { EventBus, LyricsEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
 /**
- * 物理显示行接口
- * 表示一个逻辑歌词行分割后的物理显示行
+ * Physical display line interface
+ * Represents a physical display line after splitting a logical lyrics line
  */
 interface DisplayLine {
   text: string;
@@ -24,7 +24,7 @@ interface DisplayLine {
  */
 @ComponentV2
 export struct LyricsView {
-  @Param viewBackgroundColor: string = '#CE93D8'; // 可配置的背景颜色
+  @Param viewBackgroundColor: string = '#CE93D8'; // Configurable background color
   /** Text size for normal lyrics lines */
   @Param textSize: number = 16;
   /** Text size for current line */
@@ -66,36 +66,36 @@ export struct LyricsView {
   // Internal state
   /** Index of the currently displayed lyrics line */
   @Local private mIndexOfCurrentLine: number = -1;
-  /** 响应式的歌词模型副本 */
+  /** Reactive copy of the lyrics model */
   @Local private lyricsModel: LyricModel | null = null;
-  /** 响应式的歌词行数组 */
+  /** Reactive array of lyrics lines */
   @Local private lyricsLines: LyricsLineModel[] = [];
   /** Current timestamp in the lyrics playback */
   @Local private mCurrentTime: number = 0;
   @Local private mDraggingInProgress: boolean = false;
   @Local private mCurrentLineTranslateX: number = 0;
-  // 横向滚动相关状态
+  // Horizontal scrolling related state
   // Actual component dimensions measured dynamically
-  @Local private actualViewHeight: number = 400; // 默认值，会被实际测量值覆盖
-  @Local private actualViewWidth: number = 300; // 默认值，会被实际测量值覆盖
-  // 拖拽相关状态
-  @Local private initialTouchY: number = 0; // 初始触摸Y坐标
-  @Local private dragLineOffset: number = 0; // 拖拽时的歌词行偏移量
-  @Local private originalCurrentLineIndex: number = -1; // 拖拽开始时的原始当前行索引
-  // 动画状态管理
+  @Local private actualViewHeight: number = 400; // Default value, will be overridden by actual measurement
+  @Local private actualViewWidth: number = 300; // Default value, will be overridden by actual measurement
+  // Drag related state
+  @Local private initialTouchY: number = 0; // Initial touch Y coordinate
+  @Local private dragLineOffset: number = 0; // Lyrics line offset during dragging
+  @Local private originalCurrentLineIndex: number = -1; // Original current line index when drag started
+  // Animation state management
   @Local private isAnimating: boolean = false;
-  @Local private animationKey: number = 0; // 用于强制重新渲染动画
-  @Local private transitioningFromIndex: number = -1; // 正在过渡的原当前行索引
-  @Local private transitioningFromY: number = 0; // 过渡行的起始Y位置
-  @Local private transitioningToY: number = 0; // 过渡行的目标Y位置
-  @Local private newCurrentTransitioning: boolean = false; // 新当前行是否正在过渡
-  @Local private newCurrentFromY: number = 0; // 新当前行的起始Y位置
-  @Local private newCurrentToY: number = 0; // 新当前行的目标Y位置
-  @Local private styleTransitioning: boolean = false; // 样式是否正在过渡
-  // 文本滚动相关状态
-  @Local private isTextScrolling: boolean = false; // 是否正在滚动文本
-  @Local private textScrollTimer: number = -1; // 文本滚动定时器
-  // 当前行的滚动偏移状态（用于调试日志）
+  @Local private animationKey: number = 0; // Used to force re-render animation
+  @Local private transitioningFromIndex: number = -1; // Index of the line transitioning from current
+  @Local private transitioningFromY: number = 0; // Starting Y position of transitioning line
+  @Local private transitioningToY: number = 0; // Target Y position of transitioning line
+  @Local private newCurrentTransitioning: boolean = false; // Whether new current line is transitioning
+  @Local private newCurrentFromY: number = 0; // Starting Y position of new current line
+  @Local private newCurrentToY: number = 0; // Target Y position of new current line
+  @Local private styleTransitioning: boolean = false; // Whether style is transitioning
+  // Text scrolling related state
+  @Local private isTextScrolling: boolean = false; // Whether text is scrolling
+  @Local private textScrollTimer: number = -1; // Text scroll timer
+  // Current line scroll offset state (for debug logging)
   @Local private currentLineScrollOffset: number = 0;
   @Local private linePaddingLeftRight: number = 20;
   /** The lyrics state machine managing lyrics progression */
@@ -111,7 +111,7 @@ export struct LyricsView {
    */
   requestRefreshUi(): void {
     if (this.mLyricMachine) {
-      // 同步更新响应式状态
+      // Synchronously update reactive state
       const currentModel = this.mLyricMachine.getLyricsModel();
       this.lyricsModel = currentModel;
       this.lyricsLines = currentModel?.lines || [];
@@ -130,8 +130,8 @@ export struct LyricsView {
   }
 
   /**
-   * 完全重置，包括清理 LyricMachine 引用
-   * 仅在组件销毁或需要完全清理时调用
+   * Complete reset, including clearing LyricMachine reference
+   * Only called when component is destroyed or needs complete cleanup
    */
   resetCompletely(): void {
     this.mLyricMachine = null;
@@ -174,15 +174,15 @@ export struct LyricsView {
     if (line !== this.mIndexOfCurrentLine) {
       const oldLine = this.mIndexOfCurrentLine;
 
-      // 停止之前行的文本滚动
+      // Stop previous line's text scrolling
       this.stopTextScrollAnimation();
 
-      // 触发行变化动画
+      // Trigger line change animation
       this.triggerLineChangeAnimation(this.mIndexOfCurrentLine, line);
 
       this.mIndexOfCurrentLine = line;
 
-      // 启动新当前行的文本滚动
+      // Start new current line's text scrolling
       const lyricsModel = this.mLyricMachine?.getLyricsModel();
       if (lyricsModel && lyricsModel.lines && line >= 0 && line < lyricsModel.lines.length) {
         this.startTextScrollAnimation(lyricsModel.lines[line]);
@@ -299,7 +299,7 @@ export struct LyricsView {
   }
 
   /**
-   * 根据textGravity获取Row的对齐方式
+   * Gets Row alignment based on textGravity
    */
   private getRowJustifyContent(): FlexAlign {
     switch (this.textGravity) {
@@ -313,7 +313,7 @@ export struct LyricsView {
   }
 
   /**
-   * 根据textGravity获取Alignment对齐方式
+   * Gets Alignment based on textGravity
    */
   private getAlignment(): Alignment {
     switch (this.textGravity) {
@@ -337,34 +337,34 @@ export struct LyricsView {
   }
 
   /**
-   * 触发行变化动画
+   * Triggers line change animation
    */
   private triggerLineChangeAnimation(fromLine: number, toLine: number): void {
     if (fromLine === toLine) {
       return;
     }
 
-    // 🎯 拖拽时禁用动画，避免UI混乱
+    // 🎯 Disable animation during drag to avoid UI confusion
     if (this.mDraggingInProgress) {
       LogUtils.d(`LyricsView: Skip animation during drag - from ${fromLine} to ${toLine}`);
       return;
     }
 
-    // 🎯 当行跳跃超过1行时（如拖拽后setProgress跳跃），不执行切换动画
-    // 直接让目标行从普通行变为当前行，避免不自然的动画效果
+    // 🎯 When line jump exceeds 1 line (e.g., after drag setProgress jump), don't execute transition animation
+    // Let target line directly change from normal line to current line, avoiding unnatural animation effects
     const lineJump = Math.abs(toLine - fromLine);
     if (lineJump > 1) {
       return;
     }
 
     this.isAnimating = true;
-    this.transitioningFromIndex = fromLine; // 记录原当前行
-    this.newCurrentTransitioning = true; // 新当前行开始过渡
-    this.styleTransitioning = false; // 样式过渡稍后开始
+    this.transitioningFromIndex = fromLine; // Record original current line
+    this.newCurrentTransitioning = true; // New current line starts transitioning
+    this.styleTransitioning = false; // Style transition starts later
 
-    // 🎯 修复抖动问题：使用与calculateLineYPosition一致的动态行高计算
+    // 🎯 Fix jitter issue: Use dynamic line height calculation consistent with calculateLineYPosition
     const lyricsModel = this.mLyricMachine?.getLyricsModel();
-    let currentLineHeight = this.getLineHeight(); // 默认值
+    let currentLineHeight = this.getLineHeight(); // Default value
 
     if (lyricsModel && lyricsModel.lines && toLine >= 0 && toLine < lyricsModel.lines.length) {
       const currentLine = lyricsModel.lines[toLine];
@@ -375,16 +375,16 @@ export struct LyricsView {
 
     const centerY = (this.actualViewHeight / 2) - (currentLineHeight / 2);
 
-    // === 原当前行过渡设置 ===
-    // 原当前行从中心位置开始
+    // === Original current line transition settings ===
+    // Original current line starts from center position
     this.transitioningFromY = centerY;
 
-    // 🎯 关键修复：使用与calculateLineYPosition完全一致的逻辑计算过渡行目标位置
-    // 确保动画结束后位置完全匹配，避免跳动
+    // 🎯 Key fix: Use exactly the same logic as calculateLineYPosition to calculate transition line target position
+    // Ensure position matches exactly after animation ends, avoiding jumps
     let oldTargetY = centerY;
 
     if (lyricsModel && lyricsModel.lines && fromLine < toLine) {
-      // fromLine将成为上一行，使用与calculateLineYPosition相同的累积计算逻辑
+      // fromLine will become previous line, use same cumulative calculation logic as calculateLineYPosition
       let totalOffset = 0;
       for (let i = toLine - 1; i >= fromLine; i--) {
         const line = lyricsModel.lines[i];
@@ -395,63 +395,63 @@ export struct LyricsView {
       }
       oldTargetY = centerY - totalOffset;
     } else {
-      // 使用原来的简单计算作为兜底
+      // Use original simple calculation as fallback
       oldTargetY = centerY - currentLineHeight;
     }
 
-    // ArkUI V2 优化：更精确的位置计算，避免重叠
-    // 设置起始位置
-    this.transitioningFromY = centerY; // 过渡行起始位置：中心
+    // ArkUI V2 optimization: More precise position calculation, avoiding overlap
+    // Set starting position
+    this.transitioningFromY = centerY; // Transition line starting position: center
 
-    // 🎯 V2 修复：新当前行起始位置更精确，避免与过渡行重叠
+    // 🎯 V2 fix: New current line starting position more precise, avoiding overlap with transition line
     const nextLine = lyricsModel?.lines?.[toLine];
     const nextLineOffset = nextLine ?
       this.getDynamicLineHeight(nextLine, this.currentLineTextSize) + this.lineSpacing :
       this.getLineHeight() + this.lineSpacing;
-    this.newCurrentFromY = centerY + nextLineOffset; // 新当前行起始位置：确保不重叠
+    this.newCurrentFromY = centerY + nextLineOffset; // New current line starting position: ensure no overlap
 
-    // 设置目标位置
-    this.transitioningToY = oldTargetY; // 过渡行目标位置：上一行
-    this.newCurrentToY = centerY; // 新当前行目标位置：中心
+    // Set target position
+    this.transitioningToY = oldTargetY; // Transition line target position: previous line
+    this.newCurrentToY = centerY; // New current line target position: center
 
-    this.animationKey = Date.now(); // 更新动画键值，强制重新渲染
+    this.animationKey = Date.now(); // Update animation key to force re-render
 
-    // ArkUI V2 优化：减少延迟，让动画更同步
+    // ArkUI V2 optimization: Reduce delay, make animation more synchronized
     setTimeout(() => {
       if (this.isAnimating) {
-        this.styleTransitioning = true; // 开始样式过渡
+        this.styleTransitioning = true; // Start style transition
       }
-    }, 50); // V2 优化：减少延迟到50ms，让动画更同步
+    }, 50); // V2 optimization: Reduce delay to 50ms, make animation more synchronized
 
-    // 动画完成后清除状态
+    // Clear state after animation completes
     setTimeout(() => {
       this.isAnimating = false;
-      this.transitioningFromIndex = -1; // 清除过渡状态
-      this.newCurrentTransitioning = false; // 清除新当前行过渡状态
-      this.styleTransitioning = false; // 清除样式过渡状态
-    }, 400); // V2 优化：调整总时长为400ms，与动画时长匹配
+      this.transitioningFromIndex = -1; // Clear transition state
+      this.newCurrentTransitioning = false; // Clear new current line transition state
+      this.styleTransitioning = false; // Clear style transition state
+    }, 400); // V2 optimization: Adjust total duration to 400ms, matching animation duration
   }
 
   /**
-   * 计算行动画延迟（错开动画）
+   * Calculates line animation delay (staggered animation)
    */
   private getAnimationDelay(index: number): number {
     if (!this.isAnimating) {
-      return 0; // 非动画状态时无延迟
+      return 0; // No delay in non-animation state
     }
 
     const distance = Math.abs(index - this.mIndexOfCurrentLine);
-    // 当前行无延迟，其他行根据距离递增延迟
+    // Current line has no delay, other lines have increasing delay based on distance
     if (distance === 0) {
-      return 0; // 当前行立即开始动画
+      return 0; // Current line starts animation immediately
     } else {
-      // 距离越远延迟越大，但使用更小的增量避免过长延迟
-      return Math.min(distance * 15, 80); // 最大80ms延迟
+      // Farther distance means larger delay, but use smaller increment to avoid excessive delay
+      return Math.min(distance * 15, 80); // Maximum 80ms delay
     }
   }
 
   /**
-   * 计算歌词行的Y位置（简化版本，使用基本间距）
+   * Calculates Y position of lyrics line (simplified version, using basic spacing)
    */
   private calculateLineYPosition(index: number): number {
     const lyricsModel = this.mLyricMachine?.getLyricsModel();
@@ -459,16 +459,16 @@ export struct LyricsView {
       return 0;
     }
 
-    // 🎯 重要说明：过渡行和新当前行的位置由各自的Builder直接控制
-    // TransitioningHighlightLineBuilder 使用 getTransitioningYPosition()
-    // NewCurrentLineTransitionBuilder 使用 getNewCurrentYPosition()
-    // 这里的 calculateLineYPosition 只负责普通行的位置计算
+    // 🎯 Important note: Transition line and new current line positions are directly controlled by their respective Builders
+    // TransitioningHighlightLineBuilder uses getTransitioningYPosition()
+    // NewCurrentLineTransitionBuilder uses getNewCurrentYPosition()
+    // This calculateLineYPosition only handles normal line position calculation
 
-    // 统一的位置计算逻辑
+    // Unified position calculation logic
     let currentLineIndex = this.mIndexOfCurrentLine;
     let additionalOffset = 0;
 
-    // 获取当前行的实际高度用于居中计算
+    // Get actual height of current line for center calculation
     const currentLine = lyricsModel.lines[currentLineIndex];
     const currentLineHeight = currentLine ?
     this.getDynamicLineHeight(currentLine, this.currentLineTextSize) :
@@ -476,25 +476,25 @@ export struct LyricsView {
     const centerY = (this.actualViewHeight / 2) - (currentLineHeight / 2);
 
     if (this.mDraggingInProgress && this.originalCurrentLineIndex >= 0) {
-      // 🎯 拖拽时实现滚动列表效果：计算虚拟当前行，但不使用动画过渡
-      // 这样可以显示不同的歌词内容，但避免拖拽过程中的UI混乱
+      // 🎯 During drag, implement scrolling list effect: calculate virtual current line, but don't use animation transition
+      // This allows showing different lyrics content while avoiding UI confusion during drag
       const virtualCurrentLineIndex = this.originalCurrentLineIndex - this.dragLineOffset;
       const clampedVirtualIndex = Math.max(0, Math.min(virtualCurrentLineIndex,
         (lyricsModel?.lines?.length || 1) - 1));
 
       currentLineIndex = clampedVirtualIndex;
-      additionalOffset = 0; // 使用虚拟当前行重新布局，无需额外偏移
+      additionalOffset = 0; // Use virtual current line for re-layout, no additional offset needed
     }
 
-    // 动态位置计算：累积每行的实际高度
+    // Dynamic position calculation: accumulate actual height of each line
     let yPosition = centerY;
 
     if (index === currentLineIndex) {
-      // 当前行：在中心位置
+      // Current line: at center position
       yPosition = centerY + additionalOffset;
 
     } else if (index < currentLineIndex) {
-      // 上方的行：累积计算向上的偏移
+      // Lines above: accumulate upward offset
       let totalOffset = 0;
       for (let i = currentLineIndex - 1; i >= index; i--) {
         const line = lyricsModel.lines[i];
@@ -505,14 +505,14 @@ export struct LyricsView {
       }
       yPosition = centerY - totalOffset + additionalOffset;
     } else {
-      // 下方的行：累积计算向下的偏移
-      let totalOffset = currentLineHeight; // 从当前行底部开始
+      // Lines below: accumulate downward offset
+      let totalOffset = currentLineHeight; // Start from bottom of current line
       for (let i = currentLineIndex + 1; i <= index; i++) {
         const line = lyricsModel.lines[i];
         if (line) {
           const lineHeight = this.getDynamicLineHeight(line, this.textSize);
           if (i === index) {
-            // 目标行：不加上自己的高度，因为yPosition是顶部位置
+            // Target line: don't add its own height, because yPosition is top position
             break;
           }
           totalOffset += lineHeight;
@@ -521,61 +521,61 @@ export struct LyricsView {
       yPosition = centerY + totalOffset + additionalOffset;
     }
 
-    // 边界检查逻辑
+    // Boundary check logic
     const targetLine = lyricsModel.lines[index];
     const targetLineHeight = targetLine ?
     this.getDynamicLineHeight(targetLine,
       index === this.mIndexOfCurrentLine ? this.currentLineTextSize : this.textSize) :
     this.getLineHeight();
 
-    // 🎯 修复边界限制：为不同类型的行设置不同的边界范围
+    // 🎯 Fix boundary limits: set different boundary ranges for different types of lines
     let minY: number;
     let maxY: number;
 
     if (index < currentLineIndex) {
-      // 已唱过的行（上方行）：允许更大的向上扩展范围
-      minY = -this.actualViewHeight * 2; // 允许向上扩展到屏幕高度的2倍
-      maxY = centerY; // 最低不超过中心位置
+      // Sung lines (above): allow larger upward expansion range
+      minY = -this.actualViewHeight * 2; // Allow upward expansion to 2x screen height
+      maxY = centerY; // Lowest not exceeding center position
     } else if (index > currentLineIndex) {
-      // 未唱的行（下方行）：允许更大的向下扩展范围
-      minY = centerY; // 最高不超过中心位置
-      maxY = this.actualViewHeight * 3; // 允许向下扩展到屏幕高度的3倍
+      // Unsung lines (below): allow larger downward expansion range
+      minY = centerY; // Highest not exceeding center position
+      maxY = this.actualViewHeight * 3; // Allow downward expansion to 3x screen height
     } else {
-      // 当前行：使用原来的边界限制
+      // Current line: use original boundary limits
       minY = -targetLineHeight * 0.5;
       maxY = this.actualViewHeight + targetLineHeight * 0.5;
     }
 
-    // 🎯 拖拽时的智能边界控制：
-    // - 原当前行（可能会从中心移到顶部或底部）允许完全移出视图
-    // - 其他行仍然需要边界限制，防止界面混乱
+    // 🎯 Smart boundary control during drag:
+    // - Original current line (may move from center to top or bottom) allows complete movement out of view
+    // - Other lines still need boundary limits to prevent interface confusion
     if (this.mDraggingInProgress) {
       if (index === this.originalCurrentLineIndex) {
-        // 原当前行允许移出视图，实现真正的滚动效果
+        // Original current line allows movement out of view, achieving true scrolling effect
         return yPosition;
       } else {
-        // 其他行仍然受边界限制，防止显示混乱
+        // Other lines still subject to boundary limits, preventing display confusion
         const clampedY = Math.max(minY, Math.min(maxY, yPosition));
         return clampedY;
       }
     }
 
-    // 非拖拽时的标准边界检查
+    // Standard boundary check for non-drag state
     const clampedY = Math.max(minY, Math.min(maxY, yPosition));
 
     return clampedY;
   }
 
   /**
-   * 计算歌词行高度
+   * Calculates lyrics line height
    */
   private getLineHeight(): number {
     return this.currentLineTextSize + this.lineSpacing;
   }
 
   /**
-   * 动态计算特定歌词行的实际显示高度
-   * 只有当文本真的需要多行时才增加高度
+   * Dynamically calculates actual display height of specific lyrics line
+   * Only increases height when text really needs multiple lines
    */
   private getDynamicLineHeight(line: LyricsLineModel, fontSize: number): number {
     if (!this.shouldEnableLineWrap() || !line) {
@@ -587,23 +587,23 @@ export struct LyricsView {
       return fontSize + this.lineSpacing;
     }
 
-    // 估算文本宽度
+    // Estimate text width
     const textWidth = this.measureTextWidth(text, fontSize);
     const availableWidth = this.actualViewWidth;
 
     if (availableWidth <= 0 || textWidth <= availableWidth) {
-      // 一行就能显示完，使用标准行高
+      // Can be displayed in one line, use standard line height
       return fontSize + this.lineSpacing;
     } else {
-      // 需要多行显示，计算实际需要的行数
+      // Needs multiple lines, calculate actual required line count
       const estimatedLines = Math.ceil(textWidth / availableWidth);
-      const actualLines = Math.min(estimatedLines, 3); // 最多3行
+      const actualLines = Math.min(estimatedLines, 3); // Maximum 3 lines
       return (fontSize * actualLines) + this.lineSpacing;
     }
   }
 
   /**
-   * 将歌词行按显示宽度分割成多个物理行
+   * Splits lyrics line into multiple physical lines based on display width
    */
   private splitLineIntoDisplayLines(line: LyricsLineModel, fontSize: number): DisplayLine[] {
     if (!this.shouldEnableLineWrap() || !line || !line.tones || line.tones.length === 0) {

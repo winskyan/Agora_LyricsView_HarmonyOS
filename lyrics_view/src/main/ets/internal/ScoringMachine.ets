@@ -7,43 +7,43 @@ import { DefaultScoringAlgorithm } from './scoring/DefaultScoringAlgorithm';
 
 
 /**
- * 评分机器监听器接口
+ * Scoring machine listener interface
  */
 export interface OnScoringListener {
   /**
-   * 歌词行完成回调
-   * @param line 完成的歌词行
-   * @param score 本行得分
-   * @param cumulativeScore 累计得分
-   * @param index 行索引
-   * @param lineCount 总行数
+   * Callback when a lyrics line is finished
+   * @param line The finished lyrics line
+   * @param score Score for this line
+   * @param cumulativeScore Cumulative score
+   * @param index Line index
+   * @param lineCount Total line count
    */
   onLineFinished(line: LyricsLineModel, score: number, cumulativeScore: number, index: number, lineCount: number): void;
 
   /**
-   * 重置UI
+   * Reset UI
    */
   resetUi(): void;
 
   /**
-   * 请求刷新UI
+   * Request UI refresh
    */
   requestRefreshUi(): void;
 
   /**
-   * 音调和得分更新回调
-   * @param speakerPitch 处理后的用户音调
-   * @param scoreAfterNormalization 标准化后的得分(0-100)
-   * @param progress 当前进度(毫秒)
+   * Callback for pitch and score updates
+   * @param speakerPitch Processed user pitch
+   * @param scoreAfterNormalization Normalized score (0-100)
+   * @param progress Current progress (milliseconds)
    */
   onPitchAndScoreUpdate(speakerPitch: number, scoreAfterNormalization: number, progress: number): void;
 }
 
 
 /**
- * 评分机器 - HarmonyOS版本
- * 对应Android项目中的ScoringMachine
- * 负责管理卡拉OK评分计算和状态
+ * Scoring Machine - HarmonyOS version
+ * Corresponds to ScoringMachine in Android project
+ * Responsible for managing karaoke scoring calculation and state
  */
 export class ScoringMachine {
   private lyricsModel: LyricModel | null = null;
@@ -54,7 +54,7 @@ export class ScoringMachine {
   private pitchLines: PitchLineModel[] = [];
   private scoringAlgorithm: IScoringAlgorithm;
   private usingInternalScoring: boolean = false;
-  private deltaOfUpdate: number = 20; // 默认更新间隔20ms
+  private deltaOfUpdate: number = 20; // Default update interval 20ms
   private pitchesForLine: Map<number, number> = new Map();
   private scoreForEachLine: Map<number, number> = new Map();
   private timestampOfFirstRefPitch: number = -1;
@@ -72,9 +72,9 @@ export class ScoringMachine {
   }
 
   /**
-   * 准备评分数据
-   * @param model 歌词模型
-   * @param usingInternalScoring 是否使用内部评分算法
+   * Prepare scoring data
+   * @param model Lyrics model
+   * @param usingInternalScoring Whether to use internal scoring algorithm
    */
   prepare(model: LyricModel, usingInternalScoring: boolean): void {
     this.reset();
@@ -89,7 +89,7 @@ export class ScoringMachine {
     this.endTimeOfThisLyrics = model.lines[model.lines.length - 1].getEndTime();
     this.timestampOfFirstRefPitch = model.preludeEndPosition;
 
-    // 处理音调数据
+    // Process pitch data
     if (model.hasPitch) {
       this.processPitchData(model);
     } else {
@@ -100,10 +100,10 @@ export class ScoringMachine {
   }
 
   /**
-   * 修复歌词模型中的潜在问题，比如重叠的歌词行
+   * Fix potential issues in lyrics model, such as overlapping lyrics lines
    *
-   * @param model 原始歌词模型
-   * @returns 修复后的歌词模型
+   * @param model Original lyrics model
+   * @returns Fixed lyrics model
    */
   private mayBeFixLyricModel(model: LyricModel): LyricModel {
     if (!model || !model.lines || model.lines.length === 0) {
@@ -111,7 +111,7 @@ export class ScoringMachine {
       return model;
     }
 
-    // 创建模型的副本进行修复
+    // Create a copy of the model for fixing
     const newModel = model.copy();
 
     if (!newModel.lines || newModel.lines.length === 0) {
@@ -122,23 +122,23 @@ export class ScoringMachine {
     for (let i = 1; i < newModel.lines.length; i++) {
       const lineModel = newModel.lines[i];
 
-      // 检查当前行的开始时间是否早于前一行的结束时间（重叠情况）
+      // Check if current line's start time is earlier than previous line's end time (overlapping case)
       if (lineModel.getStartTime() < preLineModel.getEndTime()) {
         const tones = lineModel.tones;
 
         if (tones && tones.length > 0) {
-          // 修复重叠的音调段
+          // Fix overlapping tone segments
           for (const tone of tones) {
             if (tone.begin < preLineModel.getEndTime()) {
-              // 将音调段的开始时间调整为前一行的结束时间
+              // Adjust tone segment's start time to previous line's end time
               tone.begin = preLineModel.getEndTime();
 
-              // 确保结束时间不早于开始时间
+              // Ensure end time is not earlier than start time
               if (tone.end < tone.begin) {
                 tone.end = tone.begin;
               }
             } else {
-              // 如果当前音调段不重叠，后续的也不会重叠，可以跳出
+              // If current tone segment doesn't overlap, subsequent ones won't either, can break
               break;
             }
           }
@@ -153,12 +153,12 @@ export class ScoringMachine {
   }
 
   /**
-   * 处理音调数据
-   * @param model 歌词模型
+   * Process pitch data
+   * @param model Lyrics model
    */
   private processPitchData(model: LyricModel): void {
     if (model.pitchDataList && model.pitchDataList.length > 0) {
-      // 使用独立的音调数据
+      // Use independent pitch data
       for (const data of model.pitchDataList) {
         this.minimumRefPitch = Math.min(this.minimumRefPitch, data.pitch);
         this.maximumRefPitch = Math.max(this.maximumRefPitch, data.pitch);
@@ -185,7 +185,7 @@ export class ScoringMachine {
         this.pitchLines.push(lineModel);
       }
     } else {
-      // 使用歌词行中的音调数据
+      // Use pitch data from lyrics lines
       this.pitchLines = [];
       for (const line of model.lines) {
         const lineModel = new PitchLineModel();
@@ -208,9 +208,9 @@ export class ScoringMachine {
   }
 
   /**
-   * 设置音调数据
-   * @param speakerPitch 当前音调值
-   * @param pitchScore 音调得分
+   * Set pitch data
+   * @param speakerPitch Current pitch value
+   * @param pitchScore Pitch score
    */
   setPitch(speakerPitch: number, pitchScore: number): void {
     if (!this.lyricsModel) {
@@ -218,16 +218,16 @@ export class ScoringMachine {
       return;
     }
 
-    // 处理音调评分
+    // Process pitch scoring
     this.processPitchScoring(speakerPitch, pitchScore, this.currentLyricProgress);
     this.listener?.requestRefreshUi();
   }
 
   /**
-   * 处理音调评分
-   * @param speakerPitch 用户音调
-   * @param pitchScore 音调得分
-   * @param progressInMs 当前进度
+   * Process pitch scoring
+   * @param speakerPitch User pitch
+   * @param pitchScore Pitch score
+   * @param progressInMs Current progress
    */
   private processPitchScoring(speakerPitch: number, pitchScore: number, progressInMs: number): void {
     const newLine: boolean[] = [false];
@@ -238,7 +238,7 @@ export class ScoringMachine {
       currentRefPitch = this.findRefPitchByTime(progressInMs, newLine, indexOfMostRecentLine);
     }
 
-    // 处理连续零音调
+    // Handle continuous zero pitch
     if (speakerPitch === 0) {
       if (++this.continuousZeroCount < this.ZERO_PITCH_COUNT_THRESHOLD) {
         if (this.usingInternalScoring) {
@@ -260,7 +260,7 @@ export class ScoringMachine {
 
       this.updateScoreForMostRecentLine(progressInMs, newLine[0], indexOfMostRecentLine[0]);
 
-      // 简化的音调处理
+      // Simplified pitch processing
       const pitchAfterProcess = speakerPitch;
       const scoreAfterNormalization = this.scoringAlgorithm.getPitchScore(pitchAfterProcess, currentRefPitch);
       this.pitchesForLine.set(progressInMs, scoreAfterNormalization);
@@ -273,8 +273,8 @@ export class ScoringMachine {
   }
 
   /**
-   * 设置歌词进度
-   * @param progress 当前进度（毫秒）
+   * Set lyrics progress
+   * @param progress Current progress (milliseconds)
    */
   setLyricProgress(progress: number): void {
     this.currentLyricProgress = progress;
@@ -282,11 +282,11 @@ export class ScoringMachine {
 
 
   /**
-   * 根据时间查找参考音调
-   * @param timestamp 时间戳
-   * @param returnNewLine 是否为新行
-   * @param returnIndexOfMostRecentLine 最近行索引
-   * @returns 参考音调值
+   * Find reference pitch by time
+   * @param timestamp Timestamp
+   * @param returnNewLine Whether it's a new line
+   * @param returnIndexOfMostRecentLine Most recent line index
+   * @returns Reference pitch value
    */
   private findRefPitchByTime(timestamp: number, returnNewLine: boolean[],
     returnIndexOfMostRecentLine: number[]): number {
@@ -334,11 +334,11 @@ export class ScoringMachine {
   }
 
   /**
-   * 判断是否为新行
-   * @param timestamp 时间戳
-   * @param numberOfLines 总行数
-   * @param timestampLineIndex 当前行索引
-   * @returns 是否为新行
+   * Check if it's a new line
+   * @param timestamp Timestamp
+   * @param numberOfLines Total line count
+   * @param timestampLineIndex Current line index
+   * @returns Whether it's a new line
    */
   private isNewLine(timestamp: number, numberOfLines: number, timestampLineIndex: number): boolean {
     let newLine = false;
@@ -367,10 +367,10 @@ export class ScoringMachine {
   }
 
   /**
-   * 更新最近行的得分
-   * @param timestamp 时间戳
-   * @param newLine 是否为新行
-   * @param indexOfMostRecentLine 最近行索引
+   * Update score for the most recent line
+   * @param timestamp Timestamp
+   * @param newLine Whether it's a new line
+   * @param indexOfMostRecentLine Most recent line index
    */
   private updateScoreForMostRecentLine(timestamp: number, newLine: boolean, indexOfMostRecentLine: number): void {
     if ((timestamp < this.timestampOfFirstRefPitch) || this.timestampOfFirstRefPitch === -1) {
@@ -397,10 +397,10 @@ export class ScoringMachine {
   }
 
   /**
-   * 根据音调计算得分
-   * @param speakerPitch 用户音调
-   * @param progressInMs 当前进度
-   * @returns 计算得分
+   * Calculate score based on pitch
+   * @param speakerPitch User pitch
+   * @param progressInMs Current progress
+   * @returns Calculated score
    */
   calculateScoreWithPitch(speakerPitch: number, progressInMs: number): number {
     const refPitch = this.getRefPitch(progressInMs);
@@ -429,9 +429,9 @@ export class ScoringMachine {
   }
 
   /**
-   * 获取指定时间的参考音调
-   * @param progressInMs 进度时间
-   * @returns 参考音调
+   * Get reference pitch at specified time
+   * @param progressInMs Progress time
+   * @returns Reference pitch
    */
   getRefPitch(progressInMs: number): number {
     if (!this.lyricsModel) {
@@ -462,7 +462,7 @@ export class ScoringMachine {
   }
 
   /**
-   * 重置状态
+   * Reset state
    */
   reset(): void {
     this.resetProperties();
@@ -470,7 +470,7 @@ export class ScoringMachine {
   }
 
   /**
-   * 重置属性
+   * Reset properties
    */
   private resetProperties(): void {
     this.lyricsModel = null;
@@ -481,7 +481,7 @@ export class ScoringMachine {
   }
 
   /**
-   * 重置统计数据
+   * Reset statistics
    */
   private resetStats(): void {
     this.minorReset();
@@ -490,7 +490,7 @@ export class ScoringMachine {
   }
 
   /**
-   * 轻微重置
+   * Minor reset
    */
   private minorReset(): void {
     this.currentLyricProgress = 0;
@@ -499,8 +499,8 @@ export class ScoringMachine {
   }
 
   /**
-   * 处理拖拽事件
-   * @param progress 拖拽到的进度
+   * Handle drag event
+   * @param progress Dragged progress
    */
   whenDraggingHappen(progress: number): void {
     this.minorReset();
@@ -521,13 +521,13 @@ export class ScoringMachine {
   }
 
   /**
-   * 准备UI
+   * Prepare UI
    */
   prepareUi(): void {
     this.listener?.resetUi();
   }
 
-  // Getter方法
+  // Getter methods
   isReady(): boolean {
     return this.lyricsModel !== null;
   }
@@ -565,8 +565,8 @@ export class ScoringMachine {
   }
 
   /**
-   * 设置评分算法
-   * @param algorithm 评分算法
+   * Set scoring algorithm
+   * @param algorithm Scoring algorithm
    */
   setScoringAlgorithm(algorithm: IScoringAlgorithm): void {
     if (!algorithm) {
@@ -576,8 +576,8 @@ export class ScoringMachine {
   }
 
   /**
-   * 设置评分难度
-   * @param level 难度等级
+   * Set scoring difficulty level
+   * @param level Difficulty level
    */
   setScoringLevel(level: number): void {
     if (this.scoringAlgorithm) {
@@ -586,8 +586,8 @@ export class ScoringMachine {
   }
 
   /**
-   * 获取评分难度
-   * @returns 难度等级
+   * Get scoring difficulty level
+   * @returns Difficulty level
    */
   getScoringLevel(): number {
     if (this.scoringAlgorithm) {
@@ -597,8 +597,8 @@ export class ScoringMachine {
   }
 
   /**
-   * 设置评分补偿偏移
-   * @param offset 偏移值
+   * Set scoring compensation offset
+   * @param offset Offset value
    */
   setScoringCompensationOffset(offset: number): void {
     if (this.scoringAlgorithm) {
@@ -607,8 +607,8 @@ export class ScoringMachine {
   }
 
   /**
-   * 获取评分补偿偏移
-   * @returns 偏移值
+   * Get scoring compensation offset
+   * @returns Offset value
    */
   getScoringCompensationOffset(): number {
     if (this.scoringAlgorithm) {
@@ -618,8 +618,8 @@ export class ScoringMachine {
   }
 
   /**
-   * 检查是否使用内部评分
-   * @returns 是否使用内部评分
+   * Check if using internal scoring
+   * @returns Whether using internal scoring
    */
   isUsingInternalScoring(): boolean {
     return this.usingInternalScoring;

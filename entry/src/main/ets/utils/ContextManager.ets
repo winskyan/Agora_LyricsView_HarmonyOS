@@ -2,15 +2,15 @@ import common from '@ohos.app.ability.common';
 import resmgr from '@ohos.resourceManager';
 
 /**
- * Context管理器
- * 提供全局的Context访问，避免使用已废弃的getContext()方法
+ * Context Manager
+ * Provides global Context access, avoiding the use of deprecated getContext() method
  */
 export class ContextManager {
   private static instance: ContextManager;
   private context: common.UIAbilityContext | null = null;
 
   /**
-   * 获取单例实例
+   * Get singleton instance
    */
   static getInstance(): ContextManager {
     if (!ContextManager.instance) {
@@ -20,14 +20,14 @@ export class ContextManager {
   }
 
   /**
-   * 设置Context（通常在Ability的onCreate中调用）
+   * Set Context (usually called in Ability's onCreate)
    */
   setContext(context: common.UIAbilityContext): void {
     this.context = context;
   }
 
   /**
-   * 获取Context
+   * Get Context
    */
   getContext(): common.UIAbilityContext {
     if (!this.context) {
@@ -37,49 +37,49 @@ export class ContextManager {
   }
 
   /**
-   * 获取缓存目录路径
+   * Get cache directory path
    */
   getCacheDir(): string {
     return this.getContext().cacheDir;
   }
 
   /**
-   * 获取文件目录路径
+   * Get files directory path
    */
   getFilesDir(): string {
     return this.getContext().filesDir;
   }
 
   /**
-   * 获取临时目录路径
+   * Get temporary directory path
    */
   getTempDir(): string {
     return this.getContext().tempDir;
   }
 
   /**
-   * 获取数据库目录路径
+   * Get database directory path
    */
   getDatabaseDir(): string {
     return this.getContext().databaseDir;
   }
 
   /**
-   * 获取资源管理器
+   * Get resource manager
    */
   getResourceManager(): resmgr.ResourceManager {
     return this.getContext().resourceManager;
   }
 
   /**
-   * 检查Context是否已初始化
+   * Check if Context is initialized
    */
   isInitialized(): boolean {
     return this.context !== null;
   }
 
   /**
-   * 清理Context（通常在应用退出时调用）
+   * Clear Context (usually called when application exits)
    */
   clear(): void {
     this.context = null;
@@ -87,6 +87,6 @@ export class ContextManager {
 }
 
 /**
- * 全局Context管理器实例
+ * Global Context Manager instance
  */
 export const contextManager = ContextManager.getInstance();

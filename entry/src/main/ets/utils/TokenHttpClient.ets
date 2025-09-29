@@ -1,7 +1,7 @@
 import http from '@ohos.net.http';
 
 /**
- * HTTP响应接口
+ * HTTP response interface
  */
 export interface TokenHttpResponse {
   success: boolean;
@@ -10,14 +10,14 @@ export interface TokenHttpResponse {
 }
 
 /**
- * Token HTTP客户端
- * 专门用于Token生成的HTTP请求工具
+ * Token HTTP client
+ * HTTP request utility specifically for token generation
  */
 export class TokenHttpClient {
   private static readonly TAG: string = 'TokenHttpClient';
 
   /**
-   * 发送POST请求生成Token
+   * Send POST request to generate token
    */
   public static async postForToken(
     url: string,
@@ -38,8 +38,8 @@ export class TokenHttpClient {
         header: headers,
         extraData: body,
         expectDataType: http.HttpDataType.STRING,
-        connectTimeout: 15000, // 15秒连接超时
-        readTimeout: 15000     // 15秒读取超时
+        connectTimeout: 15000, // 15 seconds connection timeout
+        readTimeout: 15000     // 15 seconds read timeout
       });
 
       console.log(`${TokenHttpClient.TAG} Response code: ${response.responseCode}`);
@@ -74,7 +74,7 @@ export class TokenHttpClient {
   }
 
   /**
-   * 发送GET请求
+   * Send GET request
    */
   public static async get(
     url: string,

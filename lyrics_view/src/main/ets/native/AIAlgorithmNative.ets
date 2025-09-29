@@ -1,25 +1,25 @@
 /**
- * HarmonyOS Native AI算法接口
- * 对应Android版本的AIAlgorithmScoreNative
- * 通过NAPI调用C++算法实现
+ * HarmonyOS Native AI Algorithm Interface
+ * Corresponds to AIAlgorithmScoreNative in Android version
+ * Calls C++ algorithm implementation through NAPI
  */
 
-// 导入Native模块的函数
+// Import functions from Native module
 import { add, calculatedScore, handlePitch, pitchToTone, reset } from 'liblyrics_view.so';
 
-// 直接导入并使用Native函数，类型声明在Index.d.ts中定义
+// Direct import and use of Native functions, type declarations defined in Index.d.ts
 
 /**
- * Native AI算法接口类
- * 提供与Android版本完全一致的算法调用
+ * Native AI Algorithm Interface Class
+ * Provides algorithm calls completely consistent with Android version
  */
 export class AIAlgorithmNative {
   /**
-   * 将pitch值转换为音调值
-   * 对应Android的pitchToTone方法
+   * Convert pitch value to tone value
+   * Corresponds to Android's pitchToTone method
    *
-   * @param pitch 音调值
-   * @return 转换后的音调值
+   * @param pitch Pitch value
+   * @return Converted tone value
    */
   static pitchToTone(pitch: number): number {
     try {
@@ -31,14 +31,14 @@ export class AIAlgorithmNative {
   }
 
   /**
-   * 计算评分
-   * 对应Android的calculatedScore方法
+   * Calculate score
+   * Corresponds to Android's calculatedScore method
    *
-   * @param voicePitch 用户音调
-   * @param stdPitch 标准音调
-   * @param scoreLevel 评分等级 (0-100)
-   * @param scoreCompensationOffset 补偿偏移 (0-100)
-   * @return 计算得分 (0-100)
+   * @param voicePitch User pitch
+   * @param stdPitch Standard pitch
+   * @param scoreLevel Score level (0-100)
+   * @param scoreCompensationOffset Compensation offset (0-100)
+   * @return Calculated score (0-100)
    */
   static calculatedScore(voicePitch: number, stdPitch: number, scoreLevel: number,
     scoreCompensationOffset: number): number {
@@ -51,26 +51,26 @@ export class AIAlgorithmNative {
   }
 
   /**
-   * 处理音调补偿
-   * 对应Android的handlePitch方法
+   * Handle pitch compensation
+   * Corresponds to Android's handlePitch method
    *
-   * @param stdPitch 标准音调
-   * @param voicePitch 用户音调
-   * @param stdMaxPitch 最大标准音调
-   * @return 处理后的音调值
+   * @param stdPitch Standard pitch
+   * @param voicePitch User pitch
+   * @param stdMaxPitch Maximum standard pitch
+   * @return Processed pitch value
    */
   static handlePitch(stdPitch: number, voicePitch: number, stdMaxPitch: number): number {
     try {
       return handlePitch(stdPitch, voicePitch, stdMaxPitch);
     } catch (error) {
       console.error('AIAlgorithmNative.handlePitch error:', error);
-      return voicePitch; // 出错时返回原始值
+      return voicePitch; // Return original value on error
     }
   }
 
   /**
-   * 重置算法状态
-   * 对应Android的reset方法
+   * Reset algorithm state
+   * Corresponds to Android's reset method
    */
   static reset(): void {
     try {
@@ -81,12 +81,12 @@ export class AIAlgorithmNative {
   }
 
   /**
-   * 测试Native模块连接
-   * 用于验证NAPI是否正常工作
+   * Test Native module connection
+   * Used to verify if NAPI is working properly
    */
   static testConnection(): number {
     try {
-      return add(1, 2); // 应该返回3
+      return add(1, 2); // Should return 3
     } catch (error) {
       console.error('AIAlgorithmNative.testConnection error:', error);
       return -1;

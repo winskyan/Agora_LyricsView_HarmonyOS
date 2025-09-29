@@ -3,7 +3,7 @@ import { LyricsLineModel } from '../model/LyricsLineModel';
 import { LogUtils } from './LogUtils';
 
 /**
- * 时间范围对，用于表示调整后的开始和结束时间
+ * Time range pair used to represent adjusted start and end times
  */
 interface TimePair {
   first: number;

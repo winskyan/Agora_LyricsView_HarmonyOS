@@ -8,26 +8,26 @@ import { LogUtils } from '../../utils/LogUtils';
 import { Utils } from '../../utils/Utils';
 
 /**
- * 歌词解析器分发器
- * 负责检测歌词格式并分发给对应的专用解析器
+ * Lyrics parser dispatcher
+ * Responsible for detecting lyrics format and dispatching to corresponding specialized parsers
  */
 export class LyricsParser {
   /**
-   * 正则表达式：匹配LRC格式行
+   * Regular expression: matches LRC format lines
    */
   private static readonly LRC_PATTERN_LINE = /^((\[\d{2}:\d{2}\.\d{2,3}])+)(.+)$/;
   /**
-   * 正则表达式：匹配KRC格式行
+   * Regular expression: matches KRC format lines
    */
   private static readonly KRC_PATTERN_LINE = /^\[(\w+):([^\]]*)]$/;
 
   /**
-   * 检测歌词文件类型（基于内容）
-   * @param lyricData 歌词数据字节数组
-   * @returns 检测到的歌词类型
+   * Detect lyrics file type based on content
+   * @param lyricData Lyrics data byte array
+   * @returns Detected lyrics type
    */
   private static probeLyricsFileTypeFromBytes(lyricData: Uint8Array): LyricType {
-    let type = LyricType.LRC; // 默认类型
+    let type = LyricType.LRC; // Default type
 
     try {
       const fileContent = Utils.uint8ArrayToString(lyricData);
@@ -36,7 +36,7 @@ export class LyricsParser {
       if (lines.length > 0) {
         let firstLine = lines[0].trim();
         if (firstLine) {
-          // 移除BOM标记
+          // Remove BOM marker
           firstLine = Utils.removeStringBom(firstLine);
           LogUtils.i(`firstLine : ${firstLine}`)
 
@@ -59,10 +59,10 @@ export class LyricsParser {
   }
 
   /**
-   * 根据文件扩展名或内容确定歌词文件类型
+   * Determine lyrics file type based on file extension or content
    *
-   * @param lyricPath 要分析的歌词文件路径
-   * @return 检测到的歌词类型
+   * @param lyricPath The lyrics file path to analyze
+   * @return Detected lyrics type
    */
   private static probeLyricsFileTypeFromPath(lyricPath: string): LyricType {
     let type = LyricType.LRC;
@@ -81,7 +81,7 @@ export class LyricsParser {
     } else if (fileName.endsWith(`.${Constants.FILE_EXTENSION_KRC}`)) {
       type = LyricType.KRC;
     } else {
-      // 如果无法从扩展名判断，尝试读取文件内容进行判断
+      // If unable to determine from extension, try reading file content for detection
       try {
         const fileBytes = Utils.getFileBytes(lyricPath);
         if (fileBytes) {
@@ -96,12 +96,12 @@ export class LyricsParser {
   }
 
   /**
-   * 解析歌词数据（主入口方法）
-   * @param lyricData 歌词数据字节数组
-   * @param pitchData 音调数据字节数组（可选）
-   * @param includeCopyrightSentence 是否包含版权信息
-   * @param lyricOffset 歌词时间偏移（毫秒）
-   * @returns 解析后的歌词模型
+   * Parse lyrics data (main entry method)
+   * @param lyricData Lyrics data byte array
+   * @param pitchData Pitch data byte array (optional)
+   * @param includeCopyrightSentence Whether to include copyright information
+   * @param lyricOffset Lyrics time offset (milliseconds)
+   * @returns Parsed lyrics model
    */
   static parseLyricData(
     lyricData: Uint8Array,
@@ -126,12 +126,12 @@ export class LyricsParser {
   }
 
   /**
-   * 从文件路径解析歌词数据
-   * @param lyricFilePath 歌词文件路径
-   * @param pitchFilePath 音调文件路径（可选）
-   * @param includeCopyrightSentence 是否包含版权信息
-   * @param lyricOffset 歌词时间偏移（毫秒）
-   * @returns 解析后的歌词模型
+   * Parse lyrics data from file path
+   * @param lyricFilePath Lyrics file path
+   * @param pitchFilePath Pitch file path (optional)
+   * @param includeCopyrightSentence Whether to include copyright information
+   * @param lyricOffset Lyrics time offset (milliseconds)
+   * @returns Parsed lyrics model
    */
   static parseFile(
     lyricFilePath: string,
@@ -140,18 +140,18 @@ export class LyricsParser {
     lyricOffset: number = 0
   ): LyricModel | null {
     try {
-      // 根据文件路径检测歌词类型
+      // Detect lyrics type based on file path
       const type = LyricsParser.probeLyricsFileTypeFromPath(lyricFilePath);
       LogUtils.d(`Detected lyric type from path: ${type}`);
 
-      // 读取歌词文件数据
+      // Read lyrics file data
       const lyricData = Utils.getFileBytes(lyricFilePath);
       if (!lyricData) {
         LogUtils.e(`Failed to read lyric file: ${lyricFilePath}`);
         return null;
       }
 
-      // 读取音调文件数据（如果提供）
+      // Read pitch file data (if provided)
       let pitchData: Uint8Array | undefined = undefined;
       if (pitchFilePath) {
         pitchData = Utils.getFileBytes(pitchFilePath) || undefined;

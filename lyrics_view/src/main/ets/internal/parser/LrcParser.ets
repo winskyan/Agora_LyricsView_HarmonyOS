@@ -5,31 +5,31 @@ import { LogUtils } from '../../utils/LogUtils';
 import { Utils } from '../../utils/Utils';
 
 /**
- * LRC格式歌词解析器 - HarmonyOS版本
- * 对应Java项目中的LyricParser.doParseLrc方法
- * 专门处理LRC格式歌词解析
+ * LRC format lyrics parser - HarmonyOS version
+ * Corresponds to the doParseLrc method in the Java project
+ * Specifically handles LRC format lyrics parsing
  */
 export class LrcParser {
   /**
-   * 正则表达式：匹配时间标签
+   * Regular expression: matches time tags
    */
   private static readonly LRC_PATTERN_TIME = /\[(\d{2}):(\d{2})\.(\d{2,3})]/g;
   /**
-   * 正则表达式：匹配歌词内容行
+   * Regular expression: matches lyric content lines
    */
   private static readonly LRC_PATTERN_LINE = /^((\[\d{2}:\d{2}\.\d{2,3}])+)(.+)$/;
   /**
-   * 正则表达式：匹配带时间标签的歌词内容
+   * Regular expression: matches lyric content with time tags
    */
   private static readonly LRC_LYRIC_CONTENT_PATTERN = /<(\d{2}):(\d{2})\.(\d{3})>(.*?)(?=<|$)/g;
 
   /**
-   * 解析LRC格式歌词和音调数据（对外接口）
-   * @param lyricData LRC歌词数据字节数组
-   * @param pitchData 音调数据字节数组（可选）
-   * @param includeCopyrightSentence 是否包含版权信息
-   * @param lyricOffset 歌词时间偏移（毫秒）
-   * @returns 解析后的歌词模型
+   * Parse LRC format lyrics and pitch data (public interface)
+   * @param lyricData LRC lyrics data byte array
+   * @param pitchData Pitch data byte array (optional)
+   * @param includeCopyrightSentence Whether to include copyright information
+   * @param lyricOffset Lyrics time offset (milliseconds)
+   * @returns Parsed lyrics model
    */
   static parseLrcLyricData(
     lyricData: Uint8Array,
@@ -38,7 +38,7 @@ export class LrcParser {
     lyricOffset: number = 0
   ): LyricModel | null {
     try {
-      // 使用核心解析方法
+      // Use core parsing method
       const model = LrcParser.doParseLrc(lyricData);
       if (!model) {
         LogUtils.e('Failed to parse LRC data');
@@ -47,14 +47,14 @@ export class LrcParser {
 
       model.hasPitch = false;
 
-      // 替换音调并设置音调值
-      // 每个音调持续100ms
+      // Replace tones and set tone values
+      // Each tone lasts 100ms
       for (let i = 0; i < model.lines.length; i++) {
         const line = model.lines[i];
         const tones = line.tones;
 
         if (tones && tones.length > 0) {
-          // 计算需要添加的音调数量并执行
+          // Calculate the number of tones to add and execute
           for (let j = 0; j < tones.length; j++) {
             const tone = tones[j];
             if (j < tones.length - 1) {
@@ -63,7 +63,7 @@ export class LrcParser {
               if (i < model.lines.length - 1) {
                 tone.end = model.lines[i + 1].tones[0].begin;
               } else {
-                // 最后一个音调
+                // Last tone
                 tone.end = tone.begin + 99; // 100ms - 1
               }
             }
@@ -79,9 +79,9 @@ export class LrcParser {
   }
 
   /**
-   * 核心LRC解析方法（对应Java的doParseLrc）
-   * @param fileData LRC文件数据字节数组
-   * @returns 解析后的歌词模型
+   * Core LRC parsing method (corresponds to Java's doParseLrc)
+   * @param fileData LRC file data byte array
+   * @returns Parsed lyrics model
    */
   static doParseLrc(fileData: Uint8Array): LyricModel | null {
     if (!fileData || fileData.length === 0) {
@@ -113,9 +113,9 @@ export class LrcParser {
   }
 
   /**
-   * 处理解析后的LRC行列表，组装成完整的歌词模型（对应Java的parseLrcLines）
-   * @param lines 解析后的歌词行列表
-   * @returns 完整的歌词模型
+   * Process parsed LRC line list and assemble into complete lyrics model (corresponds to Java's parseLrcLines)
+   * @param lines Parsed lyrics line list
+   * @returns Complete lyrics model
    */
   private static parseLrcLines(lines: LyricsLineModel[]): LyricModel | null {
     const lyrics = new LyricModel(LyricType.LRC);
@@ -125,7 +125,7 @@ export class LrcParser {
 
     lyrics.lines = lines;
 
-    // 设置每行的结束时间
+    // Set end time for each line
     for (let i = 0; i < lines.length - 1; i++) {
       const cur = lines[i];
       const next = lines[i + 1];
@@ -144,18 +144,18 @@ export class LrcParser {
       if (lastLine.tones && lastLine.tones.length > 0) {
         lastLine.tones[0].end = faked;
       }
-      // 我们不知道歌曲的最后结束时间戳
+      // We don't know the final end timestamp of the song
       lyrics.duration = faked;
     }
 
-    // 总是第一行歌词
+    // Always the first line of lyrics
     if (lines.length > 0) {
       lyrics.preludeEndPosition = lines[0].getStartTime();
     }
 
     if (lyrics.duration <= 0 || lyrics.preludeEndPosition < 0) {
       LogUtils.e(`no sentence or unexpected timestamp of sentence: ${lyrics.preludeEndPosition} ${lyrics.duration}`);
-      // 无效歌词
+      // Invalid lyrics
       return null;
     }
 
@@ -163,9 +163,9 @@ export class LrcParser {
   }
 
   /**
-   * 解析LRC格式歌词（对外接口，保持兼容性）
-   * @param lrcContent LRC歌词内容字符串
-   * @returns 解析后的歌词模型
+   * Parse LRC format lyrics (public interface, maintains compatibility)
+   * @param lrcContent LRC lyrics content string
+   * @returns Parsed lyrics model
    */
   static parseLRC(lrcContent: string): LyricModel {
     const lrcData = Utils.stringToUint8Array(lrcContent);
@@ -174,9 +174,9 @@ export class LrcParser {
   }
 
   /**
-   * 解析单行LRC歌词（对应Java的parseLrcLine）
-   * @param line 要解析的行
-   * @returns 解析后的歌词行数组，如果解析失败则返回null
+   * Parse single LRC lyrics line (corresponds to Java's parseLrcLine)
+   * @param line Line to parse
+   * @returns Array of parsed lyrics lines, returns null if parsing fails
    */
   private static parseLrcLine(line: string): LyricsLineModel[] | null {
     if (!line || line.trim().length === 0) {
@@ -201,14 +201,14 @@ export class LrcParser {
       const text = lineMatcher[3];
 
       if (!text || text.trim().length === 0) {
-        return lines; // 返回空数组
+        return lines; // Return empty array
       }
 
-      // 重置正则表达式的lastIndex，避免test()方法影响matchAll()
+      // Reset regex lastIndex to avoid test() method affecting matchAll()
       LrcParser.LRC_LYRIC_CONTENT_PATTERN.lastIndex = 0;
       if (LrcParser.LRC_LYRIC_CONTENT_PATTERN.test(text)) {
         const lineModel = new LyricsLineModel();
-        // 重置正则表达式的lastIndex，确保matchAll()从头开始匹配
+        // Reset regex lastIndex to ensure matchAll() starts from the beginning
         LrcParser.LRC_LYRIC_CONTENT_PATTERN.lastIndex = 0;
         const matches = text.matchAll(LrcParser.LRC_LYRIC_CONTENT_PATTERN);
 
@@ -231,7 +231,7 @@ export class LrcParser {
         return lines;
       } else {
         // [00:17.65]
-        LrcParser.LRC_PATTERN_TIME.lastIndex = 0; // 重置正则表达式
+        LrcParser.LRC_PATTERN_TIME.lastIndex = 0; // Reset regex
         const timeMatches = times.matchAll(LrcParser.LRC_PATTERN_TIME);
 
         for (const timeMatch of timeMatches) {
@@ -242,7 +242,7 @@ export class LrcParser {
           if (milInString) {
             mil = parseInt(milInString);
           }
-          // 如果毫秒是两位数，乘以10
+          // If milliseconds is two digits, multiply by 10
           if (milInString && milInString.length === 2) {
             mil = mil * 10;
           }

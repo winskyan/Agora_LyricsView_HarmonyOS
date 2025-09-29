@@ -1,9 +1,9 @@
 /**
- * 应用常量定义
+ * Application constants definition
  */
 export class ExampleConstants {
-  /** 日志域 */
+  /** Log domain */
   static readonly LOG_DOMAIN = 0x0000;
-  /** 应用标签 */
+  /** Application tag */
   static readonly APP_TAG = 'LyricsViewApp';
 }

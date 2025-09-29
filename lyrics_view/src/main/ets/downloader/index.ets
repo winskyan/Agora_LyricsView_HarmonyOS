@@ -1,25 +1,25 @@
 /**
- * 歌词文件下载器模块导出 - HarmonyOS版本
+ * Lyrics file downloader module exports - HarmonyOS version
  *
- * 这个模块提供了完整的歌词文件下载功能，包括：
- * - HTTP下载
- * - 文件缓存管理
- * - ZIP文件解压
- * - 下载进度回调
- * - 错误处理
+ * This module provides complete lyrics file download functionality, including:
+ * - HTTP download
+ * - File cache management
+ * - ZIP file extraction
+ * - Download progress callbacks
+ * - Error handling
  */
 
-// 导出主要的下载器类
+// Export main downloader class
 export { LyricsFileDownloader } from './LyricsFileDownloader';
 
-// 导出回调接口
+// Export callback interface
 export { LyricsFileDownloaderCallback } from './LyricsFileDownloaderCallback';
 
-// 导出错误相关类
+// Export error related classes
 export { DownloadError, DownloadErrorDetail } from '../constants/DownloadError';
 
-// 导出数据模型
+// Export data model
 export { DownloadLyricModel } from '../model/DownloadLyricModel';
 
-// 导出网络请求相关类
+// Export network request related classes
 export { HttpUrlRequest, RequestCallback } from '../net/HttpUrlRequest';

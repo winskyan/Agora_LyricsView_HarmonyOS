@@ -3,18 +3,18 @@ import { LogUtils } from './LogUtils';
 import { Utils } from './Utils';
 
 /**
- * ZIP文件解压结果接口
+ * ZIP file extraction result interface
  */
 export interface ZipExtractionResult {
   success: boolean;
   data?: Uint8Array;
   fileName?: string;
   error?: string;
-  isOriginalContent: boolean; // 是否为原始内容
+  isOriginalContent: boolean; // Whether it's original content
 }
 
 /**
- * ZIP结构解析结果接口
+ * ZIP structure parsing result interface
  */
 interface ZipParseResult {
   success: boolean;
@@ -26,7 +26,7 @@ interface ZipParseResult {
 }
 
 /**
- * 文件内容提取结果接口
+ * File content extraction result interface
  */
 interface FileExtractionResult {
   success: boolean;
@@ -35,7 +35,7 @@ interface FileExtractionResult {
 }
 
 /**
- * 头部跳过结果接口
+ * Header skip result interface
  */
 interface HeaderSkipResult {
   success: boolean;
@@ -43,23 +43,23 @@ interface HeaderSkipResult {
 }
 
 /**
- * ZIP文件解压工具类
- * 专门处理ZIP文件的解压操作，包含多种降级方案
+ * ZIP file extraction utility class
+ * Specifically handles ZIP file extraction operations with multiple fallback strategies
  */
 export class ZipUtils {
   private static readonly TAG = 'ZipUtils';
 
   /**
-   * 解压ZIP文件
-   * @param zipFilePath ZIP文件路径
-   * @param outputDir 输出目录
-   * @returns 解压结果
+   * Extract ZIP file
+   * @param zipFilePath ZIP file path
+   * @param outputDir Output directory
+   * @returns Extraction result
    */
   static async extractZipFile(zipFilePath: string, outputDir: string): Promise<ZipExtractionResult> {
     try {
       LogUtils.d(`${ZipUtils.TAG}:extractZipFile start extracting ZIP file: ${zipFilePath}`);
 
-      // 读取ZIP文件
+      // Read ZIP file
       const zipData = await ZipUtils.readFileToBytes(zipFilePath);
       if (!zipData || zipData.length === 0) {
         return {
@@ -69,7 +69,7 @@ export class ZipUtils {
         };
       }
 
-      // 解析ZIP文件结构
+      // Parse ZIP file structure
       const parseResult = ZipUtils.parseZipStructure(zipData);
       if (!parseResult.success) {
         return {
@@ -79,11 +79,11 @@ export class ZipUtils {
         };
       }
 
-      // 尝试解压文件内容
+      // Try to extract file content
       const extractResult = ZipUtils.extractFileContent(parseResult.compressedData!, parseResult.uncompressedSize!);
 
       if (extractResult.success && extractResult.data) {
-        // 保存解压后的文件
+        // Save extracted file
         const outputPath = `${outputDir}/${parseResult.fileName}`;
         await ZipUtils.saveExtractedFile(outputPath, extractResult.data);
 
@@ -94,7 +94,7 @@ export class ZipUtils {
           isOriginalContent: extractResult.isOriginalContent
         };
       } else {
-        // 生成降级内容
+        // Generate fallback content
         const fallbackData = ZipUtils.generateFallbackContent(parseResult);
         const outputPath = `${outputDir}/${parseResult.fileName}`;
         await ZipUtils.saveExtractedFile(outputPath, fallbackData);
@@ -118,11 +118,11 @@ export class ZipUtils {
   }
 
   /**
-   * 解析ZIP文件结构
+   * Parse ZIP file structure
    */
   private static parseZipStructure(zipData: Uint8Array): ZipParseResult {
     try {
-      // 查找本地文件头 (0x04034b50)
+      // Find local file header (0x04034b50)
       let offset = -1;
       const signature = new Uint32Array([0x04034b50]);
       const sigBytes = new Uint8Array(signature.buffer);
@@ -143,7 +143,7 @@ export class ZipUtils {
 
       LogUtils.d(`${ZipUtils.TAG}:parseZipStructure found local file header at offset ${offset}`);
 
-      // 解析文件头信息
+      // Parse file header information
       const compressionMethod = zipData[offset + 8] | (zipData[offset + 9] << 8);
       const compressedSize = zipData[offset + 18] | (zipData[offset + 19] << 8) |
         (zipData[offset + 20] << 16) | (zipData[offset + 21] << 24);
@@ -154,19 +154,19 @@ export class ZipUtils {
 
       LogUtils.d(`${ZipUtils.TAG}:parseZipStructure compression: ${compressionMethod}, compressed: ${compressedSize}, uncompressed: ${uncompressedSize}`);
 
-      // 读取文件名
+      // Read file name
       const fileNameStart = offset + 30;
       const fileNameBytes = zipData.slice(fileNameStart, fileNameStart + fileNameLength);
       const fileName = Utils.uint8ArrayToString(fileNameBytes);
 
       LogUtils.d(`${ZipUtils.TAG}:parseZipStructure file name: ${fileName}`);
 
-      // 检查是否为支持的歌词文件
+      // Check if it's a supported lyrics file
       if (!ZipUtils.isSupportedLyricsFile(fileName)) {
         return { success: false, error: `Unsupported file type: ${fileName}` };
       }
 
-      // 提取压缩数据
+      // Extract compressed data
       const dataStart = fileNameStart + fileNameLength + extraFieldLength;
       const compressedData = zipData.slice(dataStart, dataStart + compressedSize);
 
@@ -184,12 +184,12 @@ export class ZipUtils {
   }
 
   /**
-   * 解压文件内容
+   * Extract file content
    */
   private static extractFileContent(compressedData: Uint8Array, expectedSize: number): FileExtractionResult {
     LogUtils.d(`${ZipUtils.TAG}:extractFileContent attempting to extract ${compressedData.length} bytes`);
 
-    // 方法1: 检查是否为未压缩数据
+    // Method 1: Check if it's uncompressed data
     if (ZipUtils.isLikelyTextData(compressedData)) {
       LogUtils.d(`${ZipUtils.TAG}:extractFileContent data appears to be uncompressed text`);
       return {
@@ -199,7 +199,7 @@ export class ZipUtils {
       };
     }
 
-    // 方法2: 尝试简单的头部跳过（某些简单压缩）
+    // Method 2: Try simple header skip (for some simple compression)
     const headerSkipResult = ZipUtils.tryHeaderSkip(compressedData);
     if (headerSkipResult.success) {
       LogUtils.d(`${ZipUtils.TAG}:extractFileContent header skip successful`);
@@ -210,7 +210,7 @@ export class ZipUtils {
       };
     }
 
-    // 方法3: 尝试查找XML片段
+    // Method 3: Try to find XML fragments
     const xmlFragments = ZipUtils.extractXmlFragments(compressedData);
     if (xmlFragments.length > 0) {
       LogUtils.d(`${ZipUtils.TAG}:extractFileContent found ${xmlFragments.length} XML fragments`);
@@ -232,7 +232,7 @@ export class ZipUtils {
   }
 
   /**
-   * 生成降级内容
+   * Generate fallback content
    */
   private static generateFallbackContent(parseResult: ZipParseResult): Uint8Array {
     const fileName = parseResult.fileName || 'unknown.xml';
@@ -241,15 +241,15 @@ export class ZipUtils {
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<root>\n';
     xml += '  <lyrics>\n';
-    xml += '    <line time="0">HarmonyOS ZIP解压限制说明</line>\n';
-    xml += '    <line time="3000">当前系统无法解压ZIP中的deflate压缩数据</line>\n';
-    xml += `    <line time="6000">文件: ${fileName}</line>\n`;
-    xml += `    <line time="9000">原始大小: ${uncompressedSize}字节</line>\n`;
-    xml += `    <line time="12000">压缩大小: ${compressedSize}字节</line>\n`;
-    xml += '    <line time="15000">建议解决方案:</line>\n';
-    xml += '    <line time="18000">1. 服务端提供解压后的XML文件</line>\n';
-    xml += '    <line time="21000">2. 使用C++原生模块实现ZIP解压</line>\n';
-    xml += '    <line time="24000">3. 或使用第三方JavaScript ZIP库</line>\n';
+    xml += '    <line time="0">HarmonyOS ZIP Extraction Limitation Notice</line>\n';
+    xml += '    <line time="3000">Current system cannot extract deflate compressed data from ZIP</line>\n';
+    xml += `    <line time="6000">File: ${fileName}</line>\n`;
+    xml += `    <line time="9000">Original size: ${uncompressedSize} bytes</line>\n`;
+    xml += `    <line time="12000">Compressed size: ${compressedSize} bytes</line>\n`;
+    xml += '    <line time="15000">Suggested solutions:</line>\n';
+    xml += '    <line time="18000">1. Server provides uncompressed XML files</line>\n';
+    xml += '    <line time="21000">2. Use C++ native module for ZIP extraction</line>\n';
+    xml += '    <line time="24000">3. Or use third-party JavaScript ZIP library</line>\n';
     xml += '  </lyrics>\n';
     xml += '</root>';
 
@@ -258,7 +258,7 @@ export class ZipUtils {
   }
 
   /**
-   * 检查是否为支持的歌词文件
+   * Check if it's a supported lyrics file
    */
   private static isSupportedLyricsFile(fileName: string): boolean {
     const lowerName = fileName.toLowerCase();
@@ -268,14 +268,14 @@ export class ZipUtils {
   }
 
   /**
-   * 检查数据是否像文本数据
+   * Check if data looks like text data
    */
   private static isLikelyTextData(data: Uint8Array): boolean {
     if (data.length < 10) {
       return false;
     }
 
-    // 检查是否以XML声明开始
+    // Check if it starts with XML declaration
     const xmlDeclaration = '<?xml';
     for (let i = 0; i < xmlDeclaration.length && i < data.length; i++) {
       if (data[i] !== xmlDeclaration.charCodeAt(i)) {
@@ -286,10 +286,10 @@ export class ZipUtils {
   }
 
   /**
-   * 尝试跳过简单的头部
+   * Try to skip simple header
    */
   private static tryHeaderSkip(data: Uint8Array): HeaderSkipResult {
-    // 尝试跳过前几个字节，看是否能找到XML内容
+    // Try skipping first few bytes to see if we can find XML content
     for (let skip = 0; skip < Math.min(20, data.length - 10); skip++) {
       const testData = data.slice(skip);
       if (ZipUtils.isLikelyTextData(testData)) {
@@ -300,13 +300,13 @@ export class ZipUtils {
   }
 
   /**
-   * 提取XML片段
+   * Extract XML fragments
    */
   private static extractXmlFragments(data: Uint8Array): string[] {
     const fragments: string[] = [];
     const text = Utils.uint8ArrayToString(data);
 
-    // 查找XML标签
+    // Find XML tags
     const xmlPatterns = [
       /<\?xml[^>]*>/gi,
       /<root[^>]*>/gi,
@@ -327,7 +327,7 @@ export class ZipUtils {
   }
 
   /**
-   * 从片段重建XML
+   * Reconstruct XML from fragments
    */
   private static reconstructXmlFromFragments(fragments: string[]): Uint8Array {
     if (fragments.length === 0) {
@@ -336,11 +336,11 @@ export class ZipUtils {
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<root>\n';
     xml += '  <lyrics>\n';
-    xml += '    <line time="0">从压缩数据中发现XML片段</line>\n';
+    xml += '    <line time="0">XML fragments found in compressed data</line>\n';
 
     for (let i = 0; i < Math.min(fragments.length, 10); i++) {
       const fragment = fragments[i].replace(/[<>]/g, '');
-      xml += `    <line time="${(i + 1) * 3000}">片段${i + 1}: ${fragment}</line>\n`;
+      xml += `    <line time="${(i + 1) * 3000}">Fragment ${i + 1}: ${fragment}</line>\n`;
     }
 
     xml += '  </lyrics>\n';
@@ -350,7 +350,7 @@ export class ZipUtils {
   }
 
   /**
-   * 读取文件为字节数组
+   * Read file to byte array
    */
   private static async readFileToBytes(filePath: string): Promise<Uint8Array | null> {
     try {
@@ -369,22 +369,22 @@ export class ZipUtils {
   }
 
   /**
-   * 保存解压后的文件
+   * Save extracted file
    */
   private static async saveExtractedFile(outputPath: string, data: Uint8Array): Promise<void> {
     try {
-      // 确保输出目录存在
+      // Ensure output directory exists
       const dirPath = outputPath.substring(0, outputPath.lastIndexOf('/'));
       if (!fs.accessSync(dirPath)) {
         fs.mkdirSync(dirPath, true);
       }
 
-      // 删除已存在的文件
+      // Delete existing file
       if (fs.accessSync(outputPath)) {
         fs.unlinkSync(outputPath);
       }
 
-      // 写入新文件
+      // Write new file
       const file = fs.openSync(outputPath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
       fs.writeSync(file.fd, data.buffer);
       fs.closeSync(file);

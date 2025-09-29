@@ -4,7 +4,7 @@ import { ExampleLogUtils } from './ExmapleLogUtils';
 import { TokenHttpClient, TokenHttpResponse } from './TokenHttpClient';
 
 /**
- * Token生成响应接口
+ * Token generation response interface
  */
 export interface TokenResponse {
   success: boolean;
@@ -13,14 +13,14 @@ export interface TokenResponse {
 }
 
 /**
- * Token生成回调接口
+ * Token generation callback interface
  */
 export interface TokenCallback {
   onTokenGenerated(response: TokenResponse): void;
 }
 
 /**
- * Agora服务端Token生成响应
+ * Agora server token generation response
  */
 interface AgoraTokenData {
   token: string;
@@ -34,7 +34,7 @@ interface AgoraTokenResponse {
 }
 
 /**
- * 音速达API响应数据结构
+ * YinSuDa API response data structure
  */
 interface YSDApiData {
   yinsuda_uid: string;
@@ -42,7 +42,7 @@ interface YSDApiData {
 }
 
 /**
- * 音速达API响应结构
+ * YinSuDa API response structure
  */
 interface YSDApiResponse {
   error: number;
@@ -50,7 +50,7 @@ interface YSDApiResponse {
 }
 
 /**
- * 音速达Token响应接口
+ * YinSuDa token response interface
  */
 export interface YSDTokenResponse {
   success: boolean;
@@ -60,37 +60,37 @@ export interface YSDTokenResponse {
 }
 
 /**
- * 音速达Token回调接口
+ * YinSuDa token callback interface
  */
 export interface YSDTokenCallback {
   onYSDTokenGenerated(response: YSDTokenResponse): void;
 }
 
 /**
- * KeyCenter - 密钥和Token管理中心
- * 参考Android KeyCenter.kt实现
- * 负责生成RTC Token和管理用户ID、频道名等
+ * KeyCenter - Key and Token management center
+ * Reference Android KeyCenter.kt implementation
+ * Responsible for generating RTC Token and managing user ID, channel name, etc.
  */
 export class KeyCenter {
   private static readonly TAG: string = ExampleConstants.APP_TAG + '-KeyCenter';
   private static readonly USER_MAX_UID: number = 10000;
-  // 从 BuildConfig 读取配置（构建时从 local.properties 生成）
+  // Read configuration from BuildConfig (generated from local.properties at build time)
   public static readonly APP_ID: string = BuildConfig.APP_ID;
   private static readonly APP_CERTIFICATE: string = BuildConfig.APP_CERTIFICATE;
   public static readonly RTC_TOKEN: string = BuildConfig.RTC_TOKEN;
   public static readonly RTM_TOKEN: string = BuildConfig.RTM_TOKEN;
-  // 音速达(Vendor2)配置
+  // YinSuDa (Vendor2) configuration
   public static readonly VENDOR_2_APP_ID: string = BuildConfig.VENDOR_2_APP_ID;
   public static readonly VENDOR_2_APP_KEY: string = BuildConfig.VENDOR_2_APP_KEY;
   public static readonly VENDOR_2_TOKEN_HOST: string = BuildConfig.VENDOR_2_TOKEN_HOST;
-  // 频道名称
+  // Channel name
   public static readonly CHANNEL_NAME: string = BuildConfig.CHANNEL_NAME;
-  // 用户UID缓存
+  // User UID cache
   private static USER_RTC_UID: number = 123456;
 
   /**
-   * 获取用户UID
-   * 如果未设置则随机生成一个
+   * Get user UID
+   * Generate a random one if not set
    */
   public static getUserUid(): number {
     if (KeyCenter.USER_RTC_UID === -1) {
@@ -100,20 +100,20 @@ export class KeyCenter {
   }
 
   /**
-   * 设置用户UID
+   * Set user UID
    */
   public static setUserUid(uid: number): void {
     KeyCenter.USER_RTC_UID = uid;
   }
 
   /**
-   * 生成RTC Token
-   * 优先级：预定义的RTC_TOKEN > 服务端API生成 > APP_ID作为fallback
+   * Generate RTC Token
+   * Priority: predefined RTC_TOKEN > server API generation > APP_ID as fallback
    */
   public static async getRtcToken(channelId: string, uid: number, callback: TokenCallback): Promise<void> {
     ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: channelId=${channelId}, uid=${uid}`)
 
-    // 如果定义了RTC_TOKEN常量，直接返回
+    // If RTC_TOKEN constant is defined, return it directly
     if (KeyCenter.RTC_TOKEN && KeyCenter.RTC_TOKEN.trim() !== '') {
       ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: using predefined RTC_TOKEN`)
       callback.onTokenGenerated({
@@ -123,7 +123,7 @@ export class KeyCenter {
       return;
     }
 
-    // 如果没有证书，直接返回APP_ID
+    // If no certificate, return APP_ID directly
     if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
       ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: using APP_ID as token`)
       callback.onTokenGenerated({
@@ -134,7 +134,7 @@ export class KeyCenter {
     }
 
     try {
-      // 调用服务端API生成token
+      // Call server API to generate token
       await KeyCenter.generateTokenFromServer(channelId, uid, 'rtc', callback);
     } catch (error) {
       ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: failed to generate RTC token: ${JSON.stringify(error)}`)
@@ -146,13 +146,13 @@ export class KeyCenter {
   }
 
   /**
-   * 生成RTM Token
-   * 优先级：预定义的RTM_TOKEN > 服务端API生成 > APP_ID作为fallback
+   * Generate RTM Token
+   * Priority: predefined RTM_TOKEN > server API generation > APP_ID as fallback
    */
   public static async getRtmToken(uid: number, callback: TokenCallback): Promise<void> {
     ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: uid=${uid}`)
 
-    // 如果定义了RTM_TOKEN常量，直接返回
+    // If RTM_TOKEN constant is defined, return it directly
     if (KeyCenter.RTM_TOKEN && KeyCenter.RTM_TOKEN.trim() !== '') {
       ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: using predefined RTM_TOKEN`)
       callback.onTokenGenerated({
@@ -162,7 +162,7 @@ export class KeyCenter {
       return;
     }
 
-    // 如果没有证书，直接返回APP_ID
+    // If no certificate, return APP_ID directly
     if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
       ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: using APP_ID as token`)
       callback.onTokenGenerated({
@@ -173,7 +173,7 @@ export class KeyCenter {
     }
 
     try {
-      // 调用服务端API生成token
+      // Call server API to generate token
       await KeyCenter.generateTokenFromServer('', uid, 'rtm', callback);
     } catch (error) {
       ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtmToken: failed to generate RTM token: ${JSON.stringify(error)}`)
@@ -185,19 +185,19 @@ export class KeyCenter {
   }
 
   /**
-   * 获取音速达(Vendor2)用户ID和Token
-   * @param uid 用户ID，用于构建请求URL
-   * @param callback 回调接口
+   * Get YinSuDa (Vendor2) user ID and token
+   * @param uid User ID, used to construct request URL
+   * @param callback Callback interface
    */
   public static async getYSDToken(uid: number, callback: YSDTokenCallback): Promise<void> {
     ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: uid=${uid}`)
 
     try {
-      // 构建请求URL
+      // Construct request URL
       const requestUrl = `${KeyCenter.VENDOR_2_TOKEN_HOST}${uid}`;
       ExampleLogUtils.logDebug(KeyCenter.TAG, `getYSDToken: requestUrl=${requestUrl}`)
 
-      // 发送GET请求
+      // Send GET request
       const requestHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -251,8 +251,8 @@ export class KeyCenter {
   }
 
   /**
-   * 从服务端生成Token
-   * 参考声网文档的HTTP基本认证方式
+   * Generate token from server
+   * Reference Agora documentation's HTTP basic authentication method
    */
   private static async generateTokenFromServer(
     channelId: string,
@@ -261,13 +261,13 @@ export class KeyCenter {
     callback: TokenCallback
   ): Promise<void> {
     try {
-      // 构建请求URL
+      // Construct request URL
       const baseUrl = 'https://api.agora.io/dev/v1/token';
       let requestUrl = '';
       let requestBody = '';
 
       if (tokenType === 'rtc') {
-        // RTC Token请求
+        // RTC Token request
         requestUrl = `${baseUrl}`;
         requestBody = JSON.stringify({
           appId: KeyCenter.APP_ID,
@@ -275,27 +275,27 @@ export class KeyCenter {
           channelName: channelId,
           uid: uid.toString(),
           role: 1, // Publisher role
-          expireTime: 3600 // 1小时过期
+          expireTime: 3600 // Expires in 1 hour
         });
       } else {
-        // RTM Token请求
+        // RTM Token request
         requestUrl = `${baseUrl}/rtm`;
         requestBody = JSON.stringify({
           appId: KeyCenter.APP_ID,
           appCertificate: KeyCenter.APP_CERTIFICATE,
           userId: uid.toString(),
-          expireTime: 3600 // 1小时过期
+          expireTime: 3600 // Expires in 1 hour
         });
       }
 
-      // 创建HTTP基本认证头
+      // Create HTTP basic authentication header
       const credentials = `${KeyCenter.APP_ID}:${KeyCenter.APP_CERTIFICATE}`;
       const base64Credentials = KeyCenter.base64Encode(credentials);
       const authHeader = `Basic ${base64Credentials}`;
 
       ExampleLogUtils.logDebug(KeyCenter.TAG, ` HTTP Basic Auth Header: ${authHeader}`);
 
-      // 使用TokenHttpClient发送请求
+      // Use TokenHttpClient to send request
       const headers: Record<string, string> = {
         'Authorization': authHeader,
         'Content-Type': 'application/json',
@@ -346,8 +346,8 @@ export class KeyCenter {
   }
 
   /**
-   * 简单的Base64编码实现
-   * 用于HTTP基本认证
+   * Simple Base64 encoding implementation
+   * Used for HTTP basic authentication
    */
   private static base64Encode(str: string): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -371,7 +371,7 @@ export class KeyCenter {
   }
 
   /**
-   * 生成随机频道名
+   * Generate random channel name
    */
   public static generateChannelName(): string {
     const timestamp = Date.now();
@@ -380,14 +380,14 @@ export class KeyCenter {
   }
 
   /**
-   * 验证配置是否有效
+   * Validate if configuration is valid
    */
   public static isConfigValid(): boolean {
     return !!(KeyCenter.APP_ID && KeyCenter.APP_ID.trim() !== '');
   }
 
   /**
-   * 获取配置信息（用于调试）
+   * Get configuration information (for debugging)
    */
   public static getConfigInfo(): Record<string, Object> {
     return BuildConfig.getConfigInfo();

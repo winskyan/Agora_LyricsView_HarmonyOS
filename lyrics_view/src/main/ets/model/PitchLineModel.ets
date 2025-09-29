@@ -167,26 +167,47 @@ export class Pitch {
 }
 
 /**
- * Pitch条数据接口
+ * Pitch stick data interface
  */
 export interface PitchStickData {
-  x: number; // X坐标
-  y: number; // Y坐标
-  width: number; // 宽度
-  height: number; // 高度
-  pitch: number; // 音调值
-  isHighlighted: boolean; // 是否高亮
-  isCurrentPitch: boolean; // 是否当前正在演唱的pitch
-  // 新增：着色段信息
-  highlightSegments: HighlightSegment[]; // 已着色的段落列表
+  /** X coordinate */
+  x: number;
+
+  /** Y coordinate */
+  y: number;
+
+  /** Width */
+  width: number;
+
+  /** Height */
+  height: number;
+
+  /** Pitch value */
+  pitch: number;
+
+  /** Whether this pitch stick is highlighted */
+  isHighlighted: boolean;
+
+  /** Whether this is the currently singing pitch */
+  isCurrentPitch: boolean;
+
+  /** List of highlighted segments */
+  highlightSegments: HighlightSegment[];
 }
 
 /**
- * 着色段数据结构 - 对应Android的highlightPartMap中的每个条目
+ * Highlight segment data structure - corresponds to each entry in Android's highlightPartMap
  */
 export interface HighlightSegment {
-  startX: number; // 着色段开始X坐标
-  endX: number; // 着色段结束X坐标
-  startTime: number; // 着色段开始时间
-  endTime: number; // 着色段结束时间
+  /** Start X coordinate of the highlight segment */
+  startX: number;
+
+  /** End X coordinate of the highlight segment */
+  endX: number;
+
+  /** Start time of the highlight segment */
+  startTime: number;
+
+  /** End time of the highlight segment */
+  endTime: number;
 }

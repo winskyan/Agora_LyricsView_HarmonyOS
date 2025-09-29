@@ -3,9 +3,9 @@ import { ILogger } from './ILogger';
 import { LogLevelUtils } from './LogLevel';
 
 /**
- * 文件日志记录器
- * 基于 Agora-LoggingService 的 FileLogger 实现
- * 支持文件大小限制和循环保存
+ * File logger implementation - HarmonyOS version
+ * Based on Agora-LoggingService FileLogger implementation
+ * Supports file size limits and circular saving
  */
 export class FileLogger implements ILogger {
   private readonly logFilePath: string;
@@ -44,7 +44,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 添加支持的标签
+   * Add supported tag
    */
   addSupportTag(tag: string): void {
     if (!this.supportTags.includes(tag)) {
@@ -53,7 +53,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 移除支持的标签
+   * Remove supported tag
    */
   removeSupportTag(tag: string): void {
     const index = this.supportTags.indexOf(tag);
@@ -73,22 +73,22 @@ export class FileLogger implements ILogger {
         return;
       }
 
-      // 构建日志消息
+      // Build log message
       const lineMessage = this.buildLogMessage(level, tag, message);
 
-      // 确保日志目录存在
+      // Ensure log directory exists
       this.ensureLogDirectoryExists();
 
-      // 获取排序后的日志文件列表
+      // Get sorted log files list
       let logFiles = this.getSortedLogFiles();
 
-      // 如果没有日志文件，创建新文件
+      // If no log files exist, create new file
       if (logFiles.length === 0) {
         this.createNewLogFile();
         logFiles = this.getSortedLogFiles();
       }
 
-      // 检查第一个日志文件
+      // Check first log file
       if (this.checkFirstLogFile(logFiles)) {
         logFiles = this.getSortedLogFiles();
       }
@@ -96,17 +96,17 @@ export class FileLogger implements ILogger {
       const firstLogFile = logFiles[0];
       const currentFileSize = this.getFileSize(firstLogFile);
 
-      // 如果当前文件加上新消息超出大小限制，需要轮转
+      // If current file plus new message exceeds size limit, need to rotate
       if (currentFileSize + lineMessage.length > this.maxFileSizeOfBytes) {
         this.renameLogFile(logFiles);
         this.createNewLogFile();
         logFiles = this.getSortedLogFiles();
       }
 
-      // 写入日志到第一个文件
+      // Write log to first file
       this.appendToFile(logFiles[0], lineMessage);
 
-      // 删除多余的日志文件
+      // Delete extra log files
       this.deleteExtraLogFiles();
 
     } catch (error) {
@@ -115,7 +115,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 构建日志消息
+   * Build log message
    */
   private buildLogMessage(level: number, tag: string, message: string): string {
     const now = new Date();
@@ -126,7 +126,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 格式化时间戳
+   * Format timestamp
    */
   private formatTimestamp(date: Date): string {
     const year = date.getFullYear();
@@ -141,7 +141,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 确保日志目录存在
+   * Ensure log directory exists
    */
   private ensureLogDirectoryExists(): void {
     try {
@@ -154,7 +154,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 获取排序后的日志文件列表
+   * Get sorted log files list
    */
   private getSortedLogFiles(): string[] {
     try {
@@ -163,7 +163,7 @@ export class FileLogger implements ILogger {
         .filter(file => file.startsWith(this.filePrefixName))
         .map(file => `${this.logFilePath}/${file}`);
 
-      // 按文件名排序（prefix.log, prefix.1.log, prefix.2.log...）
+      // Sort by file name (prefix.log, prefix.1.log, prefix.2.log...)
       logFiles.sort((file1, file2) => {
         const name1 = this.extractFileName(file1);
         const name2 = this.extractFileName(file2);
@@ -182,7 +182,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 从路径中提取文件名
+   * Extract file name from path
    */
   private extractFileName(filePath: string): string {
     const parts = filePath.split('/');
@@ -190,18 +190,18 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 从文件名中提取编号
+   * Extract number from file name
    */
   private extractFileNumber(fileName: string): number {
     try {
-      // 去掉 .log 后缀
+      // Remove .log suffix
       const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
 
       if (nameWithoutExt.length > this.filePrefixName.length) {
         const numberPart = nameWithoutExt.substring(this.filePrefixName.length + 1);
         return parseInt(numberPart);
       } else {
-        return 0; // prefix.log 文件的编号为 0
+        return 0; // prefix.log file number is 0
       }
     } catch (error) {
       return 0;
@@ -209,7 +209,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 检查第一个日志文件
+   * Check first log file
    */
   private checkFirstLogFile(files: string[]): boolean {
     if (files.length === 0) {
@@ -221,7 +221,7 @@ export class FileLogger implements ILogger {
     const currentLogFileName = `${this.filePrefixName}.log`;
 
     if (fileName !== currentLogFileName) {
-      // 重新命名文件
+      // Rename files
       for (let i = files.length - 1; i >= 0; i--) {
         const oldFile = files[i];
         let newFileName: string;
@@ -243,12 +243,12 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 创建新的日志文件
+   * Create new log file
    */
   private createNewLogFile(): void {
     const newFileName = `${this.logFilePath}/${this.filePrefixName}.log`;
     try {
-      // 创建空文件
+      // Create empty file
       const file = fs.openSync(newFileName, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
       fs.closeSync(file);
     } catch (error) {
@@ -257,7 +257,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 重命名日志文件
+   * Rename log files
    */
   private renameLogFile(files: string[]): void {
     for (let i = files.length - 1; i >= 0; i--) {
@@ -273,7 +273,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 删除多余的日志文件
+   * Delete extra log files
    */
   private deleteExtraLogFiles(): void {
     const logFiles = this.getSortedLogFiles();
@@ -289,7 +289,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 获取文件大小
+   * Get file size
    */
   private getFileSize(filePath: string): number {
     try {
@@ -301,7 +301,7 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 追加内容到文件
+   * Append content to file
    */
   private appendToFile(filePath: string, content: string): void {
     try {
@@ -314,12 +314,12 @@ export class FileLogger implements ILogger {
   }
 
   /**
-   * 检查存储空间是否足够
+   * Check if storage space is enough
    */
   private isStorageSpaceEnough(logFilePath: string): boolean {
     try {
-      // 在 HarmonyOS 中，我们简化存储空间检查
-      // 这里假设有足够的空间，实际项目中可以根据需要实现更复杂的检查
+      // In HarmonyOS, we simplify storage space check
+      // Here we assume there is enough space, in actual projects more complex checks can be implemented as needed
       return fs.accessSync(logFilePath) || true;
     } catch (error) {
       return false;

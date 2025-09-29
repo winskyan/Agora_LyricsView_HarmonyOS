@@ -7,7 +7,7 @@ const DOMAIN = 0x0000;
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
-    // 初始化全局Context管理器
+    // Initialize global Context manager
     contextManager.setContext(this.context);
 
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
@@ -16,7 +16,7 @@ export default class EntryAbility extends UIAbility {
 
   onDestroy(): void {
 
-    // 清理Context管理器
+    // Clean up Context manager
     contextManager.clear();
 
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
@@ -26,7 +26,7 @@ export default class EntryAbility extends UIAbility {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
-    // 加载 MVVM 架构的页面
+    // Load MVVM architecture page
     windowStage.loadContent('pages/MccIndex', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));

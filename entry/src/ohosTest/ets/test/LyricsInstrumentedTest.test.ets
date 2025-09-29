@@ -11,10 +11,10 @@ import {
   KaraokeView,
   LogUtils,
   LyricModel,
-  LyricType,
   LyricsFileDownloader,
   LyricsFileDownloaderCallback,
   LyricsParser,
+  LyricType,
   Utils
 } from 'lyrics_view';
 

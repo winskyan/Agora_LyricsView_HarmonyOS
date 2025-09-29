@@ -1,6 +1,6 @@
 /**
- * 全局事件总线，用于组件间通信
- * 避免直接的组件引用依赖
+ * Global event bus for inter-component communication
+ * Avoids direct component reference dependencies
  */
 export class EventBus {
   private static instance: EventBus | null = null;
@@ -17,9 +17,9 @@ export class EventBus {
   }
 
   /**
-   * 订阅事件
-   * @param event 事件名称
-   * @param callback 回调函数
+   * Subscribe to an event
+   * @param event Event name
+   * @param callback Callback function
    */
   on(event: string, callback: Function): void {
     if (!this.listeners.has(event)) {
@@ -29,9 +29,9 @@ export class EventBus {
   }
 
   /**
-   * 取消订阅事件
-   * @param event 事件名称
-   * @param callback 回调函数
+   * Unsubscribe from an event
+   * @param event Event name
+   * @param callback Callback function
    */
   off(event: string, callback: Function): void {
     const callbacks = this.listeners.get(event);
@@ -44,9 +44,9 @@ export class EventBus {
   }
 
   /**
-   * 发布事件
-   * @param event 事件名称
-   * @param data 事件数据
+   * Emit an event
+   * @param event Event name
+   * @param data Event data
    */
   emit(event: string, ...data: Object[]): void {
     const callbacks = this.listeners.get(event);
@@ -62,7 +62,7 @@ export class EventBus {
   }
 
   /**
-   * 清除所有监听器
+   * Clear all listeners
    */
   clear(): void {
     this.listeners.clear();
@@ -70,53 +70,53 @@ export class EventBus {
 }
 
 /**
- * 歌词相关事件常量
+ * Lyrics-related event constants
  */
 export class LyricsEvents {
-  /** 设置歌词数据 */
+  /** Set lyrics data */
   static readonly SET_LYRIC_DATA = 'lyrics:setData';
-  /** 设置播放进度 */
+  /** Set playback progress */
   static readonly SET_PROGRESS = 'lyrics:setProgress';
-  /** 重置歌词状态 */
+  /** Reset lyrics state */
   static readonly RESET = 'lyrics:reset';
-  /** 请求刷新UI */
+  /** Request UI refresh */
   static readonly REQUEST_REFRESH = 'lyrics:requestRefresh';
-  /** 歌词拖拽开始 */
+  /** Lyrics drag start */
   static readonly DRAG_START = 'lyrics:dragStart';
-  /** 歌词拖拽结束 */
+  /** Lyrics drag end */
   static readonly DRAG_END = 'lyrics:dragEnd';
-  /** 歌词拖拽事件（兼容旧版本） */
+  /** Lyrics drag event (backward compatibility) */
   static readonly SEEK_PROGRESS = 'lyrics:seekProgress';
-  /** 销毁歌词组件 */
+  /** Destroy lyrics component */
   static readonly DESTROY = 'lyrics:destroy';
 }
 
 /**
- * 评分相关事件常量
+ * Scoring-related event constants
  */
 export class ScoringEvents {
-  /** 设置歌词数据 */
+  /** Set lyrics data */
   static readonly SET_LYRIC_DATA = 'scoring:setData';
-  /** 设置音高数据 */
+  /** Set pitch data */
   static readonly SET_PITCH = 'scoring:setPitch';
-  /** 设置播放进度 */
+  /** Set playback progress */
   static readonly SET_PROGRESS = 'scoring:setProgress';
-  /** 重置评分状态 */
+  /** Reset scoring state */
   static readonly RESET = 'scoring:reset';
-  /** 请求刷新UI */
+  /** Request UI refresh */
   static readonly REQUEST_REFRESH = 'scoring:requestRefresh';
-  /** 设置评分算法 */
+  /** Set scoring algorithm */
   static readonly SET_SCORING_ALGORITHM = 'scoring:setScoringAlgorithm';
-  /** 设置评分难度 */
+  /** Set scoring level */
   static readonly SET_SCORING_LEVEL = 'scoring:setScoringLevel';
-  /** 销毁评分组件 */
+  /** Destroy scoring component */
   static readonly DESTROY = 'scoring:destroy';
 }
 
 /**
- * 卡拉OK系统事件常量
+ * Karaoke system event constants
  */
 export class KaraokeEvents {
-  /** 销毁卡拉OK组件 */
+  /** Destroy karaoke component */
   static readonly DESTROY = 'karaoke:destroy';
 }

@@ -10,7 +10,7 @@ import { ZipUtils } from '../utils/ZipUtils';
 import { LyricsFileDownloaderCallback } from './LyricsFileDownloaderCallback';
 
 /**
- * 文件信息接口
+ * File information interface
  */
 interface FileInfo {
   name: string;
@@ -19,7 +19,7 @@ interface FileInfo {
 }
 
 /**
- * 下载请求回调实现类
+ * Download request callback implementation class
  */
 class DownloadRequestCallback implements RequestCallback {
   private requestId: number;
@@ -107,56 +107,56 @@ class DownloadRequestCallback implements RequestCallback {
 }
 
 /**
- * 歌词文件下载器 - HarmonyOS版本 (简化版)
- * 管理歌词文件的下载和缓存，使用ZipUtils处理ZIP文件解压
+ * Lyrics file downloader - HarmonyOS version (simplified)
+ * Manages lyrics file downloading and caching, uses ZipUtils for ZIP file extraction
  */
 export class LyricsFileDownloader {
   /**
-   * 单例实例
+   * Singleton instance
    */
   private static instance: LyricsFileDownloader | null = null;
   /**
-   * 应用上下文
+   * Application context
    */
   private readonly mContext: common.UIAbilityContext;
   /**
-   * 下载事件回调
+   * Download event callback
    */
   private mLyricsFileDownloaderCallback: LyricsFileDownloaderCallback | null = null;
   /**
-   * 缓存中保持的最大文件数
+   * Maximum number of files to keep in cache
    */
   private mMaxFileNum: number = 50;
   /**
-   * 缓存文件的最大存活时间（秒）
+   * Maximum file age in cache (seconds)
    */
-  private mMaxFileAge: number = 8 * 60 * 60; // 8小时
+  private mMaxFileAge: number = 8 * 60 * 60; // 8 hours
 
   /**
-   * 当前请求ID计数器
+   * Current request ID counter
    */
   private mRequestId: number = -1;
   /**
-   * 活跃下载映射表
+   * Active download mapping table
    */
   private readonly mLyricsDownloaderMap: Map<string, DownloadLyricModel> = new Map();
   /**
-   * 最大并发下载数
+   * Maximum concurrent downloads
    */
   private static readonly MAX_DOWNLOADER_NUM: number = 3;
 
   /**
-   * 私有构造函数，用于单例模式
-   * @param context 应用上下文
+   * Private constructor for singleton pattern
+   * @param context Application context
    */
   private constructor(context: common.UIAbilityContext) {
     this.mContext = context;
   }
 
   /**
-   * 获取LyricsFileDownloader的单例实例
-   * @param context 应用上下文
-   * @returns LyricsFileDownloader实例
+   * Gets the singleton instance of LyricsFileDownloader
+   * @param context Application context
+   * @returns LyricsFileDownloader instance
    */
   static getInstance(context: common.UIAbilityContext): LyricsFileDownloader {
     if (!LyricsFileDownloader.instance) {
@@ -166,16 +166,16 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 设置下载事件回调
-   * @param callback 回调实现
+   * Sets the download event callback
+   * @param callback Callback implementation
    */
   setLyricsFileDownloaderCallback(callback: LyricsFileDownloaderCallback): void {
     this.mLyricsFileDownloaderCallback = callback;
   }
 
   /**
-   * 设置缓存中保持的最大文件数
-   * @param maxFileNum 最大文件数
+   * Sets the maximum number of files to keep in cache
+   * @param maxFileNum Maximum file count
    */
   setMaxFileNum(maxFileNum: number): void {
     LogUtils.d(`LyricsFileDownloader:setMaxFileNum maxFileNum: ${maxFileNum}`);
@@ -187,8 +187,8 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 设置缓存文件的最大存活时间
-   * @param maxFileAge 最大文件存活时间（秒）
+   * Sets the maximum file age in cache
+   * @param maxFileAge Maximum file age (seconds)
    */
   setMaxFileAge(maxFileAge: number): void {
     LogUtils.d(`LyricsFileDownloader:setMaxFileAge maxFileAge: ${maxFileAge}`);
@@ -200,9 +200,9 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 开始下载歌词文件
-   * @param url 要下载的歌词文件URL
-   * @returns 下载任务的请求ID
+   * Starts downloading a lyrics file
+   * @param url URL of the lyrics file to download
+   * @returns Request ID of the download task
    */
   download(url: string): number {
     if (!this.mContext) {
@@ -216,7 +216,7 @@ export class LyricsFileDownloader {
 
     LogUtils.d(`LyricsFileDownloader:download url: ${url}`);
 
-    // 检查是否已在下载
+    // Check if already downloading
     if (this.mLyricsDownloaderMap.has(url)) {
       LogUtils.i('LyricsFileDownloader:download url is already downloading');
       const model = this.mLyricsDownloaderMap.get(url);
@@ -230,36 +230,36 @@ export class LyricsFileDownloader {
       }
     }
 
-    // 创建下载目录
+    // Create download directory
     const folder = `${this.mContext.cacheDir}/${Constants.LYRICS_FILE_DOWNLOAD_DIR}`;
     if (!fs.accessSync(folder)) {
       fs.mkdirSync(folder, true);
     }
 
-    // 生成请求ID
+    // Generate request ID
     if (this.mRequestId + 1 === Number.MAX_SAFE_INTEGER) {
       this.mRequestId = -1;
     }
     this.mRequestId++;
 
-    // 检查文件年龄
+    // Check file age
     this.checkFileAge(folder);
 
-    // 生成文件名
+    // Generate file name
     let urlFileName = url.substring(url.lastIndexOf('/') + 1);
     if (!urlFileName || urlFileName.trim().length === 0) {
       urlFileName = `${Date.now()}.${Constants.FILE_EXTENSION_ZIP}`;
     }
     const filePath = `${folder}/${urlFileName}`;
 
-    // 检查文件是否已存在
+    // Check if file already exists
     if (fs.accessSync(filePath)) {
       LogUtils.d(`LyricsFileDownloader:download ${filePath} exists`);
       this.handleDownloadedFile(this.mRequestId, filePath);
       return this.mRequestId;
     }
 
-    // 创建下载模型
+    // Create download model
     const model = new DownloadLyricModel();
     model.setUrl(url);
     model.setFilePath(filePath);
@@ -271,14 +271,14 @@ export class LyricsFileDownloader {
 
     const downloadRequestId = this.mRequestId;
 
-    // 开始下载
+    // Start download
     this.startDownload(downloadRequestId, url, filePath, request);
 
     return this.mRequestId;
   }
 
   /**
-   * 开始下载任务
+   * Starts the download task
    */
   private startDownload(requestId: number, url: string, filePath: string, request: HttpUrlRequest): void {
     LogUtils.d(`LyricsFileDownloader:startDownload requestId: ${requestId}, url: ${url}, saveTo: ${filePath}`);
@@ -301,7 +301,7 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 处理已下载的文件，包括必要时的解压
+   * Handles downloaded files, including extraction when necessary
    */
   private async handleDownloadedFile(requestId: number, filePath: string): Promise<void> {
     LogUtils.d(`LyricsFileDownloader:handleDownloadedFile requestId: ${requestId}, file: ${filePath}`);
@@ -312,7 +312,7 @@ export class LyricsFileDownloader {
     if (!fs.accessSync(filePath)) {
       LogUtils.e('LyricsFileDownloader:handleDownloadedFile file does not exist');
       this.notifyLyricsFileDownloadCompleted(requestId, null,
-        DownloadErrorDetail.createHttpDownloadError(Constants.ERROR_GENERAL, '文件不存在'));
+        DownloadErrorDetail.createHttpDownloadError(Constants.ERROR_GENERAL, 'File does not exist'));
       return;
     }
 
@@ -326,49 +326,49 @@ export class LyricsFileDownloader {
       await this.handleLyricsFile(requestId, filePath, false);
     } else {
       LogUtils.e('LyricsFileDownloader:handleDownloadedFile unknown file format and return directly');
-      const error = DownloadErrorDetail.createUnzipFailError('不支持的文件格式');
+      const error = DownloadErrorDetail.createUnzipFailError('Unsupported file format');
       error.setErrorCode(Constants.ERROR_UNZIP_ERROR);
       this.notifyLyricsFileDownloadCompleted(requestId, null, error);
     }
   }
 
   /**
-   * 处理ZIP文件解压 (使用ZipUtils)
+   * Handles ZIP file extraction (using ZipUtils)
    */
   private async handleZipFile(requestId: number, zipFilePath: string): Promise<void> {
     try {
       LogUtils.d('LyricsFileDownloader:handleZipFile processing ZIP file with ZipUtils');
 
-      // 创建临时目录
+      // Create temporary directory
       const tempFolder = `${this.mContext.cacheDir}/${Constants.LYRICS_FILE_TEMP_DIR}`;
       if (!fs.accessSync(tempFolder)) {
         fs.mkdirSync(tempFolder, true);
       }
 
-      // 使用ZipUtils解压文件
+      // Extract file using ZipUtils
       const result = await ZipUtils.extractZipFile(zipFilePath, tempFolder);
 
       if (result.success && result.data && result.fileName) {
         LogUtils.d(`LyricsFileDownloader:handleZipFile extraction successful, original content: ${result.isOriginalContent}`);
 
-        // 构建解压后的文件路径
+        // Build extracted file path
         const extractedFilePath = `${tempFolder}/${result.fileName}`;
 
-        // 处理解压后的歌词文件
+        // Handle extracted lyrics file
         await this.handleLyricsFile(requestId, extractedFilePath, true);
       } else {
-        throw new Error(result.error || 'ZIP解压失败');
+        throw new Error(result.error || 'ZIP extraction failed');
       }
 
     } catch (error) {
       LogUtils.e(`LyricsFileDownloader:handleZipFile error: ${error}`);
       this.notifyLyricsFileDownloadCompleted(requestId, null,
-        DownloadErrorDetail.createUnzipFailError(`ZIP解压失败: ${error}`));
+        DownloadErrorDetail.createUnzipFailError(`ZIP extraction failed: ${error}`));
     }
   }
 
   /**
-   * 处理歌词文件并通知完成
+   * Handles lyrics file and notifies completion
    */
   private async handleLyricsFile(requestId: number, lyricFilePath: string, deleteLyricsFile: boolean): Promise<void> {
     try {
@@ -384,12 +384,12 @@ export class LyricsFileDownloader {
     } catch (error) {
       LogUtils.e(`LyricsFileDownloader:handleLyricsFile error: ${error}`);
       this.notifyLyricsFileDownloadCompleted(requestId, null,
-        DownloadErrorDetail.createUnzipFailError(`处理歌词文件失败: ${error}`));
+        DownloadErrorDetail.createUnzipFailError(`Failed to process lyrics file: ${error}`));
     }
   }
 
   /**
-   * 检查文件是否为支持的歌词格式
+   * Checks if the file is a supported lyrics format
    */
   private isSupportLyricsFile(fileName: string): boolean {
     const lowerName = fileName.toLowerCase();
@@ -399,7 +399,7 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 获取文件扩展名
+   * Gets the file extension
    */
   private getFileExtension(fileName: string): string {
     const lastDot = fileName.lastIndexOf('.');
@@ -407,7 +407,7 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 检查并删除过期文件
+   * Checks and deletes expired files
    */
   private async checkFileAge(folder: string): Promise<void> {
     try {
@@ -438,7 +438,7 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 通知回调下载完成
+   * Notifies callback of download completion
    */
   private notifyLyricsFileDownloadCompleted(requestId: number, lyricFileData: Uint8Array | null,
     error: DownloadErrorDetail | null): void {
@@ -458,7 +458,7 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 检查并强制执行最大文件数限制
+   * Checks and enforces maximum file count limit
    */
   private checkMaxFileNum(): void {
     try {
@@ -492,7 +492,7 @@ export class LyricsFileDownloader {
         return;
       }
 
-      // 按修改时间排序，删除最旧的文件
+      // Sort by modification time, delete oldest files
       fileInfos.sort((a, b) => a.mtime - b.mtime);
 
       const filesToDelete = fileInfos.length - this.mMaxFileNum;
@@ -507,17 +507,17 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 尝试删除文件（如果没有正在下载）
+   * Attempts to delete a file (if not currently being downloaded)
    */
   private maybeDeleteFile(filePath: string): boolean {
     if (!fs.accessSync(filePath)) {
       return true;
     }
 
-    // 检查是否有正在下载到此文件的任务
+    // Check if there's an active download task for this file
     for (const model of this.mLyricsDownloaderMap.values()) {
       if (model && model.getFilePath() === filePath) {
-        return false; // 文件正在被下载，不能删除
+        return false; // File is being downloaded, cannot delete
       }
     }
 
@@ -531,7 +531,7 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 取消正在进行的下载
+   * Cancels an ongoing download
    */
   cancelDownload(requestId: number): void {
     if (!this.mContext) {
@@ -552,7 +552,7 @@ export class LyricsFileDownloader {
         }
         urlToRemove = url;
 
-        // 删除临时文件
+        // Delete temporary file
         const tempFilePath = model.getFilePath();
         if (fs.accessSync(tempFilePath)) {
           try {
@@ -571,7 +571,7 @@ export class LyricsFileDownloader {
   }
 
   /**
-   * 清理缓存中的所有下载文件
+   * Cleans all download files from cache
    */
   cleanAll(): void {
     if (!this.mContext) {

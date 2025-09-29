@@ -32,7 +32,7 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
 
   /**
    * Calculates a normalized score for the current pitch compared to the reference pitch
-   * 调用HarmonyOS Native C++算法实现 - 与Android版本完全一致
+   * Calls HarmonyOS Native C++ algorithm implementation - identical to Android version
    *
    * @param currentPitch    The current pitch detected from the user's voice
    * @param currentRefPitch The reference pitch from the song
@@ -40,22 +40,22 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
    */
   getPitchScore(currentPitch: number, currentRefPitch: number): number {
     try {
-      // 直接调用Native C++实现，与Android版本完全一致
+      // Directly call Native C++ implementation, identical to Android version
       return AIAlgorithmNative.calculatedScore(currentPitch, currentRefPitch, this.scoringLevel,
         this.scoringCompensationOffset);
     } catch (error) {
       LogUtils.d(`DefaultScoringAlgorithm: Native call failed, using fallback: ${error}`);
-      // 如果Native调用失败，使用TypeScript实现作为备用
+      // If Native call fails, use TypeScript implementation as fallback
       return this.calculatedScoreFallback(currentPitch, currentRefPitch, this.scoringLevel,
         this.scoringCompensationOffset);
     }
   }
 
   /**
-   * 将pitch值转换为音调值 - Native调用
+   * Converts pitch value to tone value - Native call
    *
-   * @param pitch 音调值
-   * @return 转换后的音调值
+   * @param pitch The pitch value
+   * @return The converted tone value
    */
   pitchToTone(pitch: number): number {
     try {
@@ -67,10 +67,10 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
   }
 
   /**
-   * 将pitch值转换为音调值 - TypeScript备用实现
+   * Converts pitch value to tone value - TypeScript fallback implementation
    *
-   * @param pitch 音调值
-   * @return 转换后的音调值
+   * @param pitch The pitch value
+   * @return The converted tone value
    */
   private pitchToToneFallback(pitch: number): number {
     const eps = 1e-6;
@@ -78,18 +78,18 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
   }
 
   /**
-   * 计算评分 - TypeScript备用实现
-   * 完全移植自C++算法
+   * Calculates score - TypeScript fallback implementation
+   * Completely ported from C++ algorithm
    *
-   * @param voicePitch 用户音调
-   * @param stdPitch 标准音调
-   * @param scoreLevel 评分等级 (0-100)
-   * @param scoreCompensationOffset 补偿偏移 (0-100)
-   * @return 计算得分 (0-100)
+   * @param voicePitch User's pitch
+   * @param stdPitch Standard pitch
+   * @param scoreLevel Scoring level (0-100)
+   * @param scoreCompensationOffset Compensation offset (0-100)
+   * @return Calculated score (0-100)
    */
   private calculatedScoreFallback(voicePitch: number, stdPitch: number, scoreLevel: number,
     scoreCompensationOffset: number): number {
-    // 输入验证 - 对应C++版本的验证逻辑
+    // Input validation - corresponds to C++ version validation logic
     if (voicePitch <= 0) {
       return 0;
     }
@@ -97,7 +97,7 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
       return 0;
     }
 
-    // 参数范围限制 - 对应C++版本的参数检查
+    // Parameter range limitation - corresponds to C++ version parameter checking
     if (scoreLevel <= 0) {
       scoreLevel = 1;
     } else if (scoreLevel > 100) {
@@ -110,17 +110,17 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
       scoreCompensationOffset = 100;
     }
 
-    // 转换为音调值 - 对应C++的pitchToToneC调用
+    // Convert to tone values - corresponds to C++ pitchToToneC call
     const stdTone = this.pitchToToneFallback(stdPitch);
     const voiceTone = this.pitchToToneFallback(voicePitch);
 
-    // 核心评分算法 - 完全对应C++版本的计算逻辑
+    // Core scoring algorithm - completely corresponds to C++ version calculation logic
     let match = 1 - (scoreLevel / 100) * Math.abs(voiceTone - stdTone) + (scoreCompensationOffset / 100);
     const rate = 1 + (scoreLevel / 50);
 
     match = match * 100 * rate;
 
-    // 结果范围限制 - 对应C++的min/max宏
+    // Result range limitation - corresponds to C++ min/max macros
     match = Math.max(0, match);
     match = Math.min(100, match);
 
@@ -128,13 +128,13 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
   }
 
   /**
-   * 处理音调补偿 - Native调用
-   * 八度音调补偿算法 v0.2
+   * Handles pitch compensation - Native call
+   * Octave pitch compensation algorithm v0.2
    *
-   * @param stdPitch 标准音调
-   * @param voicePitch 用户音调
-   * @param stdMaxPitch 最大标准音调
-   * @return 处理后的音调值
+   * @param stdPitch Standard pitch
+   * @param voicePitch User's pitch
+   * @param stdMaxPitch Maximum standard pitch
+   * @return Processed pitch value
    */
   handlePitch(stdPitch: number, voicePitch: number, stdMaxPitch: number): number {
     try {
@@ -146,13 +146,13 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
   }
 
   /**
-   * 处理音调补偿 - TypeScript备用实现
-   * 八度音调补偿算法 v0.2
+   * Handles pitch compensation - TypeScript fallback implementation
+   * Octave pitch compensation algorithm v0.2
    *
-   * @param stdPitch 标准音调
-   * @param voicePitch 用户音调
-   * @param stdMaxPitch 最大标准音调
-   * @return 处理后的音调值
+   * @param stdPitch Standard pitch
+   * @param voicePitch User's pitch
+   * @param stdMaxPitch Maximum standard pitch
+   * @return Processed pitch value
    */
   private handlePitchFallback(stdPitch: number, voicePitch: number, stdMaxPitch: number): number {
     let cnt = 0;
@@ -160,7 +160,7 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
     let voiceTone = this.pitchToToneFallback(voicePitch);
     let adjustedVoicePitch = voicePitch;
 
-    // 输入验证
+    // Input validation
     if (voicePitch <= 0) {
       return 0;
     }
@@ -168,11 +168,11 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
       return 0;
     }
 
-    // 如果音调差异在6个半音以内，直接返回
+    // If tone difference is within 6 semitones, return directly
     if (Math.abs(voiceTone - stdTone) <= 6) {
       return adjustedVoicePitch;
     } else if (adjustedVoicePitch < stdPitch) {
-      // 用户音调过低，尝试倍频补偿
+      // User's pitch is too low, try frequency doubling compensation
       for (cnt = 0; cnt < 11; cnt++) {
         adjustedVoicePitch = 2 * adjustedVoicePitch;
         voiceTone = this.pitchToToneFallback(adjustedVoicePitch);
@@ -181,7 +181,7 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
         }
       }
     } else if (adjustedVoicePitch > stdPitch) {
-      // 用户音调过高，尝试降频补偿
+      // User's pitch is too high, try frequency halving compensation
       for (cnt = 0; cnt < 11; cnt++) {
         adjustedVoicePitch = adjustedVoicePitch / 2;
         voiceTone = this.pitchToToneFallback(adjustedVoicePitch);
@@ -195,7 +195,7 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
   }
 
   /**
-   * 重置算法状态 - Native调用
+   * Resets algorithm state - Native call
    */
   reset(): void {
     try {
@@ -207,14 +207,14 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
   }
 
   /**
-   * 测试Native连接
-   * 用于验证C++模块是否正常工作
+   * Tests Native connection
+   * Used to verify if C++ module is working properly
    */
   testNativeConnection(): boolean {
     try {
       const result = AIAlgorithmNative.testConnection();
       LogUtils.d(`DefaultScoringAlgorithm: Native test result: ${result}`);
-      return result === 3; // add(1, 2) 应该返回 3
+      return result === 3; // add(1, 2) should return 3
     } catch (error) {
       LogUtils.d(`DefaultScoringAlgorithm: Native test failed: ${error}`);
       return false;
@@ -242,23 +242,23 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
     let totalScoreForTone = 0;
     let scoreCountForTone = 0;
 
-    // 遍历所有音调数据点
+    // Iterate through all tone data points
     for (const entry of pitchesForLine.entries()) {
       const timestamp = entry[0];
       const score = entry[1];
-      // 找到对应的音调段
+      // Find the corresponding tone segment
       while (toneIndex < tones.length) {
         const currentTone = tones[toneIndex];
 
         if (timestamp >= currentTone.begin && timestamp <= currentTone.end) {
-          // 当前时间戳属于这个音调段
+          // Current timestamp belongs to this tone segment
           if (score >= 0) {
             totalScoreForTone += score;
             scoreCountForTone++;
           }
           break;
         } else if (timestamp > currentTone.end) {
-          // 当前音调段结束，保存得分并移动到下一个音调段
+          // Current tone segment ends, save score and move to next tone segment
           if (scoreCountForTone > 0) {
             toneScoresMap.set(currentTone, totalScoreForTone / scoreCountForTone);
           } else {
@@ -269,13 +269,13 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
           totalScoreForTone = 0;
           scoreCountForTone = 0;
         } else {
-          // 时间戳还没到当前音调段
+          // Timestamp hasn't reached current tone segment yet
           break;
         }
       }
     }
 
-    // 处理最后一个音调段
+    // Handle the last tone segment
     if (toneIndex < tones.length) {
       const currentTone = tones[toneIndex];
       if (scoreCountForTone > 0) {
@@ -285,7 +285,7 @@ export class DefaultScoringAlgorithm implements IScoringAlgorithm {
       }
     }
 
-    // 计算整行的平均得分
+    // Calculate average score for the entire line
     if (toneScoresMap.size > 0) {
       let totalScoreForThisLine = 0;
       for (const score of toneScoresMap.values()) {

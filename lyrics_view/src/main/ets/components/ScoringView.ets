@@ -8,13 +8,12 @@ import { EventBus, ScoringEvents } from '../utils/EventBus';
 import { LogUtils } from '../utils/LogUtils';
 
 /**
- * 评分显示组件 - HarmonyOS版本 (ArkUI V2)
- * 对应Android项目中的ScoringView
- * 用于显示卡拉OK评分信息和音调可视化
+ * Scoring display component - HarmonyOS version (ArkUI V2)
+ * Used to display karaoke scoring information and pitch visualization
  */
 @ComponentV2
 export struct ScoringView {
-  @Param viewBackgroundColor: string = '#ffffbb33'; // 可配置的背景颜色
+  @Param viewBackgroundColor: string = '#ffffbb33'; // Configurable background color
   @Param leadingLinesColor: string = '#4DFFFFFF'
   @Param leadingLinesHeight: number = 1
   @Param pitchIndicatorColor: string = '#F0F0F0F0';
@@ -30,62 +29,62 @@ export struct ScoringView {
   @Param hitScoreThreshold: number = 0.7;
   @Param startPointHorizontalBias: number = 0.4;
   @Param enableParticleEffect: boolean = true;
-  // 移除时间补偿机制 - 应该从根本原因解决同步问题
-  // 状态变量
+  // Remove time compensation mechanism - should solve synchronization issues from root cause
+  // State variables
   @Local currentScore: number = 0;
   @Local cumulativeScore: number = 0;
-  @Local localPitch: number = 0; // 原始输入的pitch值（可能有抖动）
+  @Local localPitch: number = 0; // Raw input pitch value (may have jitter)
   @Local inHighlightStatus: boolean = false;
-  @Local animatedPitch: number = 0; // 平滑后的pitch值（用于UI显示）
+  @Local animatedPitch: number = 0; // Smoothed pitch value (used for UI display)
   @Local animatedProgressMs: number = 0;
   @Local preHighlightStatus: boolean = false;
-  // 用于跟踪pitch状态变化，实现立即响应逻辑
+  // Used to track pitch state changes for immediate response logic
   private lastLocalPitch: number = 0;
-  // 着色相关状态 - 对应Android版本
-  private pitchHighlightedTime: number = -1; // 当前着色开始时间
-  // UI布局相关
+  // Highlighting related state - corresponding to Android version
+  private pitchHighlightedTime: number = -1; // Current highlighting start time
+  // UI layout related
   @Local centerXOfStartPoint: number = 0;
   @Local viewWidth: number = 0;
   @Local viewHeight: number = 0;
-  @Local pitchIndicatorY: number = 0; // 音调指示器的Y坐标
-  @Local pitchSticks: PitchStickData[] = []; // 当前可见的pitch条数据
-  // 粒子系统相关
+  @Local pitchIndicatorY: number = 0; // Y coordinate of pitch indicator
+  @Local pitchSticks: PitchStickData[] = []; // Currently visible pitch stick data
+  // Particle system related
   @Local particleSystem: ParticleSystem | null = null;
   private emittingInitialized: boolean = false;
-  // 内部变量
+  // Internal variables
   private eventBus: EventBus = EventBus.getInstance();
   private scoringMachine: ScoringMachine | null = null;
   private frameLoopRunning: boolean = false;
   private frameTimer: number = -1;
 
   build() {
-    // 主要的音调可视化区域 - 使用相对布局而非绝对定位
+    // Main pitch visualization area - using relative layout instead of absolute positioning
     Stack({ alignContent: Alignment.TopStart }) {
-      // 第1层：背景线条（最底层）
+      // Layer 1: Background lines (bottom layer)
       this.buildBackgroundLines()
 
-      // 第2层：渐变遮罩区域（在背景线条之上，在起始线之下）
+      // Layer 2: Gradient mask area (above background lines, below start line)
       this.buildOverPastWall()
 
-      // 第3层：竖直起始线（最上层，确保可见）
+      // Layer 3: Vertical start line (top layer, ensure visibility)
       this.buildStartLine()
 
-      // 参考音调条（根据歌词pitch数据）
+      // Reference pitch sticks (based on lyrics pitch data)
       this.buildPitchSticks()
 
-      // 用户音调指示器
+      // User pitch indicator
       this.buildLocalPitchIndicator()
 
-      // 粒子效果层（最顶层）
+      // Particle effect layer (topmost layer)
       if (this.enableParticleEffect && this.particleSystem) {
         ParticleRenderer({ particleSystem: this.particleSystem })
       }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.viewBackgroundColor) // 可配置的背景颜色，默认#ffffbb33
+    .backgroundColor(this.viewBackgroundColor) // Configurable background color, default #ffffbb33
     .onAreaChange((oldValue: Area, newValue: Area) => {
-      // 更新视图尺寸和计算起始点位置
+      // Update view dimensions and calculate start point position
       this.viewWidth = Number(newValue.width);
       this.viewHeight = Number(newValue.height);
       this.centerXOfStartPoint = this.viewWidth * this.startPointHorizontalBias;
@@ -104,15 +103,15 @@ export struct ScoringView {
   }
 
   /**
-   * 构建背景线条 - 使用相对布局，不依赖绝对坐标
+   * Build background lines - using relative layout, not dependent on absolute coordinates
    */
   @Builder
   buildBackgroundLines() {
-    // 方案1：使用Column + justifyContent均匀分布
+    // Solution 1: Use Column + justifyContent for even distribution
     Column() {
-      // 6条线，创建5个等分区域
+      // 6 lines, create 5 equal sections
       Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
-      Blank() // 自动填充空间
+      Blank() // Auto-fill space
       Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
       Blank()
       Line().width('100%').height(this.leadingLinesHeight).backgroundColor(this.leadingLinesColor)
@@ -125,12 +124,12 @@ export struct ScoringView {
     }
     .width('100%')
     .height('100%')
-    .justifyContent(FlexAlign.SpaceBetween) // 均匀分布
+    .justifyContent(FlexAlign.SpaceBetween) // Even distribution
   }
 
   /**
-   * 构建渐变遮罩墙 - 对应Android的drawOverPastWall
-   * 从mCenterXOfStartPoint到左边界的线性渐变
+   * Build gradient mask wall - corresponding to Android's drawOverPastWall
+   * Linear gradient from mCenterXOfStartPoint to left boundary
    */
   @Builder
   buildOverPastWall() {
@@ -139,10 +138,10 @@ export struct ScoringView {
         .width(this.centerXOfStartPoint)
         .height('100%')
         .linearGradient({
-          direction: GradientDirection.Right, // 从左到右的渐变
+          direction: GradientDirection.Right, // Left to right gradient
           colors: [
-            ['#1F24C6FF', 0], // 左边界
-            ['#00FFFFFF', 1]// 右边界
+            ['#1F24C6FF', 0], // Left boundary
+            ['#00FFFFFF', 1]// Right boundary
           ]
         })
         .position({ x: 0, y: 0 })
@@ -151,8 +150,8 @@ export struct ScoringView {
   }
 
   /**
-   * 构建起始线 - 对应Android的drawStartLine
-   * 在mCenterXOfStartPoint位置绘制竖直线，使用pitchIndicatorColor
+   * Build start line - corresponding to Android's drawStartLine
+   * Draw vertical line at mCenterXOfStartPoint position, using pitchIndicatorColor
    */
   @Builder
   buildStartLine() {
@@ -160,29 +159,29 @@ export struct ScoringView {
       Line()
         .startPoint([this.centerXOfStartPoint, 0])
         .endPoint([this.centerXOfStartPoint, this.viewHeight])
-        .stroke(this.pitchIndicatorColor) // 使用pitchIndicatorColor，对应Android实现
+        .stroke(this.pitchIndicatorColor) // Use pitchIndicatorColor, corresponding to Android implementation
         .strokeWidth(this.pitchIndicatorWidth)
     }
   }
 
   /**
-   * 构建音调条 - 对应Android的drawPitchSticks
-   * 根据歌词pitch数据和当前进度动态绘制音调条，支持分段着色
+   * Build pitch sticks - corresponding to Android's drawPitchSticks
+   * Dynamically draw pitch sticks based on lyrics pitch data and current progress, supporting segmented coloring
    */
   @Builder
   buildPitchSticks() {
     if (this.viewWidth > 0 && this.viewHeight > 0 && this.pitchSticks.length > 0) {
-      // 使用ForEach渲染所有可见的pitch条
+      // Use ForEach to render all visible pitch sticks
       ForEach(this.pitchSticks, (stick: PitchStickData, index: number) => {
         Stack() {
-          // 1. 绘制基础pitch条（默认颜色）
+          // 1. Draw basic pitch stick (default color)
           Rect()
             .width(stick.width)
             .height(stick.height)
             .fill(this.refPitchStickDefaultColor)
             .borderRadius(this.pitchStickRadius)
 
-          // 2. 绘制已着色的段落（对应Android的highlightPartMap逻辑）
+          // 2. Draw highlighted segments (corresponding to Android's highlightPartMap logic)
           ForEach(stick.highlightSegments, (segment: HighlightSegment, segIndex: number) => {
             Rect()
               .width(segment.endX - segment.startX)
@@ -190,12 +189,12 @@ export struct ScoringView {
               .fill(this.highlightedPitchStickColor)
               .borderRadius(this.pitchStickRadius)
               .position({
-                x: segment.startX - stick.x, // 相对于stick的位置
+                x: segment.startX - stick.x, // Position relative to stick
                 y: 0
               })
           }, (segment: HighlightSegment, segIndex: number) => `highlight_${index}_${segIndex}_${segment.startTime}`)
 
-          // 3. 绘制当前正在着色的部分（实时着色）
+          // 3. Draw currently highlighting part (real-time highlighting)
           if (stick.isCurrentPitch && stick.isHighlighted) {
             Rect()
               .width(this.calculateCurrentHighlightWidth(stick))
@@ -217,13 +216,13 @@ export struct ScoringView {
   }
 
   /**
-   * 构建用户音调指示器 - 对应Android的drawLocalPitchIndicator
-   * 在起始线位置绘制圆形指示器，Y坐标根据当前音调计算
+   * Build user pitch indicator - corresponding to Android's drawLocalPitchIndicator
+   * Draw circular indicator at start line position, Y coordinate calculated based on current pitch
    */
   @Builder
   buildLocalPitchIndicator() {
     if (this.centerXOfStartPoint > 0 && this.viewWidth > 0 && this.viewHeight > 0 && this.pitchIndicatorY >= 0) {
-      // 使用Circle作为音调指示器，位置在起始线上，Y坐标根据pitch计算
+      // Use Circle as pitch indicator, positioned on start line, Y coordinate calculated based on pitch
       Circle({ width: this.localPitchIndicatorRadius * 2, height: this.localPitchIndicatorRadius * 2 })
         .fill(this.localPitchIndicatorColor)
         .strokeWidth(2)
@@ -235,49 +234,49 @@ export struct ScoringView {
   }
 
   /**
-   * 计算音调指示器的Y坐标 - 对应Android的getYForPitchIndicator
-   * 根据当前音调值和音调范围计算在视图中的Y位置
+   * Calculate Y coordinate of pitch indicator - corresponding to Android's getYForPitchIndicator
+   * Calculate Y position in view based on current pitch value and pitch range
    */
   private calculateYForPitchIndicator(): number {
     let targetY = 0;
 
     if (this.scoringMachine == null || !this.scoringMachine.isReady()) {
-      // 未初始化时，指示器在底部
+      // When not initialized, indicator at bottom
       targetY = this.viewHeight - this.localPitchIndicatorRadius;
     } else if (this.animatedPitch >= this.scoringMachine.getMinimumRefPitch() &&
       this.scoringMachine.getMaximumRefPitch() != 0) {
-      // 有有效音调值时，根据音调范围计算位置
+      // When there's valid pitch value, calculate position based on pitch range
       const realPitchMax = this.scoringMachine.getMaximumRefPitch() + 5;
       const realPitchMin = this.scoringMachine.getMinimumRefPitch() - 5;
       const itemHeightPerPitchLevel = this.viewHeight / (realPitchMax - realPitchMin);
       targetY = (realPitchMax - this.animatedPitch) * itemHeightPerPitchLevel;
     } else if (this.animatedPitch < this.scoringMachine.getMinimumRefPitch()) {
-      // 音调过低时，指示器在底部
+      // When pitch is too low, indicator at bottom
       targetY = this.viewHeight;
     } else {
-      // 音调过高时，指示器在顶部
+      // When pitch is too high, indicator at top
       targetY = 0;
     }
 
-    // 🎯 严格的边界限制，确保pitch小球不会跑到屏幕外面
-    const minY = this.localPitchIndicatorRadius; // 顶部边界，考虑小球半径
-    const maxY = this.viewHeight - this.localPitchIndicatorRadius; // 底部边界，考虑小球半径
+    // 🎯 Strict boundary limits to ensure pitch ball doesn't go outside screen
+    const minY = this.localPitchIndicatorRadius; // Top boundary, considering ball radius
+    const maxY = this.viewHeight - this.localPitchIndicatorRadius; // Bottom boundary, considering ball radius
     targetY = Math.max(minY, Math.min(maxY, targetY));
 
     return targetY;
   }
 
   /**
-   * 获取渲染进度 - 对应Android的getRenderProgressMs()
-   * 使用平滑的animatedProgressMs用于动画效果
+   * Get render progress - corresponding to Android's getRenderProgressMs()
+   * Use smooth animatedProgressMs for animation effects
    */
   private getRenderProgressMs(): number {
     return Math.round(this.animatedProgressMs);
   }
 
   /**
-   * 获取实时播放进度 - 用于pitch条位置计算
-   * 不使用平滑处理，确保时序准确
+   * Get real-time playback progress - used for pitch stick position calculation
+   * No smoothing to ensure timing accuracy
    */
   private getRealTimeProgressMs(): number {
     if (this.scoringMachine) {
@@ -287,19 +286,19 @@ export struct ScoringView {
   }
 
   /**
-   * 设置事件监听器
+   * Set up event listeners
    */
   private setupEventListeners(): void {
     LogUtils.d('ScoringView: Setting up event listeners');
 
-    // 初始化ScoringMachine
+    // Initialize ScoringMachine
     this.initScoringMachine();
 
-    // 监听歌词数据设置事件
+    // Listen to lyric data setting event
     this.eventBus.on(ScoringEvents.SET_LYRIC_DATA, (lyricModel: LyricModel, usingInternalScoring: boolean) => {
       if (this.scoringMachine) {
         this.scoringMachine.prepare(lyricModel, usingInternalScoring);
-        // 启动帧循环用于动画更新
+        // Start frame loop for animation updates
         this.startFrameLoopIfNeeded();
         LogUtils.d(`ScoringView: Lyric data prepared in ScoringMachine with usingInternalScoring: ${usingInternalScoring}`);
       } else {
@@ -313,14 +312,14 @@ export struct ScoringView {
       }
     });
 
-    // 监听音高数据设置事件
+    // Listen to pitch data setting event
     this.eventBus.on(ScoringEvents.SET_PITCH, (speakerPitch: number, pitchScore: number) => {
       if (this.scoringMachine) {
         this.scoringMachine.setPitch(speakerPitch, pitchScore);
       }
     });
 
-    // 监听评分算法设置事件
+    // Listen to scoring algorithm setting event
     this.eventBus.on(ScoringEvents.SET_SCORING_ALGORITHM, (algorithm: IScoringAlgorithm) => {
       LogUtils.d('ScoringView: Received SET_SCORING_ALGORITHM event');
       if (this.scoringMachine) {
@@ -331,7 +330,7 @@ export struct ScoringView {
       }
     });
 
-    // 监听评分难度设置事件
+    // Listen to scoring level setting event
     this.eventBus.on(ScoringEvents.SET_SCORING_LEVEL, (level: number) => {
       LogUtils.d(`ScoringView: Received SET_SCORING_LEVEL event, level: ${level}`);
       if (this.scoringMachine) {
@@ -342,7 +341,7 @@ export struct ScoringView {
       }
     });
 
-    // 监听重置事件
+    // Listen to reset event
     this.eventBus.on(ScoringEvents.RESET, () => {
       LogUtils.d('ScoringView: Received RESET event');
       if (this.scoringMachine) {
@@ -353,7 +352,7 @@ export struct ScoringView {
   }
 
   /**
-   * 移除事件监听器
+   * Remove event listeners
    */
   private removeEventListeners(): void {
     LogUtils.d('ScoringView: Removing event listeners');
@@ -361,14 +360,14 @@ export struct ScoringView {
   }
 
   /**
-   * 初始化ScoringMachine
+   * Initialize ScoringMachine
    */
   private initScoringMachine(): void {
     if (!this.scoringMachine) {
       LogUtils.d('ScoringView: Creating new ScoringMachine');
 
       /**
-       * ScoringMachine监听器实现类
+       * ScoringMachine listener implementation class
        */
       class ScoringViewListener implements OnScoringListener {
         private scoringView: ScoringView;
@@ -400,7 +399,7 @@ export struct ScoringView {
       const listener = new ScoringViewListener(this);
       this.scoringMachine = new ScoringMachine(listener);
 
-      // 设置初始分数
+      // Set initial score
       this.scoringMachine.setInitialScore(this.initialScore);
 
       LogUtils.d('ScoringView: ScoringMachine created successfully');
@@ -411,7 +410,7 @@ export struct ScoringView {
   }
 
   /**
-   * 处理行完成事件
+   * Handle line finished event
    */
   handleLineFinished(score: number, cumulativeScore: number): void {
     this.currentScore = score;
@@ -420,7 +419,7 @@ export struct ScoringView {
   }
 
   /**
-   * 启动帧循环（用于动画更新）
+   * Start frame loop (for animation updates)
    */
   private startFrameLoopIfNeeded(): void {
     if (this.frameLoopRunning) {
@@ -434,57 +433,57 @@ export struct ScoringView {
         return;
       }
 
-      // 指数平滑算法 - 完全对应Android版本的实现
-      // 对应Java: float tauMs = 120f; float alpha = 1f - (float) Math.exp(-dtMs / tauMs);
-      const tauMs = 120; // 平滑常数，对应Java版本的120f
-      const dtMs = 16; // 帧间隔16ms (60fps)
+      // Exponential smoothing algorithm - fully corresponding to Android version implementation
+      // Corresponding to Java: float tauMs = 120f; float alpha = 1f - (float) Math.exp(-dtMs / tauMs);
+      const tauMs = 120; // Smoothing constant, corresponding to Java version's 120f
+      const dtMs = 16; // Frame interval 16ms (60fps)
       const alpha = 1 - Math.exp(-dtMs / tauMs);
 
-      // 智能pitch更新：只对从无声到有声立即响应，其他情况使用平滑动画
+      // Smart pitch update: immediate response only for silent to voiced, other cases use smooth animation
       const oldAnimatedPitch = this.animatedPitch;
       const wasZero = this.lastLocalPitch === 0;
       const isZero = this.localPitch === 0;
       const isNonZero = this.localPitch !== 0;
 
       if (wasZero && isNonZero) {
-        // 立即响应：从0到非0（确保着色立即开始）
+        // Immediate response: from 0 to non-0 (ensure highlighting starts immediately)
         this.animatedPitch = this.localPitch;
       } else {
-        // 平滑动画：所有其他情况，包括从有值到0（让结尾更平滑）
+        // Smooth animation: all other cases, including from value to 0 (make ending smoother)
         this.animatedPitch = this.animatedPitch + (this.localPitch - this.animatedPitch) * alpha;
       }
 
-      // 更新上一次的pitch值用于下次判断
+      // Update last pitch value for next judgment
       this.lastLocalPitch = this.localPitch;
 
-      // 更新音调指示器的Y坐标
+      // Update Y coordinate of pitch indicator
       this.pitchIndicatorY = this.calculateYForPitchIndicator();
 
-      // 更新pitch条数据
+      // Update pitch stick data
       this.updatePitchSticks();
 
-      // 更新粒子发射点位置
+      // Update particle emission point position
       this.updateParticleEmissionPoint();
 
-      // 平滑更新动画进度
+      // Smoothly update animation progress
       if (this.scoringMachine) {
         const machineProgress = this.scoringMachine.getCurrentPitchProgress();
         if (Math.abs(this.animatedProgressMs - machineProgress) > 2000) {
-          this.animatedProgressMs = machineProgress; // 大跳跃时直接设置
+          this.animatedProgressMs = machineProgress; // Direct setting for large jumps
         } else {
           this.animatedProgressMs = this.animatedProgressMs + (machineProgress - this.animatedProgressMs) * alpha;
         }
       }
 
-      // 继续下一帧
-      this.frameTimer = setTimeout(frameLoop, 16); // 约60fps
+      // Continue to next frame
+      this.frameTimer = setTimeout(frameLoop, 16); // About 60fps
     };
 
     frameLoop();
   }
 
   /**
-   * 停止帧循环
+   * Stop frame loop
    */
   private stopFrameLoop(): void {
     this.frameLoopRunning = false;
@@ -495,12 +494,12 @@ export struct ScoringView {
   }
 
   /**
-   * 重置评分显示
+   * Reset scoring display
    */
   reset(): void {
     LogUtils.d('ScoringView: Resetting all state variables');
 
-    // 重置基本状态
+    // Reset basic state
     this.localPitch = 0;
     this.animatedPitch = 0;
     this.animatedProgressMs = 0;
@@ -509,21 +508,21 @@ export struct ScoringView {
     this.currentScore = 0;
     this.cumulativeScore = 0;
     this.pitchSticks = [];
-    this.lastLocalPitch = 0; // 重置pitch状态跟踪
+    this.lastLocalPitch = 0; // Reset pitch state tracking
 
-    // 重置着色相关状态
+    // Reset highlighting related state
     this.pitchHighlightedTime = -1;
 
-    // 重置UI位置状态
+    // Reset UI position state
     this.pitchIndicatorY = 0;
 
-    // 重置粒子系统状态
+    // Reset particle system state
     this.emittingInitialized = false;
     if (this.particleSystem) {
-      this.particleSystem.stopEmitting(); // 停止粒子发射
+      this.particleSystem.stopEmitting(); // Stop particle emission
     }
 
-    // 重置评分机器状态
+    // Reset scoring machine state
     if (this.scoringMachine) {
       this.scoringMachine.reset();
     }
@@ -532,50 +531,50 @@ export struct ScoringView {
   }
 
   /**
-   * 更新音调和得分 - 对应Android的updatePitchAndScore
-   * 智能更新pitch值：立即响应0值变化，其他情况由帧循环平滑处理
+   * Update pitch and score - corresponding to Android's updatePitchAndScore
+   * Smart pitch value update: immediate response to 0 value changes, other cases smoothly handled by frame loop
    */
   updatePitchAndScore(pitch: number, score: number): void {
     const oldLocalPitch = this.localPitch;
     this.localPitch = pitch;
 
-    // 检查是否需要立即更新Y坐标（只对从无声到有声立即响应）
+    // Check if immediate Y coordinate update is needed (immediate response only for silent to voiced)
     const wasZero = oldLocalPitch === 0;
     const isNonZero = pitch !== 0;
 
     if (wasZero && isNonZero) {
-      // 立即更新animatedPitch和Y坐标，确保着色逻辑能立即响应
+      // Immediately update animatedPitch and Y coordinate to ensure highlighting logic can respond immediately
       this.animatedPitch = pitch;
       this.pitchIndicatorY = this.calculateYForPitchIndicator();
       this.lastLocalPitch = pitch;
 
-      // 重置着色状态，确保新的演唱周期能正确开始
+      // Reset highlighting state to ensure new singing cycle can start correctly
       this.preHighlightStatus = false;
       this.pitchHighlightedTime = -1;
 
-      // 立即触发pitch条数据更新，确保着色能立即生效
+      // Immediately trigger pitch stick data update to ensure highlighting can take effect immediately
       this.updatePitchSticks();
     }
 
-    // 基于外部传入的score设置着色状态（对应Android逻辑）
+    // Set highlighting state based on externally passed score (corresponding to Android logic)
     this.inHighlightStatus = score >= this.hitScoreThreshold * 100;
 
-    // 基于外部传入的score确保粒子动画（对应Android的assureAnimationForPitchIndicator）
+    // Ensure particle animation based on externally passed score (corresponding to Android's assureAnimationForPitchIndicator)
     this.assureParticleAnimation(score);
 
     this.startFrameLoopIfNeeded();
   }
 
   /**
-   * 计算当前着色段的宽度 - 对应Android的实时着色逻辑
+   * Calculate current highlight segment width - corresponding to Android's real-time highlighting logic
    */
   private calculateCurrentHighlightWidth(stick: PitchStickData): number {
     if (this.pitchHighlightedTime === -1) {
       return 0;
     }
 
-    // 对应Android的40ms一段着色逻辑
-    const INTERVAL_AUDIO_PCM = 40; // 40ms间隔
+    // Corresponding to Android's 40ms segment highlighting logic
+    const INTERVAL_AUDIO_PCM = 40; // 40ms interval
     const realTimeProgress = this.getRealTimeProgressMs();
     const highlightEndX = this.centerXOfStartPoint - this.movingPixelsPerMs * INTERVAL_AUDIO_PCM;
     const highlightStartX =
@@ -585,7 +584,7 @@ export struct ScoringView {
   }
 
   /**
-   * 计算当前着色段的起始X坐标
+   * Calculate current highlight segment start X coordinate
    */
   private calculateCurrentHighlightStartX(stick: PitchStickData): number {
     if (this.pitchHighlightedTime === -1) {
@@ -597,8 +596,8 @@ export struct ScoringView {
   }
 
   /**
-   * 更新pitch条数据 - 对应Android的drawPitchSticks逻辑
-   * 实现分段着色和持久着色效果
+   * Update pitch stick data - corresponding to Android's drawPitchSticks logic
+   * Implement segmented highlighting and persistent highlighting effects
    */
   private updatePitchSticks(): void {
     if (!this.scoringMachine) {
@@ -633,7 +632,7 @@ export struct ScoringView {
 
     const newPitchSticks: PitchStickData[] = [];
 
-    // 遍历所有pitch行
+    // Iterate through all pitch lines
     for (let i = 0; i < pitchLines.length; i++) {
       const line = pitchLines[i];
       const pitches = line.pitches;
@@ -642,30 +641,30 @@ export struct ScoringView {
         continue;
       }
 
-      // 检查是否在可见范围内
+      // Check if within visible range
       const lineStartTime = line.getStartTime();
       const lineEndTime = line.getEndTime();
 
       if (Math.abs(renderProgress - lineEndTime) * this.movingPixelsPerMs >= this.viewWidth &&
         Math.abs(renderProgress - lineStartTime) * this.movingPixelsPerMs >= this.viewWidth &&
         !(renderProgress >= lineStartTime && renderProgress <= lineEndTime)) {
-        continue; // 不在可见范围内
+        continue; // Not within visible range
       }
 
-      // 遍历该行的所有pitch
+      // Iterate through all pitches in this line
       for (let pitchIndex = 0; pitchIndex < pitches.length; pitchIndex++) {
         const pitch = pitches[pitchIndex];
 
-        // 计算pitch条的X坐标和宽度（使用实时进度确保与歌词时序同步）
+        // Calculate pitch stick X coordinate and width (use real-time progress to ensure synchronization with lyrics timing)
         const realTimeProgress = this.getRealTimeProgressMs();
         const pixelsAwayFromPilot = (pitch.begin - realTimeProgress) * this.movingPixelsPerMs;
         const x = this.centerXOfStartPoint + pixelsAwayFromPilot;
         const width = this.movingPixelsPerMs * pitch.getDuration();
         const endX = x + width;
 
-        // 视口裁剪：跳过不可见的pitch条
+        // Viewport clipping: skip invisible pitch sticks
         if (endX <= 0) {
-          // 当pitch条移出屏幕时，重置高亮状态
+          // When pitch stick moves off screen, reset highlight state
           pitch.resetHighlight();
           continue;
         }
@@ -673,19 +672,19 @@ export struct ScoringView {
           break;
         }
 
-        // 计算Y坐标
+        // Calculate Y coordinate
         const y = (realPitchMax - pitch.pitch) * stickHeightPerPitchLevel;
 
-        // 判断是否为当前正在演唱的pitch（使用实时进度确保时序准确）
+        // Determine if it's the currently singing pitch (use real-time progress to ensure timing accuracy)
         const isCurrentPitch = realTimeProgress >= pitch.begin && realTimeProgress <= pitch.end;
 
-        // 处理着色逻辑 - 对应Android的highlightPartMap逻辑（使用实时进度）
+        // Handle highlighting logic - corresponding to Android's highlightPartMap logic (use real-time progress)
         this.processHighlightLogic(pitch, isCurrentPitch, realTimeProgress);
 
-        // 构建着色段数据（使用实时进度确保时序一致）
+        // Build highlight segment data (use real-time progress to ensure timing consistency)
         const highlightSegments = this.buildHighlightSegments(pitch, realTimeProgress, x, width);
 
-        // 判断是否高亮（基于演唱状态）
+        // Determine if highlighted (based on singing state)
         const isHighlighted = isCurrentPitch && this.inHighlightStatus;
 
         newPitchSticks.push({
@@ -705,13 +704,13 @@ export struct ScoringView {
   }
 
   /**
-   * 处理着色逻辑 - 对应Android的highlightPartMap处理
+   * Process highlighting logic - corresponding to Android's highlightPartMap handling
    */
   private processHighlightLogic(pitch: Pitch, isCurrentPitch: boolean, realTimeProgress: number): void {
-    const INTERVAL_AUDIO_PCM = 40; // 40ms间隔，对应Android的Constants.INTERVAL_AUDIO_PCM
+    const INTERVAL_AUDIO_PCM = 40; // 40ms interval, corresponding to Android's Constants.INTERVAL_AUDIO_PCM
 
     if (!isCurrentPitch) {
-      // 不是当前pitch时，完成所有未完成的着色段
+      // When not current pitch, complete all unfinished highlight segments
       const keys = Array.from(pitch.highlightPartMap.keys());
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
@@ -724,7 +723,7 @@ export struct ScoringView {
 
     if (isCurrentPitch) {
       if (this.inHighlightStatus) {
-        // 开始新的着色段
+        // Start new highlight segment
         if (!this.preHighlightStatus) {
           this.pitchHighlightedTime = realTimeProgress;
           if (realTimeProgress - pitch.begin < INTERVAL_AUDIO_PCM) {
@@ -733,12 +732,12 @@ export struct ScoringView {
           this.preHighlightStatus = this.inHighlightStatus;
         }
 
-        // 记录着色段开始
+        // Record highlight segment start
         if (!pitch.highlightPartMap.has(this.pitchHighlightedTime)) {
           pitch.highlightPartMap.set(this.pitchHighlightedTime, null);
         }
       } else {
-        // 结束着色段
+        // End highlight segment
         this.preHighlightStatus = false;
         if (this.pitchHighlightedTime !== -1) {
           pitch.highlightPartMap.set(this.pitchHighlightedTime, {
@@ -749,7 +748,7 @@ export struct ScoringView {
         }
       }
     } else {
-      // 不是当前pitch时重置状态
+      // Reset state when not current pitch
       if (this.preHighlightStatus) {
         this.preHighlightStatus = false;
       }
@@ -760,20 +759,20 @@ export struct ScoringView {
   }
 
   /**
-   * 构建着色段数据 - 将highlightPartMap转换为UI可用的HighlightSegment数组
+   * Build highlight segment data - convert highlightPartMap to UI-usable HighlightSegment array
    */
   private buildHighlightSegments(pitch: Pitch, renderProgress: number, pitchX: number,
     pitchWidth: number): HighlightSegment[] {
     const segments: HighlightSegment[] = [];
 
-    // 只处理已经移动到起始线左侧的pitch条
+    // Only process pitch sticks that have moved to the left of the start line
     if (pitchX < this.centerXOfStartPoint) {
       const keys = Array.from(pitch.highlightPartMap.keys());
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
         const value = pitch.highlightPartMap.get(key);
         if (value !== null && value !== undefined) {
-          // 完成的着色段
+          // Completed highlight segment
           const highlightStartTime = value.first;
           const highlightEndTime = value.second;
 
@@ -781,7 +780,7 @@ export struct ScoringView {
             this.centerXOfStartPoint + (highlightStartTime - renderProgress) * this.movingPixelsPerMs;
           const highlightEndX = highlightStartX + this.movingPixelsPerMs * (highlightEndTime - highlightStartTime);
 
-          // 确保着色段在pitch条范围内
+          // Ensure highlight segment is within pitch stick range
           const clampedStartX = Math.max(highlightStartX, pitchX);
           const clampedEndX = Math.min(highlightEndX, pitchX + pitchWidth);
 
@@ -794,7 +793,7 @@ export struct ScoringView {
             });
           }
         } else {
-          // 正在进行的着色段（当前正在唱）
+          // Ongoing highlight segment (currently singing)
           if (pitch.begin <= renderProgress && renderProgress <= pitch.end) {
             const highlightStartTime = key;
             const highlightStartX =
@@ -821,16 +820,16 @@ export struct ScoringView {
   }
 
   /**
-   * 重置音调指示器和动画
+   * Reset pitch indicator and animation
    */
   resetPitchIndicatorAndAnimation(): void {
     this.inHighlightStatus = false;
     this.localPitch = 0;
-    this.pitchHighlightedTime = -1; // 重置着色时间
+    this.pitchHighlightedTime = -1; // Reset highlight time
   }
 
   /**
-   * 当整行完成时重置音调指示器和动画
+   * Reset pitch indicator and animation when full line finished
    */
   resetPitchIndicatorAndAnimationWhenFullLineFinished(score: number): void {
     if (score === 0) {
@@ -840,37 +839,37 @@ export struct ScoringView {
   }
 
   /**
-   * 请求刷新UI
+   * Request UI refresh
    */
   requestRefreshUi(): void {
-    // UI会自动更新
+    // UI will update automatically
   }
 
   /**
-   * 创建粒子配置
+   * Create particle configuration
    */
   private createParticleConfig(): Partial<ParticleConfig> {
-    const speedRange: Range = { min: 1.0, max: 3.0 }; // 增加速度，使粒子更容易看到
+    const speedRange: Range = { min: 1.0, max: 3.0 }; // Increase speed to make particles more visible
     const angleRange: Range = { min: 130, max: 230 };
     const rotationSpeedRange: Range = { min: 90, max: 180 };
-    const scaleRange: Range = { min: 0.3, max: 0.5 }; // 调整为更合适的粒子大小
+    const scaleRange: Range = { min: 0.3, max: 0.5 }; // Adjust to more appropriate particle size
 
     const config: Partial<ParticleConfig> = {
-      particlesPerSecond: 60, // 进一步增加发射频率，确保着色时立即有大量粒子
-      maxParticles: 80, // 进一步增加最大粒子数量
-      particleLifetime: 800, // 延长粒子生命周期到1.5秒，让粒子更持久
-      speedRange: speedRange, // 对应Android的setSpeedModuleAndAngleRange
-      angleRange: angleRange, // 对应Android的130, 230度
-      rotationSpeedRange: rotationSpeedRange, // 对应Android的setRotationSpeedRange
-      scaleRange: scaleRange, // 对应Android的setScaleRange
-      fadeOutDuration: 50 // 延长淡出时间，让粒子更明显
+      particlesPerSecond: 60, // Further increase emission frequency to ensure immediate large number of particles when highlighting
+      maxParticles: 80, // Further increase maximum particle count
+      particleLifetime: 800, // Extend particle lifetime to 1.5 seconds for more persistent particles
+      speedRange: speedRange, // Corresponding to Android's setSpeedModuleAndAngleRange
+      angleRange: angleRange, // Corresponding to Android's 130, 230 degrees
+      rotationSpeedRange: rotationSpeedRange, // Corresponding to Android's setRotationSpeedRange
+      scaleRange: scaleRange, // Corresponding to Android's setScaleRange
+      fadeOutDuration: 50 // Extend fade out time to make particles more visible
     };
 
     return config;
   }
 
   /**
-   * 初始化粒子系统 - 对应Android的initParticleSystem
+   * Initialize particle system - corresponding to Android's initParticleSystem
    */
   private initParticleSystem(): void {
     if (this.enableParticleEffect) {
@@ -881,7 +880,7 @@ export struct ScoringView {
   }
 
   /**
-   * 清理粒子系统
+   * Clean up particle system
    */
   private cleanupParticleSystem(): void {
     if (this.particleSystem) {
@@ -893,44 +892,44 @@ export struct ScoringView {
   }
 
   /**
-   * 确保粒子动画效果 - 对应Android的assureAnimationForPitchIndicator
+   * Ensure particle animation effect - corresponding to Android's assureAnimationForPitchIndicator
    */
   private assureParticleAnimation(scoreAfterNormalization: number): void {
     if (!this.enableParticleEffect || !this.particleSystem) {
       return;
     }
 
-    // 对应Android的粒子动画逻辑：基于score阈值判断
+    // Corresponding to Android's particle animation logic: judge based on score threshold
     if (scoreAfterNormalization >= this.hitScoreThreshold * 100) {
 
       if (!this.emittingInitialized) {
-        // 粒子动画位置在当前演唱线（centerXOfStartPoint），对应Android逻辑
+        // Particle animation position at current singing line (centerXOfStartPoint), corresponding to Android logic
         const emitX = this.centerXOfStartPoint;
         const emitY = this.pitchIndicatorY;
 
         this.particleSystem.emit(emitX, emitY);
         this.emittingInitialized = true;
       } else {
-        // 更新发射点位置 - 对应Android的updateEmitPoint
+        // Update emission point position - corresponding to Android's updateEmitPoint
         this.particleSystem.updateEmitPoint(this.centerXOfStartPoint, this.pitchIndicatorY);
       }
 
-      // 恢复发射 - 对应Android的resumeEmitting，这会立即创建粒子
+      // Resume emission - corresponding to Android's resumeEmitting, this will immediately create particles
       this.particleSystem.resumeEmitting();
     } else {
-      // 分数低于阈值，停止发射粒子
+      // Score below threshold, stop particle emission
       if (this.particleSystem) {
-        this.particleSystem.stopEmitting(); // 对应Android的stopEmitting
+        this.particleSystem.stopEmitting(); // Corresponding to Android's stopEmitting
       }
     }
   }
 
   /**
-   * 更新粒子发射点位置 - 在帧循环中调用
+   * Update particle emission point position - called in frame loop
    */
   private updateParticleEmissionPoint(): void {
     if (this.enableParticleEffect && this.particleSystem && this.inHighlightStatus) {
-      // 平滑更新粒子发射点位置 - 对应Android的帧循环中的粒子位置更新
+      // Smoothly update particle emission point position - corresponding to Android's particle position update in frame loop
       this.particleSystem.updateEmitPoint(this.centerXOfStartPoint, this.pitchIndicatorY);
     }
   }

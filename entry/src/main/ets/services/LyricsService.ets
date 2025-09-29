@@ -4,7 +4,7 @@ import fs from '@ohos.file.fs';
 import { KaraokeView, LyricModel, LyricsCutter } from 'lyrics_view';
 
 /**
- * 歌词统计信息接口
+ * Lyrics statistics information interface
  */
 export interface LyricsStats {
   lineCount: number;
@@ -13,8 +13,8 @@ export interface LyricsStats {
 }
 
 /**
- * 歌词服务
- * 负责歌词数据的加载和处理，支持从rawfile和MCC两种方式加载
+ * Lyrics service
+ * Responsible for loading and processing lyrics data, supports loading from rawfile and MCC
  */
 export class LyricsService {
   protected readonly TAG: string = 'LyricsView-LyricsService';
@@ -25,7 +25,7 @@ export class LyricsService {
   }
 
   /**
-   * 设置 KaraokeView 实例
+   * Set KaraokeView instance
    */
   setKaraokeView(karaokeView: KaraokeView): void {
     this.karaokeView = karaokeView;
@@ -33,12 +33,12 @@ export class LyricsService {
 
 
   /**
-   * 从MCC加载歌词数据（新增方式）
-   * @param lyricUrl - 歌词文件路径
-   * @param pitchUrl - 音高文件路径
-   * @param songOffsetBegin - 歌曲开始偏移时间(ms)
-   * @param songOffsetEnd - 歌曲结束偏移时间(ms)
-   * @param lyricOffset - 歌词偏移时间(ms)
+   * Load lyrics data from MCC (new method)
+   * @param lyricUrl - Lyrics file path
+   * @param pitchUrl - Pitch file path
+   * @param songOffsetBegin - Song start offset time (ms)
+   * @param songOffsetEnd - Song end offset time (ms)
+   * @param lyricOffset - Lyrics offset time (ms)
    */
   async loadLyricsFromMcc(
     lyricUrl: string,
@@ -50,17 +50,17 @@ export class LyricsService {
     try {
       this.logDebug(`Loading loadLyricsFromMcc lyricUrl: ${lyricUrl} pitchUrl: ${pitchUrl} begin=${songOffsetBegin}, end=${songOffsetEnd}, lyricOffset=${lyricOffset}`);
 
-      // 检查文件是否存在
+      // Check if file exists
       if (!await this.checkFileExists(lyricUrl)) {
         throw new Error(`Lyric file not found: ${lyricUrl}`);
       }
 
-      // 使用 KaraokeView 解析歌词
+      // Use KaraokeView to parse lyrics
       if (!this.karaokeView) {
         throw new Error('KaraokeView not initialized');
       }
 
-      // 解析歌词，应用偏移量
+      // Parse lyrics with offset applied
       const lyricModel: LyricModel | null = this.karaokeView.parseLyrics(lyricUrl, pitchUrl, true, lyricOffset);
 
       if (!lyricModel) {
@@ -69,7 +69,7 @@ export class LyricsService {
 
       this.logDebug(`Successfully parsed MCC lyrics with ${lyricModel.lines?.length || 0} lines`);
 
-      // 如果有歌曲偏移，需要裁剪歌词
+      // If there's song offset, need to cut lyrics
       if (songOffsetBegin > 0 || songOffsetEnd > 0) {
         const startTime = songOffsetBegin;
         const endTime: number = songOffsetEnd > 0 ? songOffsetEnd : (lyricModel.duration || 0);
@@ -91,8 +91,8 @@ export class LyricsService {
   }
 
   /**
-   * 检查文件是否存在
-   * @param filePath - 文件路径
+   * Check if file exists
+   * @param filePath - File path
    */
   private async checkFileExists(filePath: string): Promise<boolean> {
     try {
@@ -105,7 +105,7 @@ export class LyricsService {
   }
 
   /**
-   * 验证歌词数据
+   * Validate lyrics data
    */
   validateLyrics(lyricModel: LyricModel): boolean {
     if (!lyricModel) {
@@ -122,7 +122,7 @@ export class LyricsService {
   }
 
   /**
-   * 获取歌词统计信息
+   * Get lyrics statistics information
    */
   getLyricsStats(lyricModel: LyricModel): LyricsStats {
     const stats: LyricsStats = {
@@ -141,7 +141,7 @@ export class LyricsService {
   }
 
   /**
-   * 调试日志
+   * Debug logging
    */
   private logDebug(message: string): void {
     hilog.debug(0x0000, this.TAG, `%{public}s`, message);

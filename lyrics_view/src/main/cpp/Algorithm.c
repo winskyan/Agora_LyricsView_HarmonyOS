@@ -1,27 +1,25 @@
 //
 //  Algorithm.c
-//  AgoraLyricsScore - HarmonyOS版本
-//
-//  移植自Android版本的C++算法
+//  AgoraLyricsScore - HarmonyOS Version
 //
 
 #include "Algorithm.h"
 #include <math.h>
 
-// 版本标识
+// Version identifier
 #define PTS_version "20231021001_HarmonyOS"
 
-// 工具宏定义
+// Utility macro definitions
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
-// 静态变量 - 用于算法状态管理
+// Static variables - for algorithm state management
 static double n = 0.0;
 static double offset = 0.0;
 
 /**
- * 将pitch值转换为音调值
- * 完全对应Android版本的pitchToToneC函数
+ * Convert pitch value to tone value
+ * Fully corresponds to pitchToToneC function in Android version
  */
 double pitchToToneC(double pitch) {
     double eps = 1e-6;
@@ -29,11 +27,11 @@ double pitchToToneC(double pitch) {
 }
 
 /**
- * 计算评分 - 核心评分算法
- * 完全对应Android版本的calculatedScoreC函数
+ * Calculate score - Core scoring algorithm
+ * Fully corresponds to calculatedScoreC function in Android version
  */
 float calculatedScoreC(double voicePitch, double stdPitch, int scoreLevel, int scoreCompensationOffset) {
-    // 输入验证
+    // Input validation
     if (voicePitch <= 0) {
         return 0;
     }
@@ -41,7 +39,7 @@ float calculatedScoreC(double voicePitch, double stdPitch, int scoreLevel, int s
         return 0;
     }
 
-    // 参数范围限制
+    // Parameter range limitation
     if (scoreLevel <= 0) {
         scoreLevel = 1;
     } else if (scoreLevel > 100) {
@@ -54,32 +52,32 @@ float calculatedScoreC(double voicePitch, double stdPitch, int scoreLevel, int s
         scoreCompensationOffset = 100;
     }
 
-    // 转换为音调值
+    // Convert to tone values
     double stdTone = pitchToToneC(stdPitch);
     double voiceTone = pitchToToneC(voicePitch);
 
-    // 核心评分算法
+    // Core scoring algorithm
     float match = 1 - (float)scoreLevel / 100 * fabs(voiceTone - stdTone) + (float)scoreCompensationOffset / 100;
     float rate = 1 + ((float)scoreLevel / (float)50);
 
     match = match * 100 * rate;
 
-    // 结果范围限制
+    // Result range limitation
     match = max(0, match);
     match = min(100, match);
     return match;
 }
 
 /**
- * 处理音调补偿 - 八度音调补偿算法 v0.2
- * 完全对应Android版本的handlePitchC函数
+ * Handle pitch compensation - Octave pitch compensation algorithm v0.2
+ * Fully corresponds to handlePitchC function in Android version
  */
 double handlePitchC(double stdPitch, double voicePitch, double stdMaxPitch) {
     int cnt = 0;
     double stdTone = pitchToToneC(stdPitch);
     double voiceTone = pitchToToneC(voicePitch);
 
-    // 输入验证
+    // Input validation
     if (voicePitch <= 0) {
         return 0;
     }
@@ -87,11 +85,11 @@ double handlePitchC(double stdPitch, double voicePitch, double stdMaxPitch) {
         return 0;
     }
 
-    // 如果音调差异在6个半音以内，直接返回
+    // If tone difference is within 6 semitones, return directly
     if (fabs(voiceTone - stdTone) <= 6) {
         return voicePitch;
     } else if (voicePitch < stdPitch) {
-        // 用户音调过低，尝试倍频补偿
+        // User pitch is too low, try frequency doubling compensation
         for (cnt = 0; cnt < 11; cnt++) {
             voicePitch = 2 * voicePitch;
             voiceTone = pitchToToneC(voicePitch);
@@ -100,7 +98,7 @@ double handlePitchC(double stdPitch, double voicePitch, double stdMaxPitch) {
             }
         }
     } else if (voicePitch > stdPitch) {
-        // 用户音调过高，尝试降频补偿
+        // User pitch is too high, try frequency halving compensation
         for (cnt = 0; cnt < 11; cnt++) {
             voicePitch = voicePitch / 2;
             voiceTone = pitchToToneC(voicePitch);
@@ -113,8 +111,8 @@ double handlePitchC(double stdPitch, double voicePitch, double stdMaxPitch) {
 }
 
 /**
- * 重置算法状态
- * 完全对应Android版本的resetC函数
+ * Reset algorithm state
+ * Fully corresponds to resetC function in Android version
  */
 void resetC(void) {
     offset = 0.0;
