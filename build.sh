@@ -119,9 +119,6 @@ generate_config() {
             # 修改entry/oh-package.json5使用HAR包导入
             local ENTRY_PACKAGE="$PROJECT_ROOT/entry/oh-package.json5"
             if [ -f "$ENTRY_PACKAGE" ]; then
-                # 备份原文件
-                cp "$ENTRY_PACKAGE" "$ENTRY_PACKAGE.bak"
-                
                 # 使用sed替换导入路径
                 sed -i '' 's|"@shengwang/lyrics-view": "file:../lyrics_view"|"@shengwang/lyrics-view": "file:./libs/AgoraLyricsView.har"|g' "$ENTRY_PACKAGE"
                 sed -i '' 's|"path": "../lyrics_view"|"path": "./libs/AgoraLyricsView.har"|g' "$ENTRY_PACKAGE"
@@ -147,6 +144,13 @@ generate_config() {
                 sed -i '' 's|"path": "./libs/AgoraLyricsView.har"|"path": "../lyrics_view"|g' "$ENTRY_PACKAGE"
                 
                 print_info "已切换entry导入配置为源码模式（保持@shengwang/lyrics-view名称）"
+            fi
+            
+            # 删除HAR包文件（源码模式不需要）
+            local HAR_FILE="$PROJECT_ROOT/entry/libs/AgoraLyricsView.har"
+            if [ -f "$HAR_FILE" ]; then
+                rm "$HAR_FILE"
+                print_info "已删除HAR包文件: $HAR_FILE"
             fi
             
             # 确保entry源码使用统一的导入名称

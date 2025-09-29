@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "author": "Agora",
     "license": "Apache-2.0",
-    "repository": "https://github.com/AgoraIO-Community/Agora-LyricsView-HarmonyOS"
+    "repository": "https://github.com/Shengwang-Community/LyricsView-HarmonyOS"
   },
   "sdk": {
     "mode": false,

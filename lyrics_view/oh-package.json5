@@ -11,7 +11,7 @@
     "harmonyos",
     "arkts"
   ],
-  "repository": "https://github.com/AgoraIO-Community/Agora-LyricsView-HarmonyOS",
+  "repository": "https://github.com/Shengwang-Community/LyricsView-HarmonyOS",
   "dependencies": {
     "liblyrics_view.so": "file:./src/main/cpp/types/liblyrics_view"
   },
