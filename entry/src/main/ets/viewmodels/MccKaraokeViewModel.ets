@@ -12,7 +12,7 @@ import { KeyCenter, TokenCallback, TokenResponse, YSDTokenCallback, YSDTokenResp
 import { PermissionUtil } from '../utils/PermissionUtil';
 import { BaseViewModel } from './BaseViewModel';
 
-import { IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel } from 'lyrics_view';
+import { IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel } from '@shengwang/lyrics-view';
 
 /**
  * MCC Karaoke ViewModel

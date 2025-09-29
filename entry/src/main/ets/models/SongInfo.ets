@@ -1,4 +1,4 @@
-import { LyricModel } from 'lyrics_view';
+import { LyricModel } from '@shengwang/lyrics-view';
 
 /**
  * Song information model

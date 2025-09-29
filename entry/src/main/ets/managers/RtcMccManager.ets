@@ -25,7 +25,7 @@ import {
   LineScoreData,
   RawScoreData
 } from '@shengwang/rtc-full/src/main/ets/export/IAgoraMusicContentCenter';
-import { Utils } from 'lyrics_view';
+import { Utils } from '@shengwang/lyrics-view';
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { ExampleConstants } from '../utils/ExampleConstants';
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';

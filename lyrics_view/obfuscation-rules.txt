@@ -17,7 +17,41 @@
 # -keep-property-name: specifies property names that you want to keep
 # -keep-global-name: specifies names that you want to keep in the global scope
 
+# 保护导出的UI组件和类名，避免HAR包导入时找不到
+-keep-global-name IKaraokeEvent
+-keep-global-name IScoringAlgorithm
+-keep-global-name KaraokeView
+-keep-global-name LyricsView
+-keep-global-name ScoringView
+-keep-global-name Constants
+-keep-global-name LyricType
+-keep-global-name LyricMachine
+-keep-global-name OnLyricListener
+-keep-global-name OnScoringListener
+-keep-global-name ScoringMachine
+-keep-global-name LyricsParser
+-keep-global-name DefaultScoringAlgorithm
+-keep-global-name LyricModel
+-keep-global-name Lang
+-keep-global-name LyricsLineModel
+-keep-global-name Monolog
+-keep-global-name Tone
+-keep-global-name PitchData
+-keep-global-name createPitchData
+-keep-global-name Pitch
+-keep-global-name PitchLineModel
+-keep-global-name TimePair
+-keep-global-name LogUtils
+-keep-global-name LyricsCutter
+-keep-global-name Utils
+-keep-global-name DownloadError
+-keep-global-name DownloadErrorDetail
+-keep-global-name DownloadLyricModel
+-keep-global-name HttpUrlRequest
+-keep-global-name LyricsFileDownloader
+-keep-global-name LyricsFileDownloaderCallback
+-keep-global-name RequestCallback
+
 -enable-property-obfuscation
 -enable-toplevel-obfuscation
 -enable-filename-obfuscation
--enable-export-obfuscation

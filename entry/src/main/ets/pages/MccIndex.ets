@@ -2,7 +2,7 @@ import { MccKaraokeViewModel } from '../viewmodels/MccKaraokeViewModel';
 
 import {
   LyricsView, ScoringView
-} from 'lyrics_view';
+} from '@shengwang/lyrics-view';
 
 /**
  * MCC集成的卡拉OK页面
@@ -54,12 +54,12 @@ struct MccIndex {
         .margin({ top: 2 })
       }
       .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
+        .layoutWeight(1)
     }
     .width('100%')
-    .height(50)
-    .padding({ left: 16, right: 16 })
-    .justifyContent(FlexAlign.Start)
+      .height(50)
+      .padding({ left: 16, right: 16 })
+      .justifyContent(FlexAlign.Start)
   }
 
   @Builder
@@ -112,7 +112,7 @@ struct MccIndex {
           .fontWeight(FontWeight.Medium)
       }
       .width('100%')
-      .justifyContent(FlexAlign.Start)
+        .justifyContent(FlexAlign.Start)
 
       // 状态信息显示
       Row() {
@@ -139,8 +139,8 @@ struct MccIndex {
           .layoutWeight(1)
       }
       .width('100%')
-      .justifyContent(FlexAlign.Start)
-      .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.Start)
+        .alignItems(VerticalAlign.Center)
 
       // 歌曲打分结果显示
       Row() {
@@ -166,22 +166,22 @@ struct MccIndex {
           .fontWeight(FontWeight.Bold)
       }
       .width('100%')
-      .justifyContent(FlexAlign.Start)
-      .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.Start)
+        .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .height(80)
-    .padding({
-      left: 16,
-      right: 16,
-      top: 8,
-      bottom: 8
-    })
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
-    .margin({ left: 16, right: 16, bottom: 10 })
-    .alignItems(HorizontalAlign.Start)
-    .justifyContent(FlexAlign.Center)
+      .height(80)
+      .padding({
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: 8
+      })
+      .backgroundColor('#FFFFFF')
+      .borderRadius(8)
+      .margin({ left: 16, right: 16, bottom: 10 })
+      .alignItems(HorizontalAlign.Start)
+      .justifyContent(FlexAlign.Center)
   }
 
   @Builder
@@ -211,22 +211,22 @@ struct MccIndex {
           .fontWeight(FontWeight.Bold)
       }
       .width('100%')
-      .justifyContent(FlexAlign.Start)
-      .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.Start)
+        .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .height(40)
-    .padding({
-      left: 16,
-      right: 16,
-      top: 8,
-      bottom: 8
-    })
-    .backgroundColor('#F8F9FA')
-    .borderRadius(8)
-    .margin({ left: 16, right: 16, bottom: 10 })
-    .alignItems(HorizontalAlign.Start)
-    .justifyContent(FlexAlign.Center)
+      .height(40)
+      .padding({
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: 8
+      })
+      .backgroundColor('#F8F9FA')
+      .borderRadius(8)
+      .margin({ left: 16, right: 16, bottom: 10 })
+      .alignItems(HorizontalAlign.Start)
+      .justifyContent(FlexAlign.Center)
   }
 
   @Builder
@@ -263,8 +263,8 @@ struct MccIndex {
 
     }
     .width('100%')
-    .height(50)
-    .justifyContent(FlexAlign.Center)
+      .height(50)
+      .justifyContent(FlexAlign.Center)
   }
 
   @Builder
@@ -297,8 +297,8 @@ struct MccIndex {
 
     }
     .width('100%')
-    .height(50)
-    .justifyContent(FlexAlign.Center)
+      .height(50)
+      .justifyContent(FlexAlign.Center)
   }
 
   @Builder
@@ -324,16 +324,16 @@ struct MccIndex {
           this.ScoringViewBuilder()
         }
         .width('100%')
-        .height(180)
-        .margin({ bottom: 15 })
+          .height(180)
+          .margin({ bottom: 15 })
 
         // 歌词视图区域（纯净，无覆盖层）
         Row() {
           this.LyricsViewBuilder()
         }
         .width('100%')
-        .height(260)
-        .margin({ bottom: 10 })
+          .height(260)
+          .margin({ bottom: 10 })
 
         // 状态信息区域（独立区域）
         this.StatusBarBuilder()
@@ -342,10 +342,10 @@ struct MccIndex {
         this.ControlButtonsBuilder()
       }
       .width('100%')
-      .height('100%')
+        .height('100%')
     }
     .width('100%')
-    .height('100%')
-    .backgroundColor('#F5F5F5')
+      .height('100%')
+      .backgroundColor('#F5F5F5')
   }
 }

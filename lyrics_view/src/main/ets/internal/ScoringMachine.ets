@@ -77,6 +77,7 @@ export class ScoringMachine {
    * @param usingInternalScoring Whether to use internal scoring algorithm
    */
   prepare(model: LyricModel, usingInternalScoring: boolean): void {
+    LogUtils.d('ScoringMachine: prepare LyricModel:' + model + ' has pitch:' + model.hasPitch);
     this.reset();
 
     if (!model || !model.lines || model.lines.length === 0) {

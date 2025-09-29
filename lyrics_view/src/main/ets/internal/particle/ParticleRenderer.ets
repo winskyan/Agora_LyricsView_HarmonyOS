@@ -9,11 +9,11 @@ import { Particle, ParticleSystem } from './ParticleSystem';
  * Particle rendering component
  * Uses HarmonyOS UI component system to render particles
  */
-@ComponentV2
+@Component
 export struct ParticleRenderer {
-  @Param particleSystem: ParticleSystem | null = null;
-  @Local particles: Particle[] = [];
-  @Param particleColors: string[] = [
+  @Prop particleSystem: ParticleSystem | null = null;
+  @State particles: Particle[] = [];
+  @Prop particleColors: string[] = [
     '#FFD700', // Gold
     '#FF6B35', // Orange
     '#F7931E', // Orange-yellow
@@ -23,7 +23,7 @@ export struct ParticleRenderer {
     '#5BA8F2', // Blue
     '#9B59B6'// Purple
   ];
-  @Param particleSize: number = 20; // Increase base particle size for testing
+  @Prop particleSize: number = 20; // Increase base particle size for testing
   private updateTimer: number = -1;
 
   build() {
@@ -155,12 +155,12 @@ export struct ParticleRenderer {
 /**
  * Simplified particle renderer - for performance-sensitive scenarios
  */
-@ComponentV2
+@Component
 export struct SimpleParticleRenderer {
-  @Param particleSystem: ParticleSystem | null = null;
-  @Local particles: Particle[] = [];
-  @Param particleColor: string = '#FFD700'; // Unified particle color
-  @Param particleSize: number = 8;
+  @Prop particleSystem: ParticleSystem | null = null;
+  @State particles: Particle[] = [];
+  @Prop particleColor: string = '#FFD700'; // Unified particle color
+  @Prop particleSize: number = 8;
   private updateTimer: number = -1;
 
   build() {

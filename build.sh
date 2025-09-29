@@ -17,6 +17,17 @@ PROJECT_ROOT="$SCRIPT_DIR"
 # 配置管理工具
 CONFIG_MANAGER="$PROJECT_ROOT/scripts/config-manager.js"
 
+# 确保entry源码使用统一的导入名称
+updateEntryImports() {
+    local mode="$1"
+    local entry_src_dir="$PROJECT_ROOT/entry/src/main/ets"
+    
+    print_info "确保entry源码使用@shengwang/lyrics-view导入名称"
+    # 统一将 'lyrics_view' 替换为 '@shengwang/lyrics-view'
+    find "$entry_src_dir" -name "*.ets" -type f -exec sed -i '' "s|from 'lyrics_view'|from '@shengwang/lyrics-view'|g" {} \;
+    find "$entry_src_dir" -name "*.ets" -type f -exec sed -i '' "s|from \"lyrics_view\"|from \"@shengwang/lyrics-view\"|g" {} \;
+}
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -86,6 +97,62 @@ generate_config() {
     # 生成配置文件到 entry 模块
     node "$PROJECT_ROOT/scripts/generate-config.js"
     print_info "已生成: entry/src/main/ets/utils/BuildConfig.ets"
+    
+    # 根据SDK模式处理entry导入方式
+    if [ "$SDK_MODE" = "true" ]; then
+        print_info "SDK模式为HAR包模式，配置entry使用HAR包导入"
+        
+        # 确保entry/libs目录存在
+        local ENTRY_LIBS_DIR="$PROJECT_ROOT/entry/libs"
+        if [ ! -d "$ENTRY_LIBS_DIR" ]; then
+            mkdir -p "$ENTRY_LIBS_DIR"
+        fi
+        
+        # 复制HAR包到entry/libs目录
+        local HAR_SOURCE="$PROJECT_ROOT/releases/v1.0.0/Agora-LyricsView-HarmonyOS-1.0.0.har"
+        local HAR_TARGET="$ENTRY_LIBS_DIR/AgoraLyricsView.har"
+        
+        if [ -f "$HAR_SOURCE" ]; then
+            cp "$HAR_SOURCE" "$HAR_TARGET"
+            print_info "已复制HAR包到: $HAR_TARGET"
+            
+            # 修改entry/oh-package.json5使用HAR包导入
+            local ENTRY_PACKAGE="$PROJECT_ROOT/entry/oh-package.json5"
+            if [ -f "$ENTRY_PACKAGE" ]; then
+                # 备份原文件
+                cp "$ENTRY_PACKAGE" "$ENTRY_PACKAGE.bak"
+                
+                # 使用sed替换导入路径
+                sed -i '' 's|"@shengwang/lyrics-view": "file:../lyrics_view"|"@shengwang/lyrics-view": "file:./libs/AgoraLyricsView.har"|g' "$ENTRY_PACKAGE"
+                sed -i '' 's|"path": "../lyrics_view"|"path": "./libs/AgoraLyricsView.har"|g' "$ENTRY_PACKAGE"
+                
+                # 更新entry源码中的导入语句
+                updateEntryImports "har"
+                
+                print_info "已更新entry导入配置为HAR包模式"
+            fi
+        else
+            print_warn "HAR包不存在: $HAR_SOURCE，将使用源码导入"
+        fi
+    else
+        print_info "SDK模式为源码模式，使用源码导入"
+        
+        # 确保entry使用源码导入
+        local ENTRY_PACKAGE="$PROJECT_ROOT/entry/oh-package.json5"
+        if [ -f "$ENTRY_PACKAGE" ]; then
+            # 检查是否需要切换到源码导入
+            if grep -q "AgoraLyricsView.har" "$ENTRY_PACKAGE"; then
+                # 切换到源码导入，但保持@shengwang/lyrics-view名称
+                sed -i '' 's|"@shengwang/lyrics-view": "file:./libs/AgoraLyricsView.har"|"@shengwang/lyrics-view": "file:../lyrics_view"|g' "$ENTRY_PACKAGE"
+                sed -i '' 's|"path": "./libs/AgoraLyricsView.har"|"path": "../lyrics_view"|g' "$ENTRY_PACKAGE"
+                
+                print_info "已切换entry导入配置为源码模式（保持@shengwang/lyrics-view名称）"
+            fi
+            
+            # 确保entry源码使用统一的导入名称
+            updateEntryImports "source"
+        fi
+    fi
     
     # 同步版本号到 package.json5 文件
     local FILES=(

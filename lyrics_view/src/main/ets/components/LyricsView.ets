@@ -22,82 +22,82 @@ interface DisplayLine {
  * Supports features like highlighting current line, scrolling animations,
  * line wrapping, and touch interactions for seeking.
  */
-@ComponentV2
+@Component
 export struct LyricsView {
-  @Param viewBackgroundColor: string = '#CE93D8'; // Configurable background color
+  @Prop viewBackgroundColor: string = '#CE93D8'; // Configurable background color
   /** Text size for normal lyrics lines */
-  @Param textSize: number = 16;
+  @Prop textSize: number = 16;
   /** Text size for current line */
-  @Param currentLineTextSize: number = 20;
+  @Prop currentLineTextSize: number = 20;
   /** Text color for current line's normal text */
-  @Param currentLineTextColor: string = '#FFFFFF';
+  @Prop currentLineTextColor: string = '#FFFFFF';
   /** Text color for current line's highlighted portion */
-  @Param currentLineHighlightedTextColor: string = '#FF6B35';
+  @Prop currentLineHighlightedTextColor: string = '#FF6B35';
   /** Text color for previous lyrics lines */
-  @Param previousLineTextColor: string = '#999999';
+  @Prop previousLineTextColor: string = '#999999';
   /** Text color for upcoming lyrics lines */
-  @Param upcomingLineTextColor: string = '#999999';
+  @Prop upcomingLineTextColor: string = '#999999';
   /** Vertical spacing between lyrics lines */
-  @Param lineSpacing: number = 12;
+  @Prop lineSpacing: number = 12;
   /** Top padding for the entire lyrics view */
-  @Param paddingTop: number = 5;
+  @Prop paddingTop: number = 5;
   /** Text to display when no lyrics are available */
-  @Param labelWhenNoLyrics: string = '暂无歌词';
+  @Prop labelWhenNoLyrics: string = '暂无歌词';
   /** Whether to enable automatic line wrapping for long lyrics */
-  @Param enableLineWrap: boolean = false;
+  @Prop enableLineWrap: boolean = false;
   /** Whether dragging is enabled */
-  @Param enableDragging: boolean = true;
+  @Prop enableDragging: boolean = true;
   /** Whether to enable opacity fade effect for top and bottom lyrics lines */
-  @Param enableOpacityEffect: boolean = true;
+  @Prop enableOpacityEffect: boolean = true;
   /** Whether to show lyrics lines before the current line */
-  @Param enablePreviousLines: boolean = true;
+  @Prop enablePreviousLines: boolean = true;
   /** Whether to show lyrics lines after the current line */
-  @Param enableUpcomingLines: boolean = true;
+  @Prop enableUpcomingLines: boolean = true;
   /** Whether to show the prelude end position indicator */
-  @Param enablePreludeEndPositionIndicator: boolean = true;
+  @Prop enablePreludeEndPositionIndicator: boolean = true;
   /** Top padding for the prelude end position indicator */
-  @Param preludeEndPositionIndicatorPaddingTop: number = 3;
+  @Prop preludeEndPositionIndicatorPaddingTop: number = 3;
   /** Radius of the prelude end position indicator dots */
-  @Param preludeEndPositionIndicatorRadius: number = 4;
+  @Prop preludeEndPositionIndicatorRadius: number = 4;
   /** Color of the prelude end position indicator */
-  @Param preludeEndPositionIndicatorColor: string = '#FF6B35';
+  @Prop preludeEndPositionIndicatorColor: string = '#FF6B35';
   /** Horizontal alignment of lyrics text (0=center, 1=left, 2=right) */
-  @Param textGravity: number = 0;
+  @Prop textGravity: number = 0;
   // Internal state
   /** Index of the currently displayed lyrics line */
-  @Local private mIndexOfCurrentLine: number = -1;
+  @State private mIndexOfCurrentLine: number = -1;
   /** Reactive copy of the lyrics model */
-  @Local private lyricsModel: LyricModel | null = null;
+  @State private lyricsModel: LyricModel | null = null;
   /** Reactive array of lyrics lines */
-  @Local private lyricsLines: LyricsLineModel[] = [];
+  @State private lyricsLines: LyricsLineModel[] = [];
   /** Current timestamp in the lyrics playback */
-  @Local private mCurrentTime: number = 0;
-  @Local private mDraggingInProgress: boolean = false;
-  @Local private mCurrentLineTranslateX: number = 0;
+  @State private mCurrentTime: number = 0;
+  @State private mDraggingInProgress: boolean = false;
+  @State private mCurrentLineTranslateX: number = 0;
   // Horizontal scrolling related state
   // Actual component dimensions measured dynamically
-  @Local private actualViewHeight: number = 400; // Default value, will be overridden by actual measurement
-  @Local private actualViewWidth: number = 300; // Default value, will be overridden by actual measurement
+  @State private actualViewHeight: number = 400; // Default value, will be overridden by actual measurement
+  @State private actualViewWidth: number = 300; // Default value, will be overridden by actual measurement
   // Drag related state
-  @Local private initialTouchY: number = 0; // Initial touch Y coordinate
-  @Local private dragLineOffset: number = 0; // Lyrics line offset during dragging
-  @Local private originalCurrentLineIndex: number = -1; // Original current line index when drag started
+  @State private initialTouchY: number = 0; // Initial touch Y coordinate
+  @State private dragLineOffset: number = 0; // Lyrics line offset during dragging
+  @State private originalCurrentLineIndex: number = -1; // Original current line index when drag started
   // Animation state management
-  @Local private isAnimating: boolean = false;
-  @Local private animationKey: number = 0; // Used to force re-render animation
-  @Local private transitioningFromIndex: number = -1; // Index of the line transitioning from current
-  @Local private transitioningFromY: number = 0; // Starting Y position of transitioning line
-  @Local private transitioningToY: number = 0; // Target Y position of transitioning line
-  @Local private newCurrentTransitioning: boolean = false; // Whether new current line is transitioning
-  @Local private newCurrentFromY: number = 0; // Starting Y position of new current line
-  @Local private newCurrentToY: number = 0; // Target Y position of new current line
-  @Local private styleTransitioning: boolean = false; // Whether style is transitioning
+  @State private isAnimating: boolean = false;
+  @State private animationKey: number = 0; // Used to force re-render animation
+  @State private transitioningFromIndex: number = -1; // Index of the line transitioning from current
+  @State private transitioningFromY: number = 0; // Starting Y position of transitioning line
+  @State private transitioningToY: number = 0; // Target Y position of transitioning line
+  @State private newCurrentTransitioning: boolean = false; // Whether new current line is transitioning
+  @State private newCurrentFromY: number = 0; // Starting Y position of new current line
+  @State private newCurrentToY: number = 0; // Target Y position of new current line
+  @State private styleTransitioning: boolean = false; // Whether style is transitioning
   // Text scrolling related state
-  @Local private isTextScrolling: boolean = false; // Whether text is scrolling
-  @Local private textScrollTimer: number = -1; // Text scroll timer
+  @State private isTextScrolling: boolean = false; // Whether text is scrolling
+  @State private textScrollTimer: number = -1; // Text scroll timer
   // Current line scroll offset state (for debug logging)
-  @Local private currentLineScrollOffset: number = 0;
-  @Local private linePaddingLeftRight: number = 20;
+  @State private currentLineScrollOffset: number = 0;
+  @State private linePaddingLeftRight: number = 20;
   /** The lyrics state machine managing lyrics progression */
   private mLyricMachine: LyricMachine | null = null;
   // Text scroll controller for horizontal scrolling

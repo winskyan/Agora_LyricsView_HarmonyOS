@@ -1,7 +1,7 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import fs from '@ohos.file.fs';
 
-import { KaraokeView, LyricModel, LyricsCutter } from 'lyrics_view';
+import { KaraokeView, LyricModel, LyricsCutter } from '@shengwang/lyrics-view';
 
 /**
  * Lyrics statistics information interface
